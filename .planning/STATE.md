@@ -11,28 +11,28 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 1 of 6 (Foundation)
-Plan: 1 of 12 complete
+Plan: 2 of 12 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 01-01-PLAN.md (Project Scaffolding)
+Last activity: 2026-02-12 — Completed 01-03-PLAN.md (UI Component Library)
 
-Progress: [█░░░░░░░░░░░] 1/12 plans (8%)
+Progress: [██░░░░░░░░░░] 2/12 plans (17%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 8 min
-- Total execution time: 8 min
+- Total plans completed: 2
+- Average duration: 6 min
+- Total execution time: 11 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 1/12 | 8 min | 8 min |
+| 01-foundation | 2/12 | 11 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (8 min)
-- Trend: N/A (first plan)
+- Last 5 plans: 01-01 (8 min), 01-03 (3 min)
+- Trend: Improving
 
 *Updated after each plan completion*
 
@@ -47,6 +47,12 @@ Recent decisions affecting current work:
 - **React Compiler:** Enabled at top-level `reactCompiler` (not experimental) in Next.js 16 with babel-plugin-react-compiler
 - **MySQL connection:** Via TCP 127.0.0.1 (not socket) for XAMPP MariaDB compatibility
 - **Old Code exclusion:** Added to tsconfig.json exclude and .gitignore
+- **cn() utility pattern:** All UI components use `cn()` from `@/lib/utils/cn` for Tailwind class merging (clsx + tailwind-merge)
+- **Dark mode approach:** Components use `dark:` variant classes matching Tailwind v4 `@custom-variant dark` with `data-theme="dark"` attribute
+- **forwardRef for form inputs:** Input component uses React.forwardRef for react-hook-form `register()` compatibility
+- **Toast via React context:** ToastProvider wraps app, `useToast()` hook provides `toast.success/error/info/warning` methods
+- **Portal rendering:** Modal and Toast use `createPortal(el, document.body)` to escape stacking contexts
+- **ToastProvider placement:** Needs to be added to root layout when main app shell is built (currently only in test-ui layout)
 
 ### Pending Todos
 
@@ -68,6 +74,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-12T05:58:50Z
-Stopped at: Completed 01-01-PLAN.md (Project Scaffolding)
+Last session: 2026-02-12T06:07:08Z
+Stopped at: Completed 01-03-PLAN.md (UI Component Library)
 Resume file: None
