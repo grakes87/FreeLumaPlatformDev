@@ -11,27 +11,27 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 1 of 6 (Foundation)
-Plan: 4 of 12 complete
+Plan: 5 of 12 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 01-04-PLAN.md (App Shell & Navigation)
+Last activity: 2026-02-12 — Completed 01-05-PLAN.md (Authentication System)
 
-Progress: [███▓░░░░░░░░] 4/12 plans (33%)
+Progress: [████▓░░░░░░░] 5/12 plans (42%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 5 min
-- Total execution time: 21 min
+- Total plans completed: 5
+- Average duration: 6 min
+- Total execution time: 28 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 4/12 | 21 min | 5 min |
+| 01-foundation | 5/12 | 28 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (8 min), 01-03 (3 min), 01-02 (5 min), 01-04 (5 min)
+- Last 5 plans: 01-01 (8 min), 01-03 (3 min), 01-02 (5 min), 01-04 (5 min), 01-05 (7 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -60,6 +60,10 @@ Recent decisions affecting current work:
 - **Route group separation:** (public) for unauthenticated, (app) for authenticated with AppShell, onboarding for post-signup flow
 - **BottomNav mode filtering:** Animations tab hidden for positivity mode users; 6 tabs (bible) / 5 tabs (positivity)
 - **Transparent nav overlay:** TopBar and BottomNav accept transparent prop for daily post video backgrounds
+- **Lazy JWT secret loading:** getSecret() function reads JWT_SECRET at call time, not module init, preventing zero-length key errors
+- **SameSite=Lax auth cookie:** Lax (not Strict) to allow cookie on navigations from external NFC bracelet URLs
+- **withAuth HOF pattern:** API routes wrapped with withAuth(handler) that injects user from JWT cookie into context parameter
+- **Zod v4 safeParse:** Using safeParse + first error message extraction for user-friendly validation responses
 
 ### Pending Todos
 
@@ -81,6 +85,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-12T06:17:06Z
-Stopped at: Completed 01-04-PLAN.md (App Shell & Navigation)
+Last session: 2026-02-12T06:20:11Z
+Stopped at: Completed 01-05-PLAN.md (Authentication System)
 Resume file: None
