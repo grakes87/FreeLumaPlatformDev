@@ -11,27 +11,27 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 1 of 6 (Foundation)
-Plan: 5 of 12 complete
+Plan: 6 of 12 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 01-05-PLAN.md (Authentication System)
+Last activity: 2026-02-12 — Completed 01-12-PLAN.md (Admin Endpoints & Entry Pages)
 
-Progress: [████▓░░░░░░░] 5/12 plans (42%)
+Progress: [██████░░░░░░] 6/12 plans (50%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 6 min
-- Total execution time: 28 min
+- Total plans completed: 6
+- Average duration: 5 min
+- Total execution time: 32 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 5/12 | 28 min | 6 min |
+| 01-foundation | 6/12 | 32 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (8 min), 01-03 (3 min), 01-02 (5 min), 01-04 (5 min), 01-05 (7 min)
+- Last 5 plans: 01-03 (3 min), 01-02 (5 min), 01-04 (5 min), 01-05 (7 min), 01-12 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -64,6 +64,9 @@ Recent decisions affecting current work:
 - **SameSite=Lax auth cookie:** Lax (not Strict) to allow cookie on navigations from external NFC bracelet URLs
 - **withAuth HOF pattern:** API routes wrapped with withAuth(handler) that injects user from JWT cookie into context parameter
 - **Zod v4 safeParse:** Using safeParse + first error message extraction for user-friendly validation responses
+- **withAdmin middleware:** Wraps withAuth + lazy-imports User model for is_admin DB check; returns 403 for non-admins
+- **Activation code alphabet:** Excludes O/0/I/l to avoid visual confusion in NFC URLs and printed materials
+- **Entry page full-screen overlay:** /bible and /positivity use fixed inset-0 z-50 to break out of public layout container
 
 ### Pending Todos
 
@@ -85,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-12T06:20:11Z
-Stopped at: Completed 01-05-PLAN.md (Authentication System)
+Last session: 2026-02-12T06:27:39Z
+Stopped at: Completed 01-12-PLAN.md (Admin Endpoints & Entry Pages)
 Resume file: None
