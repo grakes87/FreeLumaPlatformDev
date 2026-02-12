@@ -11,28 +11,28 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 2 of 6 (Core Social)
-Plan: 11 of 14 complete
+Plan: 12 of 14 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 02-12-PLAN.md (Profile Pages)
+Last activity: 2026-02-12 — Completed 02-13-PLAN.md (Create Flow, Post Composer, Bookmarks)
 
-Progress: [███████████░░░] 11/14 plans (79%)
+Progress: [████████████░░] 12/14 plans (86%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 23
+- Total plans completed: 24
 - Average duration: 5 min
-- Total execution time: 114 min
+- Total execution time: 124 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
-| 02-core-social | 11/14 | 51 min | 5 min |
+| 02-core-social | 12/14 | 61 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-08 (4 min), 02-09 (4 min), 02-06 (5 min), 02-11 (5 min), 02-12 (9 min)
+- Last 5 plans: 02-09 (4 min), 02-06 (5 min), 02-11 (5 min), 02-12 (9 min), 02-13 (10 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -126,6 +126,13 @@ Recent decisions affecting current work:
 - **Prayer card always liquid glass:** Prayer cards use bg-white/10 backdrop-blur-2xl regardless of admin feed style toggle (always card-based per CONTEXT)
 - **My Prayers dropdown sub-tabs:** My Prayers tab uses dropdown for sub-tabs (My Requests / Prayers I've Joined) instead of nested tab bar
 - **Prayer wall FAB:** Floating action button at bottom-right opens prayer composer in addition to center '+' nav CreatePicker
+- **Split BottomNav tabs:** LEFT_TABS (Daily, Prayer, Feed) and RIGHT_TABS (Studies, Animations, Profile) with center '+' button between
+- **Prayer wall tab bibleOnly:** Hidden for positivity mode users (prayer wall is bible-mode only)
+- **CreatePicker route-based default:** Auto-selects Prayer Request on /prayer-wall, Feed Post elsewhere
+- **Create via query param:** '+' button navigates to /feed?compose=post or /prayer-wall?compose=prayer_request
+- **PostComposer createPortal:** Full-screen composer renders via createPortal for z-index isolation
+- **Inline comments on post detail:** Post detail uses inline thread (not bottom sheet) for deep-link UX
+- **User posts batch enrichment:** /api/users/me/posts uses separate queries for reactions/comments/bookmarks after post IDs known
 
 ### Pending Todos
 
@@ -190,6 +197,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-12T20:34:45Z
-Stopped at: Completed 02-12-PLAN.md (Profile Pages)
+Last session: 2026-02-12T20:37:00Z
+Stopped at: Completed 02-13-PLAN.md (Create Flow, Post Composer, Bookmarks)
 Resume file: None
