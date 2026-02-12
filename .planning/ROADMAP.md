@@ -90,12 +90,23 @@ Plans:
   19. User can share posts to external platforms (copy link, social media)
   20. Profile pages display with stats (Posts, Comments, Groups) and recent activity
 
-**Plans**: TBD
+**Plans**: 14 plans
 
 Plans:
-- [ ] 02-01: TBD during phase planning
-- [ ] 02-02: TBD during phase planning
-- [ ] 02-03: TBD during phase planning
+- [ ] 02-01-PLAN.md — Database foundation: 11 new tables, 10 new models, npm deps (obscenity, react-intersection-observer)
+- [ ] 02-02-PLAN.md — Profanity filter, block utility, post CRUD API (create, edit, delete, detail)
+- [ ] 02-03-PLAN.md — Follow system API, user search API, useFollow hook, FollowButton, UserSearchResult
+- [ ] 02-04-PLAN.md — Post reactions API, usePostReactions hook, LikeButton component
+- [ ] 02-05-PLAN.md — Post comments API (threaded), usePostComments hook, CommentSection component
+- [ ] 02-06-PLAN.md — Feed API (cursor pagination, filters, sort, block exclusion), useFeed hook, useInfiniteScroll
+- [ ] 02-07-PLAN.md — Prayer wall API (create, pray toggle, mark answered, feed), usePrayerWall hook
+- [ ] 02-08-PLAN.md — Bookmark system (API, folders, hook, button), share utility, ShareButton
+- [ ] 02-09-PLAN.md — Report API, ReportModal, category subscription endpoint
+- [ ] 02-10-PLAN.md — Feed page UI: PostCard, PostComposer, BibleVerseCard, FeedFilters, PostFeed, EmptyFeedState
+- [ ] 02-11-PLAN.md — Prayer wall page UI: PrayerCard, PrayerComposer, PrayButton, PrayerFilters
+- [ ] 02-12-PLAN.md — Categories browse page, category feed page, category subscription UI
+- [ ] 02-13-PLAN.md — Public profile page, ProfileStats, FollowList, ProfileTabs, privacy settings
+- [ ] 02-14-PLAN.md — Search page, bookmarks page, post detail page, follow suggestions update, post image optimization
 
 ### Phase 3: Real-Time
 **Goal**: Real-time communication infrastructure operational — users can chat 1:1 via Socket.IO and receive instant in-app notifications and browser push notifications.
@@ -234,8 +245,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/12 | Planned | - |
-| 2. Core Social | 0/TBD | Not started | - |
+| 1. Foundation | 12/12 | Complete | 2026-02-12 |
+| 2. Core Social | 0/14 | Not started | - |
 | 3. Real-Time | 0/TBD | Not started | - |
 | 4. Enhanced Content | 0/TBD | Not started | - |
 | 5. Workshops (v2) | 0/TBD | Deferred | - |
@@ -244,4 +255,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 ---
 *Roadmap created: 2026-02-11*
 *Phase 1 planned: 2026-02-11 (12 plans in 5 waves)*
+*Phase 2 planned: 2026-02-12 (14 plans in 4 waves)*
 *Depth: Comprehensive (6 phases covering 165 v1 requirements)*
