@@ -6,32 +6,32 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Daily inspirational content delivery and faith-based community connection — users come back every day for their daily post and stay to engage with their community.
 
-**Current focus:** Phase 1 - Foundation
+**Current focus:** Phase 1 - Foundation (COMPLETE)
 
 ## Current Position
 
 Phase: 1 of 6 (Foundation)
-Plan: 11 of 12 complete
-Status: In progress
-Last activity: 2026-02-12 — Completed 01-10-PLAN.md (Daily Post UI)
+Plan: 12 of 12 complete
+Status: Phase complete
+Last activity: 2026-02-12 — Completed 01-11-PLAN.md (Settings & Email)
 
-Progress: [███████████░] 11/12 plans (91%)
+Progress: [████████████] 12/12 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: 5 min
-- Total execution time: 56 min
+- Total execution time: 63 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 11/12 | 56 min | 5 min |
+| 01-foundation | 12/12 | 63 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-09 (4 min), 01-08 (4 min), 01-06 (6 min), 01-07 (5 min), 01-10 (5 min)
+- Last 5 plans: 01-08 (4 min), 01-06 (6 min), 01-07 (5 min), 01-10 (5 min), 01-11 (7 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -86,10 +86,15 @@ Recent decisions affecting current work:
 - **Share card inline styles:** Off-screen share card uses inline styles (not Tailwind) for html-to-image rendering consistency
 - **Daily route full-screen layout:** AppShell removes pt-14/pb-16 padding for / and /daily/* routes, carousel extends behind transparent nav
 - **LumaShort controls timing:** Native video controls shown only after user initiates playback, keeping poster view clean
+- **Signed JWT email tokens:** Purpose-scoped JWTs (password_reset 1h, email_verification 24h) instead of DB-stored tokens
+- **Console email fallback:** Nodemailer logs emails to console when SMTP_HOST not configured (dev mode)
+- **Merged settings endpoint:** Single GET/PUT /api/settings handles both UserSetting and User table fields
+- **Debounced auto-save settings:** 500ms debounce on settings changes with optimistic UI update and toast feedback
+- **Mode switch confirmation:** Confirmation dialog before mode change to prevent accidental content type switches
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
@@ -107,6 +112,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-12T06:40:17Z
-Stopped at: Completed 01-10-PLAN.md (Daily Post UI)
+Last session: 2026-02-12T06:43:00Z
+Stopped at: Completed 01-11-PLAN.md (Settings & Email) -- Phase 1 Foundation COMPLETE
 Resume file: None
