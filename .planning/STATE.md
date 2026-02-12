@@ -11,27 +11,27 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 1 of 6 (Foundation)
-Plan: 6 of 12 complete
+Plan: 8 of 12 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 01-12-PLAN.md (Admin Endpoints & Entry Pages)
+Last activity: 2026-02-12 — Completed 01-08-PLAN.md (B2 Storage & Avatar Upload)
 
-Progress: [██████░░░░░░] 6/12 plans (50%)
+Progress: [████████░░░░] 8/12 plans (67%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 8
 - Average duration: 5 min
-- Total execution time: 32 min
+- Total execution time: 40 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 6/12 | 32 min | 5 min |
+| 01-foundation | 8/12 | 40 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (3 min), 01-02 (5 min), 01-04 (5 min), 01-05 (7 min), 01-12 (4 min)
+- Last 5 plans: 01-04 (5 min), 01-05 (7 min), 01-12 (4 min), 01-09 (4 min), 01-08 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -64,6 +64,9 @@ Recent decisions affecting current work:
 - **SameSite=Lax auth cookie:** Lax (not Strict) to allow cookie on navigations from external NFC bracelet URLs
 - **withAuth HOF pattern:** API routes wrapped with withAuth(handler) that injects user from JWT cookie into context parameter
 - **Zod v4 safeParse:** Using safeParse + first error message extraction for user-friendly validation responses
+- **B2 null client pattern:** b2Client is null when env vars missing; isB2Configured boolean guards all storage operations; API returns 503
+- **Presigned URL upload pattern:** GET presigned URL -> PUT to B2 -> POST confirm to API; key format avatars/{userId}/{timestamp}-{random}.{ext}
+- **Client-side avatar crop:** Canvas API produces 256x256 JPEG at 0.9 quality; sharp not used for Phase 1 avatars
 - **withAdmin middleware:** Wraps withAuth + lazy-imports User model for is_admin DB check; returns 403 for non-admins
 - **Activation code alphabet:** Excludes O/0/I/l to avoid visual confusion in NFC URLs and printed materials
 - **Entry page full-screen overlay:** /bible and /positivity use fixed inset-0 z-50 to break out of public layout container
@@ -89,5 +92,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-12T06:27:39Z
-Stopped at: Completed 01-12-PLAN.md (Admin Endpoints & Entry Pages)
+Stopped at: Completed 01-08-PLAN.md (B2 Storage & Avatar Upload)
 Resume file: None
