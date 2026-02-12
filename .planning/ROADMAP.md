@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Foundation
-**Goal**: Secure authentication, database infrastructure, and daily content delivery established — users can sign up, log in, and receive their daily inspirational post.
+**Goal**: Secure authentication, database infrastructure, and daily content delivery established — users can sign up (invite-only), log in, complete guided onboarding, and receive their daily inspirational post in a 3-slide immersive experience with video backgrounds, audio player, and translation switching.
 
 **Depends on**: Nothing (first phase)
 
@@ -45,12 +45,21 @@ Decimal phases appear between their surrounding integers in numeric order.
   14. Bottom tab navigation provides access to main app sections
   15. Browser push notification infrastructure initialized (service worker, web push subscriptions)
 
-**Plans**: TBD
+**Plans**: 12 plans
 
 Plans:
-- [ ] 01-01: TBD during phase planning
-- [ ] 01-02: TBD during phase planning
-- [ ] 01-03: TBD during phase planning
+- [ ] 01-01-PLAN.md — Project scaffolding, Next.js setup, database connection, Tailwind v4, custom server
+- [ ] 01-02-PLAN.md — Database models (9 models), Sequelize CLI migrations, seeders
+- [ ] 01-03-PLAN.md — Shared UI component library (Button, Input, Card, Modal, Skeleton, Toast)
+- [ ] 01-04-PLAN.md — App shell, route groups, bottom nav, top bar, dark mode, auth context
+- [ ] 01-05-PLAN.md — Auth system (JWT, bcrypt, register, login, activation codes, rate limiting)
+- [ ] 01-06-PLAN.md — Auth UI (login/signup pages) + Google and Apple OAuth integration
+- [ ] 01-07-PLAN.md — 4-step onboarding flow (mode, profile, interests, follow suggestions)
+- [ ] 01-08-PLAN.md — B2 storage, avatar upload/crop, profile card, initials avatar
+- [ ] 01-09-PLAN.md — Daily content API, translation switching, bible.api fallback, timezone logic
+- [ ] 01-10-PLAN.md — Daily content 3-slide UI (Swiper, video bg, audio+SRT, LumaShort)
+- [ ] 01-11-PLAN.md — Settings page, password reset, email infrastructure, verify email banner
+- [ ] 01-12-PLAN.md — Push notifications, admin endpoints (codes/content), entry pages (/bible, /positivity)
 
 ### Phase 2: Core Social
 **Goal**: Complete social platform functionality — users can create posts, follow others, engage with content via likes/comments, use the prayer wall, search for friends, and access category-organized content.
@@ -218,14 +227,14 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 **Parallel Opportunities:**
 - Phase 3 (Real-Time) and Phase 4 (Enhanced Content) are mostly independent and can be partially parallelized after Phase 2 completes
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 0/12 | Planned | - |
 | 2. Core Social | 0/TBD | Not started | - |
 | 3. Real-Time | 0/TBD | Not started | - |
 | 4. Enhanced Content | 0/TBD | Not started | - |
@@ -234,4 +243,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 ---
 *Roadmap created: 2026-02-11*
+*Phase 1 planned: 2026-02-11 (12 plans in 5 waves)*
 *Depth: Comprehensive (6 phases covering 165 v1 requirements)*
