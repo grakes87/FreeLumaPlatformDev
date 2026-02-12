@@ -20,19 +20,19 @@ Progress: [████████░░░░░░] 8/14 plans (57%)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19
+- Total plans completed: 20
 - Average duration: 5 min
-- Total execution time: 91 min
+- Total execution time: 95 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
-| 02-core-social | 7/14 | 28 min | 4 min |
+| 02-core-social | 8/14 | 32 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (4 min), 02-03 (4 min), 02-05 (5 min), 02-07 (3 min), 02-08 (4 min)
+- Last 5 plans: 02-03 (4 min), 02-05 (5 min), 02-07 (3 min), 02-08 (4 min), 02-09 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -116,6 +116,9 @@ Recent decisions affecting current work:
 - **Quote repost dual-record:** Creates new Post (text type) + Repost record linking original to quote
 - **Block single-query unfollow:** Follow.destroy with Op.or removes both directions in one query
 - **Report duplicate 409:** Same reporter + content_type + content_id returns 409 "Already reported"
+- **One draft per type per user:** Upsert pattern (findOrCreate by user_id + draft_type) simplifies draft resume
+- **Platform settings read-any write-admin:** GET open to any auth user for client rendering; PUT restricted to withAdmin
+- **Debounced draft save 2s:** 2000ms debounce with fire-and-forget flush on unmount prevents data loss
 
 ### Pending Todos
 
@@ -180,6 +183,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-12T20:20:20Z
-Stopped at: Completed 02-08-PLAN.md (Bookmark, Repost, Block, Report)
+Last session: 2026-02-12T20:20:50Z
+Stopped at: Completed 02-09-PLAN.md (Drafts, Platform Settings, Media Compression)
 Resume file: None
