@@ -11,28 +11,28 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 2 of 6 (Core Social)
-Plan: 5 of 14 complete
+Plan: 6 of 14 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 02-05-PLAN.md (Post Comments System)
+Last activity: 2026-02-12 — Completed 02-07-PLAN.md (Prayer Wall System)
 
-Progress: [█████░░░░░░░░░] 5/14 plans (36%)
+Progress: [██████░░░░░░░░] 6/14 plans (43%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
+- Total plans completed: 18
 - Average duration: 5 min
-- Total execution time: 84 min
+- Total execution time: 87 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
-| 02-core-social | 5/14 | 21 min | 4 min |
+| 02-core-social | 6/14 | 24 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (5 min), 02-04 (3 min), 02-02 (4 min), 02-03 (4 min), 02-05 (5 min)
+- Last 5 plans: 02-04 (3 min), 02-02 (4 min), 02-03 (4 min), 02-05 (5 min), 02-07 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -109,6 +109,9 @@ Recent decisions affecting current work:
 - **2-level thread flattening:** Reply-to-reply flattens to root comment server-side; prevents deep mobile nesting
 - **POST_COMMENT_MAX_LENGTH = 2000:** Separate from daily COMMENT_MAX_LENGTH (1000); post discussions allow longer messages
 - **Top 2 reply previews:** GET root comments includes top 2 replies inline to reduce round trips
+- **Bible-mode prayer restriction:** Prayer wall returns 403 for positivity-mode users; all prayer posts created with mode='bible'
+- **Pray toggle transaction:** sequelize.transaction wraps PrayerSupport create/destroy + pray_count increment/decrement for atomicity
+- **Supporters author-only:** Only prayer request author can view list of people who prayed (privacy)
 
 ### Pending Todos
 
@@ -173,6 +176,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-12T20:13:02Z
-Stopped at: Completed 02-05-PLAN.md (Post Comments System)
+Last session: 2026-02-12T20:20:00Z
+Stopped at: Completed 02-07-PLAN.md (Prayer Wall System)
 Resume file: None
