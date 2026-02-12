@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       return errorResponse(firstError?.message || 'Invalid input', 400);
     }
 
-    const { email, password, display_name, username, activation_code } = parsed.data;
+    const { email, password, display_name, username, activation_code, date_of_birth } = parsed.data;
     const normalizedEmail = email.toLowerCase().trim();
     const normalizedUsername = username.toLowerCase().trim();
 
@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
           display_name,
           username: normalizedUsername,
           avatar_color,
+          date_of_birth: date_of_birth || null,
           onboarding_complete: false,
         },
         { transaction: t }
