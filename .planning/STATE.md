@@ -11,27 +11,27 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 1 of 6 (Foundation)
-Plan: 8 of 12 complete
+Plan: 9 of 12 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 01-08-PLAN.md (B2 Storage & Avatar Upload)
+Last activity: 2026-02-12 — Completed 01-06-PLAN.md (Login/Signup Pages & OAuth)
 
-Progress: [████████░░░░] 8/12 plans (67%)
+Progress: [█████████░░░] 9/12 plans (75%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: 5 min
-- Total execution time: 40 min
+- Total execution time: 46 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 8/12 | 40 min | 5 min |
+| 01-foundation | 9/12 | 46 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-04 (5 min), 01-05 (7 min), 01-12 (4 min), 01-09 (4 min), 01-08 (4 min)
+- Last 5 plans: 01-05 (7 min), 01-12 (4 min), 01-09 (4 min), 01-08 (4 min), 01-06 (6 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -64,6 +64,10 @@ Recent decisions affecting current work:
 - **SameSite=Lax auth cookie:** Lax (not Strict) to allow cookie on navigations from external NFC bracelet URLs
 - **withAuth HOF pattern:** API routes wrapped with withAuth(handler) that injects user from JWT cookie into context parameter
 - **Zod v4 safeParse:** Using safeParse + first error message extraction for user-friendly validation responses
+- **GoogleOAuthProvider scoping:** Wraps only GoogleButton component, not entire layout, to avoid unnecessary SDK loading
+- **OAuth activation code enforcement:** New OAuth signups require activation code; existing users (found by social ID or email) auto-link
+- **signupCredentialsSchema:** Separate client-side Zod schema for signup form (excludes activation_code field)
+- **registerSchema extension:** date_of_birth (YYYY-MM-DD) and terms_accepted (must be true) added for signup compliance
 - **B2 null client pattern:** b2Client is null when env vars missing; isB2Configured boolean guards all storage operations; API returns 503
 - **Presigned URL upload pattern:** GET presigned URL -> PUT to B2 -> POST confirm to API; key format avatars/{userId}/{timestamp}-{random}.{ext}
 - **Client-side avatar crop:** Canvas API produces 256x256 JPEG at 0.9 quality; sharp not used for Phase 1 avatars
@@ -94,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-12T06:27:39Z
-Stopped at: Completed 01-08-PLAN.md (B2 Storage & Avatar Upload)
+Last session: 2026-02-12T06:29:12Z
+Stopped at: Completed 01-06-PLAN.md (Login/Signup Pages & OAuth)
 Resume file: None
