@@ -6,32 +6,33 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Daily inspirational content delivery and faith-based community connection — users come back every day for their daily post and stay to engage with their community.
 
-**Current focus:** Phase 1 - Foundation (COMPLETE)
+**Current focus:** Phase 2 - Core Social (In progress)
 
 ## Current Position
 
-Phase: 1 of 6 (Foundation)
-Plan: 12 of 12 complete
-Status: Phase complete
-Last activity: 2026-02-12 — Completed 01-11-PLAN.md (Settings & Email)
+Phase: 2 of 6 (Core Social)
+Plan: 1 of 14 complete
+Status: In progress
+Last activity: 2026-02-12 — Completed 02-01-PLAN.md (Database Schema & Models)
 
-Progress: [████████████] 12/12 plans (100%)
+Progress: [█░░░░░░░░░░░░░] 1/14 plans (7%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: 5 min
-- Total execution time: 63 min
+- Total execution time: 68 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
+| 02-core-social | 1/14 | 5 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-08 (4 min), 01-06 (6 min), 01-07 (5 min), 01-10 (5 min), 01-11 (7 min)
+- Last 5 plans: 01-06 (6 min), 01-07 (5 min), 01-10 (5 min), 01-11 (7 min), 02-01 (5 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -91,6 +92,12 @@ Recent decisions affecting current work:
 - **Merged settings endpoint:** Single GET/PUT /api/settings handles both UserSetting and User table fields
 - **Debounced auto-save settings:** 500ms debounce on settings changes with optimistic UI update and toast feedback
 - **Mode switch confirmation:** Confirmation dialog before mode change to prevent accidental content type switches
+- **Post paranoid soft delete:** Posts use Sequelize paranoid mode (deleted_at) for content moderation recovery
+- **Polymorphic bookmarks:** Bookmark has nullable post_id and daily_content_id with separate unique indexes
+- **PrayerRequest as Post extension:** prayer_requests table 1-to-1 with posts (post_type='prayer_request')
+- **PlatformSetting KV store:** Static get()/set() helpers on PlatformSetting model for easy global config access
+- **Repost as quote post:** reposts table links original post_id to a new quote_post_id (itself a Post row)
+- **Platform settings seeded in migration:** 7 defaults (feed_style, mode_isolation_social/prayer, registration_mode, maintenance_mode, profanity_filter, ai_moderation)
 
 ### Pending Todos
 
@@ -104,8 +111,9 @@ None.
 - Web Push on iOS Safari requires PWA installation (added to home screen) — need to validate UX and provide fallback notification strategy
 - XAMPP MySQL root password is set (not empty) — stored in .env.local; future plans should use .env.local values
 
-**Phase 2 (Core Social) Pre-work:**
-- Content moderation tooling approach needs decision during planning (custom report/flag system vs third-party API like OpenAI Moderation)
+**Phase 2 (Core Social) Notes:**
+- Content moderation: custom report/flag system established in DB schema (reports table with 6 reason types + admin review workflow)
+- obscenity library installed for profanity filtering (profanity_filter_enabled platform setting defaults to 'true')
 
 **Phase 5 (Workshops) Planning Dependency:**
 - Agora free tier limit (10K minutes/month) may need validation against expected workshop usage before phase planning
@@ -121,8 +129,39 @@ None.
 - DB_PASS in .env.local must be quoted due to # character
 - Commit: 42e119f
 
+## Post-Phase 1 Feature Polish (2026-02-12)
+
+**Reactions & Comments system:**
+- DB: daily_reactions + daily_comments tables (migrations 014, 015)
+- Models: DailyReaction, DailyComment with associations
+- API: daily-reactions (GET counts + POST toggle), daily-comments (GET paginated + POST), daily-comments/[id] (PUT edit + DELETE)
+- Hooks: useReactions (optimistic updates), useComments (paginated with load-more)
+- UI: ReactionBar (overlapping emoji counts), ReactionPicker (full overlay), QuickReactionPicker (Meta-style floating bubble), CommentBottomSheet + CommentThread (threaded with replies)
+- Integration: Heart/comment icons with counters on DailyPostSlide
+
+**Daily slide polish:**
+- Video preloading: useDailyContent preloads video before setContent; DailyPostSlide gates on videoReady with spinner + fade-in
+- Dark loading state: bg-[#0a0a0f] base instead of blue gradient during transitions
+- Removed loading text from carousel spinner state
+
+**Language selector:**
+- Moved from per-slide TranslationSwitcher to global TopBar
+- Changed from toggle to dropdown picker (supports future languages)
+- LANGUAGE_OPTIONS config in constants.ts for easy extension
+- Cookie regex + API validation use LANGUAGES array (not hardcoded en|es)
+
+**Notification bell:**
+- Dropdown with empty state ("No notifications yet") on click
+- Mutual exclusion with language dropdown
+
+**Liquid glass styling:**
+- CommentBottomSheet: bg-white/10 backdrop-blur-2xl with white-on-glass text
+- CommentThread: all elements restyled for glass background
+- Language dropdown: matches TranslationSwitcher glass style
+- Notification dropdown: same glass treatment
+
 ## Session Continuity
 
-Last session: 2026-02-12T07:00:00Z
-Stopped at: Phase 1 complete + QA fixes committed. User wants tab-by-tab review before Phase 2.
+Last session: 2026-02-12T20:03:46Z
+Stopped at: Completed 02-01-PLAN.md (Database Schema & Models)
 Resume file: None
