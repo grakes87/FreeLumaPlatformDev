@@ -11,28 +11,28 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 2 of 6 (Core Social)
-Plan: 4 of 14 complete
+Plan: 5 of 14 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 02-03-PLAN.md (Follow System & User Search)
+Last activity: 2026-02-12 — Completed 02-05-PLAN.md (Post Comments System)
 
-Progress: [████░░░░░░░░░░] 4/14 plans (29%)
+Progress: [█████░░░░░░░░░] 5/14 plans (36%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
+- Total plans completed: 17
 - Average duration: 5 min
-- Total execution time: 79 min
+- Total execution time: 84 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
-| 02-core-social | 4/14 | 16 min | 4 min |
+| 02-core-social | 5/14 | 21 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-11 (7 min), 02-01 (5 min), 02-04 (3 min), 02-02 (4 min), 02-03 (4 min)
+- Last 5 plans: 02-01 (5 min), 02-04 (3 min), 02-02 (4 min), 02-03 (4 min), 02-05 (5 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -105,6 +105,10 @@ Recent decisions affecting current work:
 - **Raw SQL for follow suggestions:** Three-strategy UNION ALL (popular, interest-based, new users) more performant than multiple Sequelize queries
 - **Bidirectional block check:** Both blocker and blocked excluded from follow/search results in all directions
 - **3-second unfollow confirm timeout:** Prevents accidental unfollows without blocking the UI permanently
+- **Post comment cursor pagination:** Cursor-based (id > cursor) instead of offset for post comments; handles concurrent inserts correctly
+- **2-level thread flattening:** Reply-to-reply flattens to root comment server-side; prevents deep mobile nesting
+- **POST_COMMENT_MAX_LENGTH = 2000:** Separate from daily COMMENT_MAX_LENGTH (1000); post discussions allow longer messages
+- **Top 2 reply previews:** GET root comments includes top 2 replies inline to reduce round trips
 
 ### Pending Todos
 
@@ -169,6 +173,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-12T20:10:58Z
-Stopped at: Completed 02-03-PLAN.md (Follow System & User Search)
+Last session: 2026-02-12T20:13:02Z
+Stopped at: Completed 02-05-PLAN.md (Post Comments System)
 Resume file: None
