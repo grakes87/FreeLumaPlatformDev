@@ -11,27 +11,27 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 1 of 6 (Foundation)
-Plan: 9 of 12 complete
+Plan: 10 of 12 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 01-06-PLAN.md (Login/Signup Pages & OAuth)
+Last activity: 2026-02-12 — Completed 01-07-PLAN.md (Onboarding Wizard)
 
-Progress: [█████████░░░] 9/12 plans (75%)
+Progress: [██████████░░] 10/12 plans (83%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 5 min
-- Total execution time: 46 min
+- Total execution time: 51 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 9/12 | 46 min | 5 min |
+| 01-foundation | 10/12 | 51 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-05 (7 min), 01-12 (4 min), 01-09 (4 min), 01-08 (4 min), 01-06 (6 min)
+- Last 5 plans: 01-12 (4 min), 01-09 (4 min), 01-08 (4 min), 01-06 (6 min), 01-07 (5 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -77,6 +77,11 @@ Recent decisions affecting current work:
 - **Timezone override via query param:** Daily content API accepts ?timezone= for client-detected timezone, falls back to user profile
 - **API.Bible fallback pattern:** DB-first translation lookup, bible.api fallback for missing translations, auto-cache to DB with source='api'
 - **Positivity translation guard:** Translation switching returns 400 for positivity mode content (quotes are language-based, not translation-based)
+- **Debounced username check:** 400ms debounce with visual spinner/check/X indicator; skips API if unchanged from current username
+- **Category bulk replace:** DELETE all + bulkCreate new UserCategory rows on each save (correct for onboarding)
+- **Follow suggestions Phase 1:** Placeholder accounts shown; actual follow persistence deferred to Phase 2
+- **Public categories endpoint:** No auth on GET /api/categories for onboarding access
+- **Username check rate limit:** 10 requests/min/IP to prevent enumeration
 
 ### Pending Todos
 
@@ -98,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-12T06:29:12Z
-Stopped at: Completed 01-06-PLAN.md (Login/Signup Pages & OAuth)
+Last session: 2026-02-12T06:40:00Z
+Stopped at: Completed 01-07-PLAN.md (Onboarding Wizard)
 Resume file: None
