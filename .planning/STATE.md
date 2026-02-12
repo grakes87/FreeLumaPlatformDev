@@ -11,28 +11,28 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 1 of 6 (Foundation)
-Plan: 3 of 12 complete
+Plan: 4 of 12 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 01-02-PLAN.md (Database Schema & Models)
+Last activity: 2026-02-12 — Completed 01-04-PLAN.md (App Shell & Navigation)
 
-Progress: [██▓░░░░░░░░░] 3/12 plans (25%)
+Progress: [███▓░░░░░░░░] 4/12 plans (33%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
+- Total plans completed: 4
 - Average duration: 5 min
-- Total execution time: 16 min
+- Total execution time: 21 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 3/12 | 16 min | 5 min |
+| 01-foundation | 4/12 | 21 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (8 min), 01-03 (3 min), 01-02 (5 min)
-- Trend: Improving
+- Last 5 plans: 01-01 (8 min), 01-03 (3 min), 01-02 (5 min), 01-04 (5 min)
+- Trend: Stable
 
 *Updated after each plan completion*
 
@@ -55,7 +55,11 @@ Recent decisions affecting current work:
 - **forwardRef for form inputs:** Input component uses React.forwardRef for react-hook-form `register()` compatibility
 - **Toast via React context:** ToastProvider wraps app, `useToast()` hook provides `toast.success/error/info/warning` methods
 - **Portal rendering:** Modal and Toast use `createPortal(el, document.body)` to escape stacking contexts
-- **ToastProvider placement:** Needs to be added to root layout when main app shell is built (currently only in test-ui layout)
+- **ToastProvider placement:** Added to root layout in 01-04 (available app-wide)
+- **Auth context pattern:** AuthProvider wraps (app) and onboarding layouts; useAuth() hook for all authenticated components
+- **Route group separation:** (public) for unauthenticated, (app) for authenticated with AppShell, onboarding for post-signup flow
+- **BottomNav mode filtering:** Animations tab hidden for positivity mode users; 6 tabs (bible) / 5 tabs (positivity)
+- **Transparent nav overlay:** TopBar and BottomNav accept transparent prop for daily post video backgrounds
 
 ### Pending Todos
 
@@ -77,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-12T06:08:30Z
-Stopped at: Completed 01-02-PLAN.md (Database Schema & Models)
+Last session: 2026-02-12T06:17:06Z
+Stopped at: Completed 01-04-PLAN.md (App Shell & Navigation)
 Resume file: None
