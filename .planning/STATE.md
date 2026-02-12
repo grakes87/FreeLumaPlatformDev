@@ -20,19 +20,19 @@ Progress: [████░░░░░░░░░░] 4/14 plans (29%)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
+- Total plans completed: 16
 - Average duration: 5 min
-- Total execution time: 75 min
+- Total execution time: 79 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
-| 02-core-social | 3/14 | 12 min | 4 min |
+| 02-core-social | 4/14 | 16 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-10 (5 min), 01-11 (7 min), 02-01 (5 min), 02-04 (3 min), 02-02 (4 min)
+- Last 5 plans: 01-11 (7 min), 02-01 (5 min), 02-04 (3 min), 02-02 (4 min), 02-03 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -102,6 +102,9 @@ Recent decisions affecting current work:
 - **Anonymous post masking:** Anonymous posts return id:0, username:'anonymous' for non-authors at API level
 - **Post body max 5000 chars:** Generous limit for prayer requests/testimonies, validated via Zod
 - **Post media key prefix 'posts/':** Separates post media from avatars and daily-content in B2 bucket
+- **Raw SQL for follow suggestions:** Three-strategy UNION ALL (popular, interest-based, new users) more performant than multiple Sequelize queries
+- **Bidirectional block check:** Both blocker and blocked excluded from follow/search results in all directions
+- **3-second unfollow confirm timeout:** Prevents accidental unfollows without blocking the UI permanently
 
 ### Pending Todos
 
@@ -166,6 +169,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-12T20:10:47Z
-Stopped at: Completed 02-02-PLAN.md (Shared Utilities & Post CRUD)
+Last session: 2026-02-12T20:10:58Z
+Stopped at: Completed 02-03-PLAN.md (Follow System & User Search)
 Resume file: None
