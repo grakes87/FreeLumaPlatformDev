@@ -11,28 +11,28 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 2 of 6 (Core Social)
-Plan: 12 of 14 complete
+Plan: 13 of 14 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 02-13-PLAN.md (Create Flow, Post Composer, Bookmarks)
+Last activity: 2026-02-12 — Completed 02-10-PLAN.md (Feed Page UI)
 
-Progress: [████████████░░] 12/14 plans (86%)
+Progress: [█████████████░] 13/14 plans (93%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 24
+- Total plans completed: 25
 - Average duration: 5 min
-- Total execution time: 124 min
+- Total execution time: 136 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
-| 02-core-social | 12/14 | 61 min | 5 min |
+| 02-core-social | 13/14 | 73 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-09 (4 min), 02-06 (5 min), 02-11 (5 min), 02-12 (9 min), 02-13 (10 min)
+- Last 5 plans: 02-06 (5 min), 02-11 (5 min), 02-12 (9 min), 02-13 (10 min), 02-10 (12 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -133,6 +133,10 @@ Recent decisions affecting current work:
 - **PostComposer createPortal:** Full-screen composer renders via createPortal for z-index isolation
 - **Inline comments on post detail:** Post detail uses inline thread (not bottom sheet) for deep-link UX
 - **User posts batch enrichment:** /api/users/me/posts uses separate queries for reactions/comments/bookmarks after post IDs known
+- **PostCard dual variant delegation:** PostCard wrapper delegates to PostCardInstagram or PostCardTikTok based on feedStyle from usePlatformSettings
+- **Deterministic gradient selection:** TextPostGradient uses postId % 10 for consistent gradient per post across re-renders
+- **TikTok mode hides search:** Search bar omitted in TikTok feed mode for immersive full-screen experience
+- **MediaCarousel IntersectionObserver:** Videos autoplay muted when 50% visible, pause when scrolled away
 
 ### Pending Todos
 
@@ -197,6 +201,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-12T20:37:00Z
-Stopped at: Completed 02-13-PLAN.md (Create Flow, Post Composer, Bookmarks)
+Last session: 2026-02-12T20:38:31Z
+Stopped at: Completed 02-10-PLAN.md (Feed Page UI)
 Resume file: None
