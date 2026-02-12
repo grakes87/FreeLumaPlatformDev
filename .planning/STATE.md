@@ -11,28 +11,28 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 2 of 6 (Core Social)
-Plan: 6 of 14 complete
+Plan: 8 of 14 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 02-07-PLAN.md (Prayer Wall System)
+Last activity: 2026-02-12 — Completed 02-09-PLAN.md (Drafts, Platform Settings, Media Compression)
 
-Progress: [██████░░░░░░░░] 6/14 plans (43%)
+Progress: [████████░░░░░░] 8/14 plans (57%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18
+- Total plans completed: 19
 - Average duration: 5 min
-- Total execution time: 87 min
+- Total execution time: 91 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
-| 02-core-social | 6/14 | 24 min | 4 min |
+| 02-core-social | 7/14 | 28 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-04 (3 min), 02-02 (4 min), 02-03 (4 min), 02-05 (5 min), 02-07 (3 min)
+- Last 5 plans: 02-02 (4 min), 02-03 (4 min), 02-05 (5 min), 02-07 (3 min), 02-08 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -112,6 +112,10 @@ Recent decisions affecting current work:
 - **Bible-mode prayer restriction:** Prayer wall returns 403 for positivity-mode users; all prayer posts created with mode='bible'
 - **Pray toggle transaction:** sequelize.transaction wraps PrayerSupport create/destroy + pray_count increment/decrement for atomicity
 - **Supporters author-only:** Only prayer request author can view list of people who prayed (privacy)
+- **Bookmark toggle action response:** Returns { action: 'added'/'removed' } for client state management
+- **Quote repost dual-record:** Creates new Post (text type) + Repost record linking original to quote
+- **Block single-query unfollow:** Follow.destroy with Op.or removes both directions in one query
+- **Report duplicate 409:** Same reporter + content_type + content_id returns 409 "Already reported"
 
 ### Pending Todos
 
@@ -176,6 +180,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-12T20:20:00Z
-Stopped at: Completed 02-07-PLAN.md (Prayer Wall System)
+Last session: 2026-02-12T20:20:20Z
+Stopped at: Completed 02-08-PLAN.md (Bookmark, Repost, Block, Report)
 Resume file: None
