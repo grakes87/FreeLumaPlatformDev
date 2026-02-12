@@ -15,6 +15,7 @@ export interface UserData {
   username: string;
   avatar_url: string | null;
   avatar_color: string;
+  bio: string | null;
   mode: 'bible' | 'positivity';
   onboarding_complete: boolean;
   is_admin: boolean;
