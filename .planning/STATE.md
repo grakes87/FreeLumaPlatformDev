@@ -11,28 +11,28 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 2 of 6 (Core Social)
-Plan: 8 of 14 complete
+Plan: 9 of 14 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 02-09-PLAN.md (Drafts, Platform Settings, Media Compression)
+Last activity: 2026-02-12 — Completed 02-06-PLAN.md (Feed API - Following + FYP)
 
-Progress: [████████░░░░░░] 8/14 plans (57%)
+Progress: [█████████░░░░░] 9/14 plans (64%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 20
+- Total plans completed: 21
 - Average duration: 5 min
-- Total execution time: 95 min
+- Total execution time: 100 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
-| 02-core-social | 8/14 | 32 min | 4 min |
+| 02-core-social | 9/14 | 37 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-03 (4 min), 02-05 (5 min), 02-07 (3 min), 02-08 (4 min), 02-09 (4 min)
+- Last 5 plans: 02-05 (5 min), 02-07 (3 min), 02-08 (4 min), 02-09 (4 min), 02-06 (5 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -119,6 +119,10 @@ Recent decisions affecting current work:
 - **One draft per type per user:** Upsert pattern (findOrCreate by user_id + draft_type) simplifies draft resume
 - **Platform settings read-any write-admin:** GET open to any auth user for client rendering; PUT restricted to withAdmin
 - **Debounced draft save 2s:** 2000ms debounce with fire-and-forget flush on unmount prevents data loss
+- **FYP application-level scoring:** 200-post candidate pool scored in JS (0.4 recency + 0.3 engagement + 0.2 relationship + 0.1 category) for flexibility over complex SQL
+- **FYP compound cursor:** score+id cursor for FYP pagination (posts sorted by score, not chronologically)
+- **Feed batch lookup:** User reactions/bookmarks fetched separately after post IDs known, not JOINed into main query
+- **Default FYP tab:** useFeed defaults to 'fyp' tab per product context
 
 ### Pending Todos
 
@@ -183,6 +187,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-12T20:20:50Z
-Stopped at: Completed 02-09-PLAN.md (Drafts, Platform Settings, Media Compression)
+Last session: 2026-02-12T20:21:00Z
+Stopped at: Completed 02-06-PLAN.md (Feed API - Following + FYP)
 Resume file: None
