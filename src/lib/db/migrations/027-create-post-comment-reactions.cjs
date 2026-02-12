@@ -1,0 +1,62 @@
+'use strict';
+
+/** @type {import('sequelize-cli').Migration} */
+module.exports = {
+  async up(queryInterface, Sequelize) {
+    await queryInterface.createTable('post_comment_reactions', {
+      id: {
+        type: Sequelize.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+        allowNull: false,
+      },
+      user_id: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'users',
+          key: 'id',
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+      },
+      comment_id: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'post_comments',
+          key: 'id',
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+      },
+      reaction_type: {
+        type: Sequelize.ENUM('like', 'love', 'haha', 'wow', 'sad', 'pray'),
+        allowNull: false,
+      },
+      created_at: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+      },
+      updated_at: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
+      },
+    });
+
+    await queryInterface.addIndex('post_comment_reactions', ['user_id', 'comment_id'], {
+      unique: true,
+      name: 'post_comment_reactions_user_comment_unique',
+    });
+
+    await queryInterface.addIndex('post_comment_reactions', ['comment_id', 'reaction_type'], {
+      name: 'post_comment_reactions_comment_type',
+    });
+  },
+
+  async down(queryInterface) {
+    await queryInterface.dropTable('post_comment_reactions');
+  },
+};
