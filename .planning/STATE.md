@@ -11,28 +11,28 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 2 of 6 (Core Social)
-Plan: 2 of 14 complete
+Plan: 4 of 14 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 02-04-PLAN.md (Post & Comment Reactions)
+Last activity: 2026-02-12 — Completed 02-03-PLAN.md (Follow System & User Search)
 
-Progress: [██░░░░░░░░░░░░] 2/14 plans (14%)
+Progress: [████░░░░░░░░░░] 4/14 plans (29%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: 5 min
-- Total execution time: 71 min
+- Total execution time: 75 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
-| 02-core-social | 2/14 | 8 min | 4 min |
+| 02-core-social | 3/14 | 12 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-07 (5 min), 01-10 (5 min), 01-11 (7 min), 02-01 (5 min), 02-04 (3 min)
+- Last 5 plans: 01-10 (5 min), 01-11 (7 min), 02-01 (5 min), 02-04 (3 min), 02-02 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -98,6 +98,10 @@ Recent decisions affecting current work:
 - **PlatformSetting KV store:** Static get()/set() helpers on PlatformSetting model for easy global config access
 - **Repost as quote post:** reposts table links original post_id to a new quote_post_id (itself a Post row)
 - **Platform settings seeded in migration:** 7 defaults (feed_style, mode_isolation_social/prayer, registration_mode, maintenance_mode, profanity_filter, ai_moderation)
+- **Profanity asterisk strategy:** obscenity library with asteriskCensorStrategy for post content flagging and censoring
+- **Anonymous post masking:** Anonymous posts return id:0, username:'anonymous' for non-authors at API level
+- **Post body max 5000 chars:** Generous limit for prayer requests/testimonies, validated via Zod
+- **Post media key prefix 'posts/':** Separates post media from avatars and daily-content in B2 bucket
 
 ### Pending Todos
 
@@ -162,6 +166,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-12T20:10:26Z
-Stopped at: Completed 02-04-PLAN.md (Post & Comment Reactions)
+Last session: 2026-02-12T20:10:47Z
+Stopped at: Completed 02-02-PLAN.md (Shared Utilities & Post CRUD)
 Resume file: None
