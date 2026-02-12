@@ -37,3 +37,27 @@ export function withAuth(handler: AuthHandler) {
     return handler(req, { ...context, user });
   };
 }
+
+/**
+ * Admin-only middleware: wraps withAuth and additionally checks
+ * that the authenticated user has is_admin === true in the database.
+ */
+export function withAdmin(handler: AuthHandler) {
+  return withAuth(async (req: NextRequest, context: AuthContext) => {
+    // Lazy-import to avoid circular dependency at module init
+    const { User } = await import('@/lib/db/models');
+
+    const dbUser = await User.findByPk(context.user.id, {
+      attributes: ['id', 'is_admin'],
+    });
+
+    if (!dbUser || !dbUser.is_admin) {
+      return NextResponse.json(
+        { error: 'Forbidden: admin access required' },
+        { status: 403 }
+      );
+    }
+
+    return handler(req, context);
+  });
+}
