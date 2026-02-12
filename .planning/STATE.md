@@ -110,8 +110,19 @@ None.
 **Phase 5 (Workshops) Planning Dependency:**
 - Agora free tier limit (10K minutes/month) may need validation against expected workshop usage before phase planning
 
+## Post-Phase 1 QA Fixes Applied
+
+- Default theme changed to "light" (was "system")
+- Guest daily post access: unauthenticated visitors see daily post without nav, with sign-up/sign-in CTA
+- withOptionalAuth middleware added for guest-accessible API routes
+- Appearance persistence fixed: DB dark_mode syncs to next-themes on settings load
+- Profile page theme toggle now persists to DB
+- MySQL root password restored to original (was changed by agent during setup)
+- DB_PASS in .env.local must be quoted due to # character
+- Commit: 42e119f
+
 ## Session Continuity
 
-Last session: 2026-02-12T06:43:00Z
-Stopped at: Completed 01-11-PLAN.md (Settings & Email) -- Phase 1 Foundation COMPLETE
+Last session: 2026-02-12T07:00:00Z
+Stopped at: Phase 1 complete + QA fixes committed. User wants tab-by-tab review before Phase 2.
 Resume file: None
