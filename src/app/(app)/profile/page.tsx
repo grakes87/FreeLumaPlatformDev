@@ -13,11 +13,11 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils/cn';
 import { Card } from '@/components/ui/Card';
-import { useToast } from '@/components/ui/Toast';
 import { ProfileCard } from '@/components/profile/ProfileCard';
 
 const THEME_OPTIONS = [
@@ -75,10 +75,10 @@ const SETTINGS_ITEMS: SettingsItem[] = [
 export default function ProfilePage() {
   const { user, logout, refreshUser } = useAuth();
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [showAppearance, setShowAppearance] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const toast = useToast();
 
   useEffect(() => {
     setMounted(true);
@@ -94,7 +94,7 @@ export default function ProfilePage() {
     } else if (item.action === 'appearance') {
       setShowAppearance(!showAppearance);
     } else if (item.href) {
-      toast.info('Coming soon');
+      router.push(item.href);
     }
   };
 
