@@ -20,7 +20,7 @@ const profileUpdateSchema = z.object({
     .optional(),
   bio: z
     .string()
-    .max(150, 'Bio must be at most 150 characters')
+    .max(160, 'Bio must be at most 160 characters')
     .nullable()
     .optional(),
   mode: z.enum(['bible', 'positivity']).optional(),
@@ -32,15 +32,21 @@ const profileUpdateSchema = z.object({
   date_of_birth: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format')
+    .nullable()
     .optional(),
   timezone: z.string().max(50).optional(),
   preferred_translation: z.string().max(10).optional(),
   language: z.enum(['en', 'es']).optional(),
+  profile_privacy: z.enum(['public', 'private']).optional(),
+  location: z.string().max(200).nullable().optional(),
+  website: z.string().max(500).nullable().optional(),
+  denomination: z.string().max(100).nullable().optional(),
+  church: z.string().max(200).nullable().optional(),
   onboarding_step: z.string().optional(),
   categories: z.array(z.number().int().positive()).optional(),
 });
 
-export const POST = withAuth(async (req: NextRequest, context: AuthContext) => {
+const handleProfileUpdate = async (req: NextRequest, context: AuthContext) => {
   try {
     const body = await req.json();
     const parsed = profileUpdateSchema.safeParse(body);
@@ -112,4 +118,8 @@ export const POST = withAuth(async (req: NextRequest, context: AuthContext) => {
   } catch (error) {
     return serverError(error, 'Failed to update profile');
   }
-});
+};
+
+export const POST = withAuth(handleProfileUpdate);
+
+export const PUT = withAuth(handleProfileUpdate);
