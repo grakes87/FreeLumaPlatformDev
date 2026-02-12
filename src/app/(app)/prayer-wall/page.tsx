@@ -1,15 +1,258 @@
 'use client';
 
-import { Heart } from 'lucide-react';
+import { useEffect, useCallback, useState } from 'react';
+import { Heart, Plus, Loader2, Settings } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { usePrayerWall } from '@/hooks/usePrayerWall';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { PrayerCard } from '@/components/prayer/PrayerCard';
+import { PrayerTabs } from '@/components/prayer/PrayerTabs';
+import { PrayerFilters } from '@/components/prayer/PrayerFilters';
+import { PrayerComposer } from '@/components/prayer/PrayerComposer';
 import { EmptyState } from '@/components/common/EmptyState';
+import type { PrayerItem } from '@/hooks/usePrayerWall';
+
+function PrayerCardSkeleton() {
+  return (
+    <div className="animate-pulse rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-full bg-white/10" />
+        <div className="space-y-2">
+          <div className="h-3 w-24 rounded bg-white/10" />
+          <div className="h-2 w-12 rounded bg-white/10" />
+        </div>
+      </div>
+      <div className="mt-3 space-y-2">
+        <div className="h-3 w-full rounded bg-white/10" />
+        <div className="h-3 w-4/5 rounded bg-white/10" />
+        <div className="h-3 w-3/5 rounded bg-white/10" />
+      </div>
+      <div className="mt-4 flex gap-3">
+        <div className="h-8 w-20 rounded-full bg-white/10" />
+        <div className="h-8 w-8 rounded-full bg-white/10" />
+        <div className="h-8 w-8 rounded-full bg-white/10" />
+      </div>
+    </div>
+  );
+}
 
 export default function PrayerWallPage() {
+  const { user } = useAuth();
+  const [composerOpen, setComposerOpen] = useState(false);
+
+  const {
+    prayers,
+    loading,
+    refreshing,
+    hasMore,
+    activeTab,
+    statusFilter,
+    setActiveTab,
+    setStatusFilter,
+    fetchNextPage,
+    refresh,
+    removePrayer,
+    updatePrayer,
+  } = usePrayerWall();
+
+  const { ref: scrollRef, inView } = useInfiniteScroll();
+
+  // Infinite scroll trigger
+  useEffect(() => {
+    if (inView && hasMore && !loading) {
+      fetchNextPage();
+    }
+  }, [inView, hasMore, loading, fetchNextPage]);
+
+  const handlePrayerUpdate = useCallback(
+    (id: number, updates: Partial<PrayerItem>) => {
+      updatePrayer(id, updates);
+    },
+    [updatePrayer]
+  );
+
+  const handleDelete = useCallback(
+    (id: number) => {
+      removePrayer(id);
+    },
+    [removePrayer]
+  );
+
+  const handleComposerSubmit = useCallback(() => {
+    refresh();
+  }, [refresh]);
+
+  // Pull-to-refresh (touch-based)
+  const [pullStartY, setPullStartY] = useState<number | null>(null);
+  const [pullDistance, setPullDistance] = useState(0);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+    if (scrollTop <= 0) {
+      setPullStartY(e.touches[0].clientY);
+    }
+  }, []);
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (pullStartY === null) return;
+      const diff = e.touches[0].clientY - pullStartY;
+      if (diff > 0) {
+        setPullDistance(Math.min(diff * 0.5, 80));
+      }
+    },
+    [pullStartY]
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    if (pullDistance > 50) {
+      refresh();
+    }
+    setPullStartY(null);
+    setPullDistance(0);
+  }, [pullDistance, refresh]);
+
+  // Bible-mode gate
+  if (user?.mode === 'positivity') {
+    return (
+      <div className="flex min-h-[calc(100vh-7.5rem)] items-center justify-center px-4">
+        <div className="text-center">
+          <Heart className="mx-auto h-16 w-16 text-white/20" />
+          <h2 className="mt-4 text-lg font-semibold text-white/80">
+            Prayer Wall
+          </h2>
+          <p className="mt-2 max-w-sm text-sm text-white/50">
+            The prayer wall is available in Bible mode. Switch to Bible mode in Settings to access prayer requests.
+          </p>
+          <a
+            href="/settings"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+          >
+            <Settings className="h-4 w-4" />
+            Go to Settings
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state messages per tab
+  const getEmptyMessage = () => {
+    switch (activeTab) {
+      case 'others':
+        return {
+          title: 'No prayer requests yet',
+          description: 'Be the first to share a prayer request with the community!',
+        };
+      case 'my_requests':
+        return {
+          title: "You haven't shared any prayer requests yet",
+          description: 'Tap the + button to create your first prayer request.',
+        };
+      case 'my_joined':
+        return {
+          title: "You haven't joined any prayers yet",
+          description: "Tap 'Praying for you' on someone's request to join in prayer.",
+        };
+    }
+  };
+
   return (
-    <EmptyState
-      icon={<Heart className="h-12 w-12" />}
-      title="Prayer Wall"
-      description="Share and support prayer requests with your community. Coming in Phase 2."
-      className="min-h-[calc(100vh-7.5rem)]"
-    />
+    <div
+      className="min-h-[calc(100vh-7.5rem)] px-4 py-4"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {pullDistance > 0 && (
+        <div
+          className="flex items-center justify-center transition-all"
+          style={{ height: pullDistance }}
+        >
+          <Loader2
+            className="h-5 w-5 animate-spin text-white/40"
+            style={{ opacity: pullDistance / 80 }}
+          />
+        </div>
+      )}
+
+      {/* Refreshing indicator */}
+      {refreshing && (
+        <div className="mb-3 flex items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-white/40" />
+        </div>
+      )}
+
+      {/* Page header */}
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-white">Prayer Wall</h1>
+      </div>
+
+      {/* Tabs */}
+      <div className="mb-3">
+        <PrayerTabs activeTab={activeTab} onTabChange={setActiveTab} />
+      </div>
+
+      {/* Filters */}
+      <div className="mb-4">
+        <PrayerFilters statusFilter={statusFilter} onFilterChange={setStatusFilter} />
+      </div>
+
+      {/* Prayer list */}
+      {loading && prayers.length === 0 ? (
+        <div className="space-y-4">
+          <PrayerCardSkeleton />
+          <PrayerCardSkeleton />
+          <PrayerCardSkeleton />
+        </div>
+      ) : prayers.length === 0 ? (
+        <EmptyState
+          icon={<Heart className="h-12 w-12" />}
+          title={getEmptyMessage().title}
+          description={getEmptyMessage().description}
+          className="min-h-[40vh]"
+        />
+      ) : (
+        <div className="space-y-4">
+          {prayers.map((prayer) => (
+            <PrayerCard
+              key={prayer.id}
+              prayer={prayer}
+              currentUserId={user?.id ?? 0}
+              onPrayerUpdate={handlePrayerUpdate}
+              onDelete={handleDelete}
+            />
+          ))}
+
+          {/* Infinite scroll sentinel */}
+          <div ref={scrollRef} className="h-1" />
+
+          {/* Loading more indicator */}
+          {loading && prayers.length > 0 && (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-white/40" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* FAB to open composer */}
+      <button
+        type="button"
+        onClick={() => setComposerOpen(true)}
+        className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 active:scale-95"
+        aria-label="Create prayer request"
+      >
+        <Plus className="h-7 w-7" />
+      </button>
+
+      {/* Prayer composer */}
+      <PrayerComposer
+        isOpen={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        onSubmit={handleComposerSubmit}
+      />
+    </div>
   );
 }
