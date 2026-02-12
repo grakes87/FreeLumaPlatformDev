@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { ThemeProvider } from "next-themes";
+import { ToastProvider } from "@/components/ui/Toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Free Luma",
-  description: "Daily inspirational content and faith-based community",
+  description: "Daily inspiration and faith-based community",
 };
 
 export default function RootLayout({
@@ -13,8 +15,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
-        {children}
+      <body className="min-h-screen bg-background text-text antialiased dark:bg-background-dark dark:text-text-dark">
+        <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
