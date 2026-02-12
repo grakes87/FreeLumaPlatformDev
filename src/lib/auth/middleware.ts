@@ -39,6 +39,34 @@ export function withAuth(handler: AuthHandler) {
 }
 
 /**
+ * Optional auth middleware: if token exists, verify and inject user.
+ * If no token or invalid, user is null (no 401).
+ */
+export interface OptionalAuthContext {
+  params: Promise<Record<string, string>>;
+  user: JWTPayload | null;
+}
+
+type OptionalAuthHandler = (
+  req: NextRequest,
+  context: OptionalAuthContext
+) => Promise<NextResponse>;
+
+export function withOptionalAuth(handler: OptionalAuthHandler) {
+  return async (req: NextRequest, context: RouteContext): Promise<NextResponse> => {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+
+    let user: JWTPayload | null = null;
+    if (token) {
+      user = await verifyJWT(token);
+    }
+
+    return handler(req, { ...context, user });
+  };
+}
+
+/**
  * Admin-only middleware: wraps withAuth and additionally checks
  * that the authenticated user has is_admin === true in the database.
  */

@@ -16,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-text antialiased dark:bg-background-dark dark:text-text-dark">
-        <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem>
           <ToastProvider>
             {children}
           </ToastProvider>

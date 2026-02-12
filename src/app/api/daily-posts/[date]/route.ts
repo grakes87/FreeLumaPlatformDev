@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withAuth, type AuthContext } from '@/lib/auth/middleware';
+import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middleware';
 import { DailyContent, DailyContentTranslation, User } from '@/lib/db/models';
 import { getUserLocalDate, isValidDateString, isFutureDate } from '@/lib/utils/timezone';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
@@ -8,9 +8,9 @@ import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
  * GET /api/daily-posts/[date]
  *
  * Returns daily content for a specific date (YYYY-MM-DD format).
- * Validates date format, rejects future dates, and respects user's mode/language.
+ * If authenticated, uses user preferences. If guest, defaults to bible/en/UTC.
  */
-export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
+export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAuthContext) => {
   try {
     const params = await context.params;
     const date = params.date;
@@ -23,18 +23,29 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
       );
     }
 
-    // Fetch user for mode, timezone, language
-    const user = await User.findByPk(context.user.id, {
-      attributes: ['id', 'mode', 'timezone', 'language'],
-    });
+    let mode = 'bible';
+    let language = 'en';
+    let timezone = 'UTC';
 
-    if (!user) {
-      return errorResponse('User not found', 404);
+    // If authenticated, load user preferences
+    if (context.user) {
+      const user = await User.findByPk(context.user.id, {
+        attributes: ['id', 'mode', 'timezone', 'language'],
+      });
+
+      if (user) {
+        mode = user.mode;
+        language = user.language;
+        timezone = user.timezone;
+      }
     }
 
     // Allow timezone override via query param
     const url = new URL(req.url);
-    const timezone = url.searchParams.get('timezone') || user.timezone;
+    const timezoneParam = url.searchParams.get('timezone');
+    if (timezoneParam) {
+      timezone = timezoneParam;
+    }
 
     // Reject future dates
     if (isFutureDate(date, timezone)) {
@@ -45,8 +56,8 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
     const content = await DailyContent.findOne({
       where: {
         post_date: date,
-        mode: user.mode,
-        language: user.language,
+        mode,
+        language,
         published: true,
       },
       include: [

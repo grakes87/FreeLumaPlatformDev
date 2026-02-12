@@ -51,7 +51,7 @@ export function useDailyContent(date?: string): UseDailyContentReturn {
         ? `/api/daily-posts/${date}`
         : '/api/daily-posts';
 
-      const response = await fetch(url);
+      const response = await fetch(url, { credentials: 'include' });
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));

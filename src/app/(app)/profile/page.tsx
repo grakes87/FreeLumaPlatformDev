@@ -166,7 +166,16 @@ export default function ProfilePage() {
                           <button
                             key={option.value}
                             type="button"
-                            onClick={() => setTheme(option.value)}
+                            onClick={() => {
+                              setTheme(option.value);
+                              // Persist to DB
+                              fetch('/api/settings', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({ dark_mode: option.value }),
+                              }).catch(() => {});
+                            }}
                             className={cn(
                               'flex flex-1 flex-col items-center gap-1 rounded-lg py-2 text-xs transition-colors',
                               isActive

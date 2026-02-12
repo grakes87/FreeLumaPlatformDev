@@ -107,7 +107,7 @@ export default function SettingsPage() {
     setMounted(true);
   }, []);
 
-  // Fetch settings on mount
+  // Fetch settings on mount and sync theme
   useEffect(() => {
     async function fetchSettings() {
       try {
@@ -115,6 +115,10 @@ export default function SettingsPage() {
         if (res.ok) {
           const data = await res.json();
           setSettings(data.settings);
+          // Sync saved theme preference to next-themes
+          if (data.settings.dark_mode) {
+            setTheme(data.settings.dark_mode);
+          }
         }
       } catch {
         toast.error('Failed to load settings.');

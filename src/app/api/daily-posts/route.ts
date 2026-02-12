@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withAuth, type AuthContext } from '@/lib/auth/middleware';
+import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middleware';
 import { DailyContent, DailyContentTranslation, User } from '@/lib/db/models';
 import { getUserLocalDate } from '@/lib/utils/timezone';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
@@ -7,36 +7,44 @@ import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 /**
  * GET /api/daily-posts
  *
- * Returns today's daily content for the authenticated user based on their
- * timezone, mode (bible/positivity), and language preference.
- *
- * The "today" calculation is timezone-aware: content changes at the user's
- * local midnight, not server midnight.
+ * Returns today's daily content. If authenticated, uses user's timezone,
+ * mode, and language. If guest (unauthenticated), defaults to bible/en/UTC.
  */
-export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
+export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAuthContext) => {
   try {
-    // Fetch the user's full profile for mode, timezone, and language
-    const user = await User.findByPk(context.user.id, {
-      attributes: ['id', 'mode', 'timezone', 'language', 'preferred_translation'],
-    });
+    let mode = 'bible';
+    let language = 'en';
+    let timezone = 'UTC';
 
-    if (!user) {
-      return errorResponse('User not found', 404);
+    // If authenticated, load user preferences
+    if (context.user) {
+      const user = await User.findByPk(context.user.id, {
+        attributes: ['id', 'mode', 'timezone', 'language', 'preferred_translation'],
+      });
+
+      if (user) {
+        mode = user.mode;
+        language = user.language;
+        timezone = user.timezone;
+      }
     }
 
-    // Allow timezone override via query param (for clients sending their detected timezone)
+    // Allow timezone override via query param
     const url = new URL(req.url);
-    const timezone = url.searchParams.get('timezone') || user.timezone;
+    const timezoneParam = url.searchParams.get('timezone');
+    if (timezoneParam) {
+      timezone = timezoneParam;
+    }
 
-    // Calculate "today" in the user's timezone
+    // Calculate "today" in the user's (or default) timezone
     const today = getUserLocalDate(timezone);
 
-    // Query daily content for today, the user's mode, and language
+    // Query daily content
     const content = await DailyContent.findOne({
       where: {
         post_date: today,
-        mode: user.mode,
-        language: user.language,
+        mode,
+        language,
         published: true,
       },
       include: [
