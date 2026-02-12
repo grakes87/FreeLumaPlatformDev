@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "Old Code"]
+  "exclude": ["node_modules", "Old Code", "test-auth.mts"]
 }
