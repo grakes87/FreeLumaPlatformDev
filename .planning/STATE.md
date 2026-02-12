@@ -70,6 +70,9 @@ Recent decisions affecting current work:
 - **withAdmin middleware:** Wraps withAuth + lazy-imports User model for is_admin DB check; returns 403 for non-admins
 - **Activation code alphabet:** Excludes O/0/I/l to avoid visual confusion in NFC URLs and printed materials
 - **Entry page full-screen overlay:** /bible and /positivity use fixed inset-0 z-50 to break out of public layout container
+- **Timezone override via query param:** Daily content API accepts ?timezone= for client-detected timezone, falls back to user profile
+- **API.Bible fallback pattern:** DB-first translation lookup, bible.api fallback for missing translations, auto-cache to DB with source='api'
+- **Positivity translation guard:** Translation switching returns 400 for positivity mode content (quotes are language-based, not translation-based)
 
 ### Pending Todos
 
@@ -79,7 +82,7 @@ None yet.
 
 **Phase 1 (Foundation) Critical Items:**
 - Password hash format compatibility ($2y$ to $2b$ bcrypt conversion) must be tested with actual production SQL dump during migration script development
-- External PHP API dependency at kindredsplendorapi.com for daily content needs caching fallback pattern established
+- External PHP API dependency at kindredsplendorapi.com replaced by own DB + API.Bible fallback (established in 01-09)
 - Web Push on iOS Safari requires PWA installation (added to home screen) — need to validate UX and provide fallback notification strategy
 - XAMPP MySQL root password is set (not empty) — stored in .env.local; future plans should use .env.local values
 
