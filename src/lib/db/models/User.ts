@@ -12,6 +12,12 @@ export interface UserAttributes {
   avatar_url: string | null;
   avatar_color: string;
   bio: string | null;
+  denomination: string | null;
+  church: string | null;
+  testimony: string | null;
+  profile_privacy: 'public' | 'private';
+  location: string | null;
+  website: string | null;
   date_of_birth: string | null;
   mode: 'bible' | 'positivity';
   timezone: string;
@@ -36,6 +42,12 @@ export interface UserCreationAttributes extends Optional<UserAttributes,
   | 'apple_id'
   | 'avatar_url'
   | 'bio'
+  | 'denomination'
+  | 'church'
+  | 'testimony'
+  | 'profile_privacy'
+  | 'location'
+  | 'website'
   | 'date_of_birth'
   | 'mode'
   | 'timezone'
@@ -64,6 +76,12 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   declare avatar_url: string | null;
   declare avatar_color: string;
   declare bio: string | null;
+  declare denomination: string | null;
+  declare church: string | null;
+  declare testimony: string | null;
+  declare profile_privacy: 'public' | 'private';
+  declare location: string | null;
+  declare website: string | null;
   declare date_of_birth: string | null;
   declare mode: 'bible' | 'positivity';
   declare timezone: string;
@@ -126,6 +144,31 @@ User.init(
     },
     bio: {
       type: DataTypes.STRING(150),
+      allowNull: true,
+    },
+    denomination: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    church: {
+      type: DataTypes.STRING(200),
+      allowNull: true,
+    },
+    testimony: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    profile_privacy: {
+      type: DataTypes.ENUM('public', 'private'),
+      defaultValue: 'public',
+      allowNull: false,
+    },
+    location: {
+      type: DataTypes.STRING(200),
+      allowNull: true,
+    },
+    website: {
+      type: DataTypes.STRING(500),
       allowNull: true,
     },
     date_of_birth: {
