@@ -11,27 +11,27 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 1 of 6 (Foundation)
-Plan: 10 of 12 complete
+Plan: 11 of 12 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 01-07-PLAN.md (Onboarding Wizard)
+Last activity: 2026-02-12 — Completed 01-10-PLAN.md (Daily Post UI)
 
-Progress: [██████████░░] 10/12 plans (83%)
+Progress: [███████████░] 11/12 plans (91%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: 5 min
-- Total execution time: 51 min
+- Total execution time: 56 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-foundation | 10/12 | 51 min | 5 min |
+| 01-foundation | 11/12 | 56 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-12 (4 min), 01-09 (4 min), 01-08 (4 min), 01-06 (6 min), 01-07 (5 min)
+- Last 5 plans: 01-09 (4 min), 01-08 (4 min), 01-06 (6 min), 01-07 (5 min), 01-10 (5 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -82,6 +82,10 @@ Recent decisions affecting current work:
 - **Follow suggestions Phase 1:** Placeholder accounts shown; actual follow persistence deferred to Phase 2
 - **Public categories endpoint:** No auth on GET /api/categories for onboarding access
 - **Username check rate limit:** 10 requests/min/IP to prevent enumeration
+- **Swiper pagination above nav:** Pagination bullets at 72px from bottom to sit above semi-transparent bottom nav on daily post
+- **Share card inline styles:** Off-screen share card uses inline styles (not Tailwind) for html-to-image rendering consistency
+- **Daily route full-screen layout:** AppShell removes pt-14/pb-16 padding for / and /daily/* routes, carousel extends behind transparent nav
+- **LumaShort controls timing:** Native video controls shown only after user initiates playback, keeping poster view clean
 
 ### Pending Todos
 
@@ -103,6 +107,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-12T06:40:00Z
-Stopped at: Completed 01-07-PLAN.md (Onboarding Wizard)
+Last session: 2026-02-12T06:40:17Z
+Stopped at: Completed 01-10-PLAN.md (Daily Post UI)
 Resume file: None
