@@ -11,28 +11,28 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 2 of 6 (Core Social)
-Plan: 9 of 14 complete
+Plan: 10 of 14 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 02-06-PLAN.md (Feed API - Following + FYP)
+Last activity: 2026-02-12 — Completed 02-11-PLAN.md (Prayer Wall UI)
 
-Progress: [█████████░░░░░] 9/14 plans (64%)
+Progress: [██████████░░░░] 10/14 plans (71%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21
+- Total plans completed: 22
 - Average duration: 5 min
-- Total execution time: 100 min
+- Total execution time: 105 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
-| 02-core-social | 9/14 | 37 min | 4 min |
+| 02-core-social | 10/14 | 42 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-05 (5 min), 02-07 (3 min), 02-08 (4 min), 02-09 (4 min), 02-06 (5 min)
+- Last 5 plans: 02-07 (3 min), 02-08 (4 min), 02-09 (4 min), 02-06 (5 min), 02-11 (5 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -123,6 +123,9 @@ Recent decisions affecting current work:
 - **FYP compound cursor:** score+id cursor for FYP pagination (posts sorted by score, not chronologically)
 - **Feed batch lookup:** User reactions/bookmarks fetched separately after post IDs known, not JOINed into main query
 - **Default FYP tab:** useFeed defaults to 'fyp' tab per product context
+- **Prayer card always liquid glass:** Prayer cards use bg-white/10 backdrop-blur-2xl regardless of admin feed style toggle (always card-based per CONTEXT)
+- **My Prayers dropdown sub-tabs:** My Prayers tab uses dropdown for sub-tabs (My Requests / Prayers I've Joined) instead of nested tab bar
+- **Prayer wall FAB:** Floating action button at bottom-right opens prayer composer in addition to center '+' nav CreatePicker
 
 ### Pending Todos
 
@@ -187,6 +190,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-12T20:21:00Z
-Stopped at: Completed 02-06-PLAN.md (Feed API - Following + FYP)
+Last session: 2026-02-12T20:31:00Z
+Stopped at: Completed 02-11-PLAN.md (Prayer Wall UI)
 Resume file: None
