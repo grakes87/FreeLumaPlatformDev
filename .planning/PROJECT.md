@@ -73,11 +73,14 @@ Daily inspirational content delivery and faith-based community connection — us
 ## Constraints
 
 - **Tech stack**: Next.js (all-in-one), MySQL/MariaDB, Sequelize, Socket.IO, Tailwind CSS
-- **Deployment**: Self-hosted (VPS) — not serverless
+- **Media storage**: Backblaze B2 (object storage) + Cloudflare CDN (caching/delivery, free egress via Bandwidth Alliance)
+- **Deployment**: Self-hosted (VPS) with Cloudflare CDN in front — not serverless
 - **Database**: Must support migration of existing user data from old platform
 - **Design**: Mobile-first responsive, inspired by ZOX screenshots (card-based, bottom nav, light/dark mode)
 - **Security**: No hardcoded credentials, proper JWT handling, bcrypt passwords, input validation on all endpoints
 - **Compatibility**: Must support the same external integrations (Agora, email/SMS gateways, daily content API)
+- **Clean rewrite**: All code written from scratch — old codebase is reference-only for features, data structure, and external integrations. No old code reused in the new platform.
+- **External integrations**: Each old external dependency (PHP API, email/SMS gateways, etc.) to be evaluated individually — keep, replace with modern alternative, or build in-house. No blind carry-over of old integration patterns.
 
 ## Key Decisions
 
@@ -88,6 +91,7 @@ Daily inspirational content delivery and faith-based community connection — us
 | Self-hosted over Vercel | Real-time features (Socket.IO, workshops) need persistent server | — Pending |
 | Complete rewrite over incremental migration | Old code quality too poor to build on, UI needs total redesign | — Pending |
 | Tailwind CSS for styling | Utility-first approach matches card-based UI, dark mode support built-in | — Pending |
+| Backblaze B2 + Cloudflare for media | Cheapest storage ($6/TB) + free egress through Bandwidth Alliance | — Pending |
 
 ---
 *Last updated: 2026-02-11 after initialization*
