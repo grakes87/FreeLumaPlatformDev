@@ -159,6 +159,10 @@ Recent decisions affecting current work:
 - **Auto-join conversation rooms on connect:** Users join all active conversation rooms on socket connection for immediate delivery
 - **Volatile typing indicators:** typing:start/stop use socket.to().volatile.emit() for droppable delivery
 - **Batch read receipt pattern:** Single conversation:read event updates ConversationParticipant.last_read_at + batch MessageStatus for 1:1
+- **MessageRequest creates hidden conversation:** When access rules prevent direct DM, conversation + MessageRequest created together; recipient sees messages on accept
+- **Batch read receipt on GET messages:** Viewing messages automatically updates last_read_at; no separate mark-as-read endpoint needed
+- **New message restores deleted conversations:** POST message sets deleted_at=null for soft-deleted participants to restore conversation
+- **Chat media audio support:** /api/upload/chat-media accepts audio MIME types (mpeg, wav, ogg, webm, mp4, aac) for voice messages
 
 ### Pending Todos
 
@@ -223,6 +227,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-13T17:17:00Z
-Stopped at: Completed 03-06-PLAN.md (Notification System Core)
+Last session: 2026-02-13T17:19:00Z
+Stopped at: Completed 03-04-PLAN.md (Chat REST API)
 Resume file: None
