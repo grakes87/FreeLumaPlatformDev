@@ -62,33 +62,33 @@ Plans:
 - [ ] 01-12-PLAN.md — Push notifications, admin endpoints (codes/content), entry pages (/bible, /positivity)
 
 ### Phase 2: Core Social
-**Goal**: Complete social platform functionality — users can create posts, follow others, engage with content via likes/comments, use the prayer wall, search for friends, and access category-organized content.
+**Goal**: Complete social platform functionality — users can create posts (with multi-media), follow others, engage with content via reactions/comments, use the prayer wall, search for users, and manage their profile with dual feed styles (TikTok/Instagram) and admin dashboard.
 
 **Depends on**: Phase 1 (requires auth, profiles, database)
 
 **Requirements**: FEED-01 through FEED-14, PRAY-01 through PRAY-10, SOCL-01 through SOCL-15, CAT-01 through CAT-06, MOD-01 through MOD-05, CONT-01 through CONT-04, DAILY-07, DAILY-08, DAILY-09, PROF-03, PROF-04, PROF-05, PROF-06, PROF-07, PROF-08
 
 **Success Criteria** (what must be TRUE):
-  1. User can create text post with optional image attachment and category tag
-  2. User can create post with Bible verse card (with translation selection)
-  3. User can view chronological feed of posts from followed users with infinite scroll
-  4. User can filter feed by category (All, Prayer, Testimony) and sort (Newest, Most engaged)
-  5. User can like posts, comment on posts, and reply to comments (threaded)
-  6. User can edit and delete their own posts and comments within time limit
-  7. User can bookmark posts for later reference and view all bookmarked content
-  8. User can follow/unfollow other users and view lists of followers/following
+  1. User can create text post with up to 10 media items (images/videos) in swipeable carousel
+  2. User can view feed with FYP (For You) and Following tab toggle, with infinite scroll
+  3. User can view feed in two admin-toggled styles: TikTok (full-screen swipe) and Instagram (card scroll)
+  4. User can react to posts and comments with 6 emoji reactions (like, love, haha, wow, sad, pray)
+  5. User can comment on posts with threaded replies (2 levels deep) in bottom sheet
+  6. User can edit and delete their own posts and comments anytime (no time limit)
+  7. User can bookmark posts for later reference and view saved posts on profile
+  8. User can follow/unfollow other users with follow-request system for private profiles
   9. User can search for other users by name or username with avatar and bio preview
-  10. User can view dedicated prayer wall feed (filtered prayer request posts)
-  11. User can create prayer request and tap "Praying for you" button on others' requests
+  10. User can view dedicated prayer wall feed (bible-mode only, hidden for positivity mode)
+  11. User can create prayer request with anonymous option and tap "Praying for you" on others' requests
   12. Prayer counter displays on prayer request cards and author can view who prayed
   13. User can mark prayer request as "answered" with optional testimony
-  14. User can view list of admin-defined categories and browse category-specific feeds
-  15. User can follow/subscribe to specific categories
-  16. User can report posts/comments with reason selection
-  17. User can block other users (blocked user cannot see or interact with content)
-  18. Post images are optimized and served via CDN (Backblaze B2 + Cloudflare)
-  19. User can share posts to external platforms (copy link, social media)
-  20. Profile pages display with stats (Posts, Comments, Groups) and recent activity
+  14. User can quote-repost posts within the platform (no external sharing — members-only)
+  15. User can report posts/comments with reason selection
+  16. User can block other users (blocked user cannot see or interact with content)
+  17. Post media is optimized server-side and served via CDN (Backblaze B2 + Cloudflare)
+  18. Profile pages display with stats (posts, followers, following) and tabs (Posts, Reposts, Saved)
+  19. Admin dashboard with moderation queue, analytics, feed style toggle, and mode isolation toggle
+  20. Bottom nav updated with center '+' button for creating feed posts or prayer requests
 
 **Plans**: 14 plans in 5 waves
 
@@ -109,7 +109,7 @@ Plans:
 - [ ] 02-14-PLAN.md — Admin dashboard (moderation queue, analytics, platform settings), FollowSuggestions update
 
 ### Phase 3: Real-Time
-**Goal**: Real-time communication infrastructure operational — users can chat 1:1 via Socket.IO and receive instant in-app notifications and browser push notifications.
+**Goal**: Real-time communication infrastructure operational — users can chat 1:1 and in groups via Socket.IO, receive instant in-app notifications with activity feed, and get email notifications for offline events. No browser push notifications.
 
 **Depends on**: Phase 2 (requires social graph, posts, and follows)
 
@@ -134,11 +134,22 @@ Plans:
   16. Push notifications delivered via Socket.IO for real-time in-app alerts
   17. Email notifications include deep links back to relevant content
 
-**Plans**: TBD
+**Plans**: 13 plans in 4 waves
 
 Plans:
-- [ ] 03-01: TBD during phase planning
-- [ ] 03-02: TBD during phase planning
+- [ ] 03-01-PLAN.md — Socket.IO server init, auth middleware, presence manager, SocketContext provider
+- [ ] 03-02-PLAN.md — Chat database: 7 tables (conversations, participants, messages, media, status, reactions, requests)
+- [ ] 03-03-PLAN.md — Notification/email database: notifications + email_logs tables, user_settings extensions, types
+- [ ] 03-04-PLAN.md — Chat API routes: conversations CRUD, messages CRUD, requests, chat media upload
+- [ ] 03-05-PLAN.md — Socket.IO chat handlers: room management, typing indicators, read receipts, presence
+- [ ] 03-06-PLAN.md — Notification core: createNotification(), grouping logic, notification API routes
+- [ ] 03-07-PLAN.md — Chat UI: conversation list page, ConversationItem, UserPicker, OnlineStatusDot
+- [ ] 03-08-PLAN.md — Chat UI: ChatView, MessageBubble, MessageInput, TypingIndicator, context menu, reactions
+- [ ] 03-09-PLAN.md — Voice messages: useVoiceRecorder, VoiceRecorder, MediaAttachmentSheet, VoicePlayback
+- [ ] 03-10-PLAN.md — Notification UI: dropdown, full page with filters, toast manager, notification context
+- [ ] 03-11-PLAN.md — Group chat: GroupCreateFlow, GroupInfoSheet, MentionPicker, member management
+- [ ] 03-12-PLAN.md — Email notifications: templates, queue, scheduler (node-cron), tracking, unsubscribe
+- [ ] 03-13-PLAN.md — Integration: TopBar chat/bell badges, providers in layout, settings, profile message button, block behavior
 
 ### Phase 4: Enhanced Content
 **Goal**: Content personalization and media library complete — users can create personal notes, access video library with progress tracking, and configure all app settings including appearance and privacy.
@@ -246,7 +257,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 12/12 | Complete | 2026-02-12 |
-| 2. Core Social | 0/14 | Not started | - |
+| 2. Core Social | 14/14 | Complete | 2026-02-14 |
 | 3. Real-Time | 0/TBD | Not started | - |
 | 4. Enhanced Content | 0/TBD | Not started | - |
 | 5. Workshops (v2) | 0/TBD | Deferred | - |
