@@ -25,6 +25,14 @@ import { Block } from './Block';
 import { Repost } from './Repost';
 import { PlatformSetting } from './PlatformSetting';
 import { Draft } from './Draft';
+import { PostImpression } from './PostImpression';
+import { Conversation } from './Conversation';
+import { ConversationParticipant } from './ConversationParticipant';
+import { Message } from './Message';
+import { MessageMedia } from './MessageMedia';
+import { MessageStatus } from './MessageStatus';
+import { MessageReaction } from './MessageReaction';
+import { MessageRequest } from './MessageRequest';
 
 // ---- Associations ----
 
@@ -420,6 +428,26 @@ Repost.belongsTo(Post, {
   as: 'quotePost',
 });
 
+// Post -> PostImpression (one-to-many)
+Post.hasMany(PostImpression, {
+  foreignKey: 'post_id',
+  as: 'impressions',
+});
+PostImpression.belongsTo(Post, {
+  foreignKey: 'post_id',
+  as: 'post',
+});
+
+// User -> PostImpression (one-to-many)
+User.hasMany(PostImpression, {
+  foreignKey: 'user_id',
+  as: 'postImpressions',
+});
+PostImpression.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
 // User -> Draft (one-to-many)
 User.hasMany(Draft, {
   foreignKey: 'user_id',
@@ -428,6 +456,158 @@ User.hasMany(Draft, {
 Draft.belongsTo(User, {
   foreignKey: 'user_id',
   as: 'user',
+});
+
+// ---- Phase 3: Real-Time Chat Associations ----
+
+// Conversation -> Creator (User)
+Conversation.belongsTo(User, {
+  foreignKey: 'creator_id',
+  as: 'creator',
+});
+User.hasMany(Conversation, {
+  foreignKey: 'creator_id',
+  as: 'createdConversations',
+});
+
+// Conversation -> ConversationParticipant (one-to-many)
+Conversation.hasMany(ConversationParticipant, {
+  foreignKey: 'conversation_id',
+  as: 'participants',
+});
+ConversationParticipant.belongsTo(Conversation, {
+  foreignKey: 'conversation_id',
+  as: 'conversation',
+});
+
+// User -> ConversationParticipant (one-to-many)
+User.hasMany(ConversationParticipant, {
+  foreignKey: 'user_id',
+  as: 'conversationParticipants',
+});
+ConversationParticipant.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// Conversation -> Message (one-to-many)
+Conversation.hasMany(Message, {
+  foreignKey: 'conversation_id',
+  as: 'messages',
+});
+Message.belongsTo(Conversation, {
+  foreignKey: 'conversation_id',
+  as: 'conversation',
+});
+
+// User -> Message (as sender)
+User.hasMany(Message, {
+  foreignKey: 'sender_id',
+  as: 'sentMessages',
+});
+Message.belongsTo(User, {
+  foreignKey: 'sender_id',
+  as: 'sender',
+});
+
+// Message -> Message (self-referencing for replies)
+Message.hasMany(Message, {
+  foreignKey: 'reply_to_id',
+  as: 'replies',
+});
+Message.belongsTo(Message, {
+  foreignKey: 'reply_to_id',
+  as: 'replyTo',
+});
+
+// Message -> Post (shared post)
+Message.belongsTo(Post, {
+  foreignKey: 'shared_post_id',
+  as: 'sharedPost',
+});
+Post.hasMany(Message, {
+  foreignKey: 'shared_post_id',
+  as: 'sharedInMessages',
+});
+
+// Message -> MessageMedia (one-to-many)
+Message.hasMany(MessageMedia, {
+  foreignKey: 'message_id',
+  as: 'media',
+});
+MessageMedia.belongsTo(Message, {
+  foreignKey: 'message_id',
+  as: 'message',
+});
+
+// Message -> MessageStatus (one-to-many)
+Message.hasMany(MessageStatus, {
+  foreignKey: 'message_id',
+  as: 'statuses',
+});
+MessageStatus.belongsTo(Message, {
+  foreignKey: 'message_id',
+  as: 'message',
+});
+
+// User -> MessageStatus (one-to-many)
+User.hasMany(MessageStatus, {
+  foreignKey: 'user_id',
+  as: 'messageStatuses',
+});
+MessageStatus.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// Message -> MessageReaction (one-to-many)
+Message.hasMany(MessageReaction, {
+  foreignKey: 'message_id',
+  as: 'reactions',
+});
+MessageReaction.belongsTo(Message, {
+  foreignKey: 'message_id',
+  as: 'message',
+});
+
+// User -> MessageReaction (one-to-many)
+User.hasMany(MessageReaction, {
+  foreignKey: 'user_id',
+  as: 'messageReactions',
+});
+MessageReaction.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// MessageRequest -> Conversation
+MessageRequest.belongsTo(Conversation, {
+  foreignKey: 'conversation_id',
+  as: 'conversation',
+});
+Conversation.hasMany(MessageRequest, {
+  foreignKey: 'conversation_id',
+  as: 'messageRequests',
+});
+
+// MessageRequest -> User (requester)
+MessageRequest.belongsTo(User, {
+  foreignKey: 'requester_id',
+  as: 'requester',
+});
+User.hasMany(MessageRequest, {
+  foreignKey: 'requester_id',
+  as: 'sentMessageRequests',
+});
+
+// MessageRequest -> User (recipient)
+MessageRequest.belongsTo(User, {
+  foreignKey: 'recipient_id',
+  as: 'recipient',
+});
+User.hasMany(MessageRequest, {
+  foreignKey: 'recipient_id',
+  as: 'receivedMessageRequests',
 });
 
 export {
@@ -458,4 +638,12 @@ export {
   Repost,
   PlatformSetting,
   Draft,
+  PostImpression,
+  Conversation,
+  ConversationParticipant,
+  Message,
+  MessageMedia,
+  MessageStatus,
+  MessageReaction,
+  MessageRequest,
 };
