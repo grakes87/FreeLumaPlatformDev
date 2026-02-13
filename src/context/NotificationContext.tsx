@@ -43,7 +43,8 @@ export interface NotificationContextValue {
   clearUnreadCount: () => void;
 }
 
-const NotificationContext = createContext<NotificationContextValue | null>(null);
+/** Exported for safe access from useNotificationBadge (returns null when outside provider) */
+export const NotificationContext = createContext<NotificationContextValue | null>(null);
 
 const TOAST_AUTO_DISMISS_MS = 3500;
 

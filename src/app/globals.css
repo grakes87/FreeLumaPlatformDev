@@ -30,6 +30,18 @@ body {
   display: none;
 }
 
+/* Notification toast slide-down animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -100%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 /* Chat typing indicator bounce animation */
 @keyframes typingBounce {
   0%, 60%, 100% {
