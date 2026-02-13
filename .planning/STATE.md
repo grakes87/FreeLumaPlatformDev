@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 3 of 6 (Real-Time)
-Plan: 9 of 13 complete
+Plan: 10 of 13 complete
 Status: In progress
-Last activity: 2026-02-13 — Completed 03-10-PLAN.md (Notification UI)
+Last activity: 2026-02-13 — Completed 03-12-PLAN.md (Email Notification System)
 
-Progress: [███████████████████████████████████░░░░░░] 35/39 plans (90%)
+Progress: [████████████████████████████████████░░░░░] 36/39 plans (92%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 35
+- Total plans completed: 36
 - Average duration: 5 min
-- Total execution time: 163 min
+- Total execution time: 168 min
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [███████████████████████
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
-| 03-real-time | 9/13 | 27 min | 3 min |
+| 03-real-time | 10/13 | 32 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-05 (2 min), 03-06 (2 min), 03-07 (3 min), 03-09 (4 min), 03-10 (6 min)
+- Last 5 plans: 03-06 (2 min), 03-07 (3 min), 03-09 (4 min), 03-10 (6 min), 03-12 (5 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -177,6 +177,12 @@ Recent decisions affecting current work:
 - **Safe notification badge hook:** useNotificationBadge uses raw useContext (returns 0 when null) instead of throwing useNotificationContext
 - **Portal-rendered toast notifications:** NotificationToastManager uses createPortal to document.body for z-index escape
 - **Notification type color coding:** Consistent mapping: reaction=pink, comment=blue, follow=green, prayer=purple, message=teal, mention=orange
+- **Scheduler dual-init pattern:** Email cron scheduler initialized from socket setupNamespaces() + server.js 5s setTimeout fallback; globalThis guard prevents double-init
+- **Unsubscribe JWT 90-day expiry:** Purpose-scoped JWT (purpose=email_unsubscribe) with 90-day TTL for one-click unsubscribe links
+- **DM batch 30-min dedup:** DM email batch checks for recent DM email to same user within 30 minutes to prevent re-sending
+- **RFC 8058 List-Unsubscribe headers:** All notification emails include List-Unsubscribe and List-Unsubscribe-Post headers for Gmail/Yahoo compliance
+- **Fire-and-forget tracking pixel:** markOpened() runs async without blocking the 1x1 GIF response for email open tracking
+- **Quiet hours timezone-aware:** Uses Intl.DateTimeFormat for user's IANA timezone to check if current time is within quiet hours
 
 ### Pending Todos
 
@@ -241,6 +247,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-13T17:30:00Z
-Stopped at: Completed 03-10-PLAN.md (Notification UI)
+Last session: 2026-02-13T17:41:00Z
+Stopped at: Completed 03-12-PLAN.md (Email Notification System)
 Resume file: None
