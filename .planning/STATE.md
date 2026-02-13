@@ -13,16 +13,16 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 Phase: 3 of 6 (Real-Time)
 Plan: 3 of 13 complete
 Status: In progress
-Last activity: 2026-02-13 — Completed 03-01-PLAN.md (Socket.IO Infrastructure)
+Last activity: 2026-02-13 — Completed 03-03-PLAN.md (Notification & Email Data Layer)
 
 Progress: [█████████████████████████████░░░░░░░░░░░░] 29/39 plans (74%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 29
+- Total plans completed: 30
 - Average duration: 5 min
-- Total execution time: 143 min
+- Total execution time: 146 min
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [███████████████████████
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
-| 03-real-time | 3/13 | 7 min | 2 min |
+| 03-real-time | 4/13 | 10 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-12 (9 min), 02-13 (10 min), 02-10 (12 min), 03-02 (3 min), 03-01 (4 min)
+- Last 5 plans: 02-13 (10 min), 02-10 (12 min), 03-02 (3 min), 03-01 (4 min), 03-03 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -143,6 +143,11 @@ Recent decisions affecting current work:
 - **ConversationParticipant soft delete:** deleted_at enables per-user conversation deletion without removing group membership
 - **MessageRequest unique pair:** (requester_id, recipient_id) constraint prevents duplicate messaging requests
 - **Message reaction types match posts:** Same 6 types (like/love/haha/wow/sad/pray) for UI consistency
+- **Notification group_key pattern:** Encodes type:entity_type:entity_id (e.g. "reaction:post:123") for collapsible notifications
+- **EmailLog tracking pixel:** UUID tracking_id for email open tracking via pixel; status enum queued/sent/bounced/opened
+- **Messaging access default mutual:** messaging_access defaults to 'mutual' -- only mutual followers can initiate DMs
+- **Per-category email toggles:** Separate boolean columns for DM, follow, prayer, and daily reminder email notifications
+- **Reminder timezone column:** IANA timezone string in user_settings for timezone-aware daily reminder scheduling
 - **Server.js inline Socket.IO init:** server.js creates SocketServer directly and stores on globalThis.__io (can't import TS from .js)
 - **Lazy namespace setup:** getIO() lazily sets up /chat and /notifications namespaces with idempotent guard for HMR safety
 - **Dual globalThis guard:** Module-level + globalThis.__ioNamespacesReady flags handle both production and dev HMR namespace readiness
@@ -211,6 +216,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-13T17:09:17Z
-Stopped at: Completed 03-01-PLAN.md (Socket.IO Infrastructure)
+Last session: 2026-02-13T17:10:00Z
+Stopped at: Completed 03-03-PLAN.md (Notification & Email Data Layer)
 Resume file: None
