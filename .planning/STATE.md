@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 3 of 6 (Real-Time)
-Plan: 5 of 13 complete
+Plan: 6 of 13 complete
 Status: In progress
-Last activity: 2026-02-13 — Completed 03-05-PLAN.md (Chat Namespace Handlers)
+Last activity: 2026-02-13 — Completed 03-06-PLAN.md (Notification System Core)
 
-Progress: [██████████████████████████████░░░░░░░░░░░] 31/39 plans (79%)
+Progress: [████████████████████████████████░░░░░░░░░] 32/39 plans (82%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 31
+- Total plans completed: 32
 - Average duration: 5 min
-- Total execution time: 148 min
+- Total execution time: 150 min
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [███████████████████████
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
-| 03-real-time | 5/13 | 12 min | 2 min |
+| 03-real-time | 6/13 | 14 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-10 (12 min), 03-02 (3 min), 03-01 (4 min), 03-03 (3 min), 03-05 (2 min)
+- Last 5 plans: 03-02 (3 min), 03-01 (4 min), 03-03 (3 min), 03-05 (2 min), 03-06 (2 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -152,6 +152,9 @@ Recent decisions affecting current work:
 - **Lazy namespace setup:** getIO() lazily sets up /chat and /notifications namespaces with idempotent guard for HMR safety
 - **Dual globalThis guard:** Module-level + globalThis.__ioNamespacesReady flags handle both production and dev HMR namespace readiness
 - **Cookie-based WebSocket auth:** Socket.IO auth middleware reads auth_token from HTTP cookie header, same as REST API auth
+- **Centralized createNotification():** Single entry point writes DB + pushes Socket.IO; suppresses self-notifications and blocked users
+- **Raw SQL grouped notifications:** LEFT JOIN subquery with ROW_NUMBER for grouped feed; Sequelize ORM insufficient for this pattern
+- **Notification count_only mode:** GET /api/notifications?count_only=true for lightweight badge updates without full payload
 - **Room-per-conversation targeting:** Chat events target conv:{id} rooms only, never broadcast to namespace
 - **Auto-join conversation rooms on connect:** Users join all active conversation rooms on socket connection for immediate delivery
 - **Volatile typing indicators:** typing:start/stop use socket.to().volatile.emit() for droppable delivery
@@ -220,6 +223,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-13T17:16:00Z
-Stopped at: Completed 03-05-PLAN.md (Chat Namespace Handlers)
+Last session: 2026-02-13T17:17:00Z
+Stopped at: Completed 03-06-PLAN.md (Notification System Core)
 Resume file: None
