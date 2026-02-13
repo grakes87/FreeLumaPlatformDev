@@ -4,6 +4,8 @@ import { type ReactNode, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { AuthProvider } from '@/context/AuthContext';
+import { SocketProvider } from '@/context/SocketContext';
+import { NotificationProvider } from '@/context/NotificationContext';
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { AppShell } from '@/components/layout/AppShell';
@@ -49,7 +51,13 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
     return null;
   }
 
-  return <AppShell>{children}</AppShell>;
+  return (
+    <SocketProvider>
+      <NotificationProvider>
+        <AppShell>{children}</AppShell>
+      </NotificationProvider>
+    </SocketProvider>
+  );
 }
 
 function GuestDailyWrapper({ children }: { children: ReactNode }) {
