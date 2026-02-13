@@ -25,6 +25,7 @@ const createMessageSchema = z.object({
   type: z.enum(['text', 'media', 'voice', 'shared_post']).default('text'),
   reply_to_id: z.number().int().positive().nullable().optional(),
   shared_post_id: z.number().int().positive().nullable().optional(),
+  mentioned_user_ids: z.array(z.number().int().positive()).max(50).optional(),
   media: z
     .array(
       z.object({
@@ -253,7 +254,7 @@ export const POST = withAuth(
         return errorResponse(parsed.error.issues[0]?.message || 'Invalid input');
       }
 
-      const { content, type, reply_to_id, shared_post_id, media } = parsed.data;
+      const { content, type, reply_to_id, shared_post_id, media, mentioned_user_ids } = parsed.data;
 
       // Validate content requirement
       if (type === 'text' && !content) {
@@ -386,6 +387,36 @@ export const POST = withAuth(
         chatNsp.to(`conv:${conversationId}`).emit('message:new', fullMessage?.toJSON());
       } catch {
         // Socket.IO not available (e.g., during build or test) — skip silently
+      }
+
+      // Create mention notifications for @mentioned users
+      if (mentioned_user_ids && mentioned_user_ids.length > 0) {
+        try {
+          const { createNotification } = await import('@/lib/notifications/create');
+          const { NotificationType, NotificationEntityType } = await import('@/lib/notifications/types');
+
+          // Only notify participants who are actually mentioned
+          const participantUserIds = otherParticipants.map((p) => p.user_id);
+          const validMentionIds = mentioned_user_ids.filter((id) => participantUserIds.includes(id));
+
+          const preview = content ? (content.length > 100 ? content.slice(0, 100) + '...' : content) : null;
+
+          await Promise.all(
+            validMentionIds.map((mentionedId) =>
+              createNotification({
+                recipient_id: mentionedId,
+                actor_id: userId,
+                type: NotificationType.MENTION,
+                entity_type: NotificationEntityType.MESSAGE,
+                entity_id: message.id,
+                preview_text: preview,
+              })
+            )
+          );
+        } catch (err) {
+          console.error('[Messages] mention notification error:', err);
+          // Non-fatal: message was sent successfully
+        }
       }
 
       return successResponse(fullMessage, 201);

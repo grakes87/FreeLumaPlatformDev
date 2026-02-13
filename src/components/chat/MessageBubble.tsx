@@ -82,6 +82,17 @@ export function MessageBubble({
   const sender: MessageSender = message.sender;
   const timeStr = formatTime(message.created_at);
 
+  // System message (centered, no bubble)
+  if (message.type === 'system') {
+    return (
+      <div className="flex w-full justify-center px-4 py-2">
+        <span className="rounded-full bg-gray-200/80 dark:bg-gray-700/60 px-3 py-1 text-xs text-gray-500 dark:text-gray-400">
+          {message.content}
+        </span>
+      </div>
+    );
+  }
+
   // Unsent message
   if (message.is_unsent) {
     return (
@@ -150,7 +161,7 @@ export function MessageBubble({
           {/* Text content */}
           {message.type === 'text' && message.content && (
             <div className="px-3.5 py-2 whitespace-pre-wrap break-words">
-              {message.content}
+              <MentionText text={message.content} isOwn={isOwnMessage} />
             </div>
           )}
 
@@ -341,6 +352,36 @@ function StatusIcon({ status }: { status: 'sent' | 'delivered' | 'read' }) {
   }
   // read
   return <CheckCheck className="h-3 w-3 text-primary" />;
+}
+
+/**
+ * Renders text with @mentions highlighted.
+ * Pattern: @SomeName at start or after whitespace, terminated by end-of-string or whitespace.
+ */
+function MentionText({ text, isOwn }: { text: string; isOwn: boolean }) {
+  // Split on @mention pattern
+  const parts = text.split(/(@\S+)/g);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('@') && part.length > 1) {
+          return (
+            <span
+              key={i}
+              className={cn(
+                'font-semibold',
+                isOwn ? 'text-white/90' : 'text-primary'
+              )}
+            >
+              {part}
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
 }
 
 // ---- Helpers ----

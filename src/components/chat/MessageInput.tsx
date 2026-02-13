@@ -1,23 +1,28 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Send, Plus, Mic, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { MentionPicker, type MentionMember } from './MentionPicker';
 import type { ChatMessage } from '@/hooks/useChat';
 
 interface MessageInputProps {
-  onSend: (content: string) => void;
+  onSend: (content: string, mentionedUserIds?: number[]) => void;
   onTyping: () => void;
   replyTo: ChatMessage | null;
   onCancelReply: () => void;
   disabled?: boolean;
   className?: string;
+  /** Group conversation members for @mention picker */
+  groupMembers?: MentionMember[];
+  /** Whether this is a group conversation */
+  isGroup?: boolean;
 }
 
 /**
  * Chat message input with auto-expanding textarea, send button,
  * placeholder buttons for attachments (+) and voice (mic),
- * and reply preview bar.
+ * reply preview bar, and @mention picker for group conversations.
  */
 export function MessageInput({
   onSend,
@@ -26,8 +31,16 @@ export function MessageInput({
   onCancelReply,
   disabled = false,
   className,
+  groupMembers = [],
+  isGroup = false,
 }: MessageInputProps) {
   const [text, setText] = useState('');
+  const [mentionState, setMentionState] = useState<{
+    active: boolean;
+    query: string;
+    startIndex: number;
+  }>({ active: false, query: '', startIndex: -1 });
+  const [mentionedUserIds, setMentionedUserIds] = useState<number[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea
@@ -44,40 +57,142 @@ export function MessageInput({
     if (replyTo) textareaRef.current?.focus();
   }, [replyTo]);
 
+  // Detect @ mentions in text
+  const detectMention = useCallback(
+    (value: string, cursorPos: number) => {
+      if (!isGroup || groupMembers.length === 0) {
+        setMentionState({ active: false, query: '', startIndex: -1 });
+        return;
+      }
+
+      // Look backwards from cursor for an "@" character
+      const textBefore = value.slice(0, cursorPos);
+      const atIndex = textBefore.lastIndexOf('@');
+
+      if (atIndex === -1) {
+        setMentionState({ active: false, query: '', startIndex: -1 });
+        return;
+      }
+
+      // Check that "@" is at start of text or preceded by whitespace
+      if (atIndex > 0 && !/\s/.test(textBefore[atIndex - 1])) {
+        setMentionState({ active: false, query: '', startIndex: -1 });
+        return;
+      }
+
+      // Get text after "@" up to cursor
+      const query = textBefore.slice(atIndex + 1);
+
+      // If query contains spaces that don't match any member, dismiss
+      if (query.length > 30) {
+        setMentionState({ active: false, query: '', startIndex: -1 });
+        return;
+      }
+
+      setMentionState({ active: true, query, startIndex: atIndex });
+    },
+    [isGroup, groupMembers.length]
+  );
+
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setText(e.target.value);
+      const value = e.target.value;
+      setText(value);
       onTyping();
+      detectMention(value, e.target.selectionStart ?? value.length);
     },
-    [onTyping]
+    [onTyping, detectMention]
   );
+
+  const handleSelect = useCallback(
+    (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+      const target = e.target as HTMLTextAreaElement;
+      detectMention(text, target.selectionStart ?? text.length);
+    },
+    [text, detectMention]
+  );
+
+  // Handle mention selection
+  const handleMentionSelect = useCallback(
+    (member: MentionMember) => {
+      if (mentionState.startIndex < 0) return;
+
+      // Replace @query with @display_name
+      const before = text.slice(0, mentionState.startIndex);
+      const after = text.slice(mentionState.startIndex + 1 + mentionState.query.length);
+      const newText = `${before}@${member.display_name} ${after}`;
+
+      setText(newText);
+      setMentionState({ active: false, query: '', startIndex: -1 });
+
+      // Track mentioned user ID
+      setMentionedUserIds((prev) =>
+        prev.includes(member.id) ? prev : [...prev, member.id]
+      );
+
+      // Move cursor to after the inserted mention
+      setTimeout(() => {
+        const el = textareaRef.current;
+        if (el) {
+          const pos = mentionState.startIndex + member.display_name.length + 2; // +2 for @ and space
+          el.selectionStart = pos;
+          el.selectionEnd = pos;
+          el.focus();
+        }
+      }, 0);
+    },
+    [text, mentionState]
+  );
+
+  const dismissMention = useCallback(() => {
+    setMentionState({ active: false, query: '', startIndex: -1 });
+  }, []);
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    onSend(trimmed);
+    onSend(trimmed, mentionedUserIds.length > 0 ? mentionedUserIds : undefined);
     setText('');
+    setMentionedUserIds([]);
+    setMentionState({ active: false, query: '', startIndex: -1 });
     // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
-  }, [text, onSend]);
+  }, [text, onSend, mentionedUserIds]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Dismiss mention picker on Escape
+      if (e.key === 'Escape' && mentionState.active) {
+        e.preventDefault();
+        dismissMention();
+        return;
+      }
       // Send on Enter (desktop), Shift+Enter for newline
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleSend();
       }
     },
-    [handleSend]
+    [handleSend, mentionState.active, dismissMention]
   );
 
   const hasText = text.trim().length > 0;
 
   return (
-    <div className={cn('border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900', className)}>
+    <div className={cn('relative border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900', className)}>
+      {/* Mention picker (above input) */}
+      {isGroup && (
+        <MentionPicker
+          isOpen={mentionState.active}
+          members={groupMembers}
+          query={mentionState.query}
+          onSelect={handleMentionSelect}
+          onDismiss={dismissMention}
+        />
+      )}
+
       {/* Reply preview bar */}
       {replyTo && (
         <div className="flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 px-4 py-2">
@@ -121,6 +236,7 @@ export function MessageInput({
             value={text}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
+            onSelect={handleSelect}
             placeholder="Message..."
             disabled={disabled}
             rows={1}

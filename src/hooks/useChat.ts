@@ -83,6 +83,7 @@ interface SendMessageOptions {
   type?: 'text' | 'media' | 'voice' | 'shared_post';
   reply_to_id?: number | null;
   shared_post_id?: number | null;
+  mentioned_user_ids?: number[];
   media?: Array<{
     media_url: string;
     media_type: 'image' | 'video' | 'voice';
@@ -220,6 +221,9 @@ export function useChat(conversationId: number) {
         if (options?.reply_to_id) body.reply_to_id = options.reply_to_id;
         if (options?.shared_post_id) body.shared_post_id = options.shared_post_id;
         if (options?.media) body.media = options.media;
+        if (options?.mentioned_user_ids && options.mentioned_user_ids.length > 0) {
+          body.mentioned_user_ids = options.mentioned_user_ids;
+        }
 
         const res = await fetch(`/api/chat/conversations/${conversationId}/messages`, {
           method: 'POST',

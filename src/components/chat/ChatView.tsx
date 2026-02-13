@@ -123,10 +123,30 @@ export function ChatView({
     }
   }, [loadMore, loadingMore, hasMore]);
 
+  // Build group members list for mention picker
+  const groupMembers = useMemo(() => {
+    if (conversationType !== 'group') return [];
+    return participants.map((p) => ({
+      id: p.id,
+      username: p.username,
+      display_name: p.display_name,
+      avatar_url: p.avatar_url,
+      avatar_color: p.avatar_color,
+    }));
+  }, [participants, conversationType]);
+
   // Send handler
   const handleSend = useCallback(
-    (content: string) => {
-      sendMessage(content, replyTo ? { reply_to_id: replyTo.id } : undefined);
+    (content: string, mentionedUserIds?: number[]) => {
+      const options: {
+        reply_to_id?: number;
+        mentioned_user_ids?: number[];
+      } = {};
+      if (replyTo) options.reply_to_id = replyTo.id;
+      if (mentionedUserIds && mentionedUserIds.length > 0) {
+        options.mentioned_user_ids = mentionedUserIds;
+      }
+      sendMessage(content, options);
     },
     [sendMessage, replyTo]
   );
@@ -264,6 +284,8 @@ export function ChatView({
         onTyping={emitTyping}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
+        isGroup={conversationType === 'group'}
+        groupMembers={groupMembers}
       />
 
       {/* Context menu */}
