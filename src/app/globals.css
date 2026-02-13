@@ -3,9 +3,9 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
-  --color-primary: #6366F1;
-  --color-primary-light: #818CF8;
-  --color-primary-dark: #4F46E5;
+  --color-primary: #62BEBA;
+  --color-primary-light: #8AD0CD;
+  --color-primary-dark: #4A9E9B;
   --color-accent: #EC4899;
   --color-surface: #FFFFFF;
   --color-surface-dark: #1A1A2E;
@@ -24,3 +24,21 @@ body {
   color: var(--color-text);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Hide scrollbar utility (Firefox handled via scrollbar-width: none inline) */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Chat typing indicator bounce animation */
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
