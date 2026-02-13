@@ -6,33 +6,34 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Daily inspirational content delivery and faith-based community connection — users come back every day for their daily post and stay to engage with their community.
 
-**Current focus:** Phase 2 - Core Social (In progress)
+**Current focus:** Phase 3 - Real-Time (In progress)
 
 ## Current Position
 
-Phase: 2 of 6 (Core Social)
-Plan: 13 of 14 complete
+Phase: 3 of 6 (Real-Time)
+Plan: 2 of 13 complete
 Status: In progress
-Last activity: 2026-02-12 — Completed 02-10-PLAN.md (Feed Page UI)
+Last activity: 2026-02-13 — Completed 03-02-PLAN.md (Chat Database Schema & Models)
 
-Progress: [█████████████░] 13/14 plans (93%)
+Progress: [████████████████████████████░░░░░░░░░░░░░] 28/39 plans (72%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 25
+- Total plans completed: 28
 - Average duration: 5 min
-- Total execution time: 136 min
+- Total execution time: 139 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
-| 02-core-social | 13/14 | 73 min | 6 min |
+| 02-core-social | 14/14 | 73 min | 5 min |
+| 03-real-time | 2/13 | 3 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-06 (5 min), 02-11 (5 min), 02-12 (9 min), 02-13 (10 min), 02-10 (12 min)
+- Last 5 plans: 02-11 (5 min), 02-12 (9 min), 02-13 (10 min), 02-10 (12 min), 03-02 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -137,6 +138,11 @@ Recent decisions affecting current work:
 - **Deterministic gradient selection:** TextPostGradient uses postId % 10 for consistent gradient per post across re-renders
 - **TikTok mode hides search:** Search bar omitted in TikTok feed mode for immersive full-screen experience
 - **MediaCarousel IntersectionObserver:** Videos autoplay muted when 50% visible, pause when scrolled away
+- **Chat denormalized last_message:** Conversations store last_message_id/last_message_at for fast inbox sorting (no FK to avoid circular dep)
+- **MessageStatus no timestamps:** Per-recipient delivered/read tracking uses only status_at, no created_at/updated_at
+- **ConversationParticipant soft delete:** deleted_at enables per-user conversation deletion without removing group membership
+- **MessageRequest unique pair:** (requester_id, recipient_id) constraint prevents duplicate messaging requests
+- **Message reaction types match posts:** Same 6 types (like/love/haha/wow/sad/pray) for UI consistency
 
 ### Pending Todos
 
@@ -201,6 +207,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-12T20:38:31Z
-Stopped at: Completed 02-10-PLAN.md (Feed Page UI)
+Last session: 2026-02-13T17:08:00Z
+Stopped at: Completed 03-02-PLAN.md (Chat Database Schema & Models)
 Resume file: None
