@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 3 of 6 (Real-Time)
-Plan: 10 of 13 complete
+Plan: 11 of 13 complete
 Status: In progress
-Last activity: 2026-02-13 — Completed 03-12-PLAN.md (Email Notification System)
+Last activity: 2026-02-13 — Completed 03-11-PLAN.md (Group Chat Features)
 
-Progress: [████████████████████████████████████░░░░░] 36/39 plans (92%)
+Progress: [█████████████████████████████████████░░░░] 37/39 plans (95%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 36
+- Total plans completed: 37
 - Average duration: 5 min
-- Total execution time: 168 min
+- Total execution time: 177 min
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [███████████████████████
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
-| 03-real-time | 10/13 | 32 min | 3 min |
+| 03-real-time | 11/13 | 41 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-06 (2 min), 03-07 (3 min), 03-09 (4 min), 03-10 (6 min), 03-12 (5 min)
+- Last 5 plans: 03-07 (3 min), 03-09 (4 min), 03-10 (6 min), 03-12 (5 min), 03-11 (9 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -183,6 +183,11 @@ Recent decisions affecting current work:
 - **RFC 8058 List-Unsubscribe headers:** All notification emails include List-Unsubscribe and List-Unsubscribe-Post headers for Gmail/Yahoo compliance
 - **Fire-and-forget tracking pixel:** markOpened() runs async without blocking the 1x1 GIF response for email open tracking
 - **Quiet hours timezone-aware:** Uses Intl.DateTimeFormat for user's IANA timezone to check if current time is within quiet hours
+- **Multi-step group create flow:** GroupCreateFlow uses 2-step overlay (name+photo, then member selection) via createPortal
+- **Follower-only group add:** Server validates added user is in creator's followers via Follow model check
+- **System messages for membership:** Member add/remove/leave creates Message with type='system', rendered centered without bubble
+- **@mention cursor detection:** MessageInput detects "@" preceded by whitespace, shows MentionPicker filtered by query after @
+- **Mention notifications via createNotification:** Messages API creates MENTION type notifications for mentioned participants
 
 ### Pending Todos
 
@@ -247,6 +252,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-13T17:41:00Z
-Stopped at: Completed 03-12-PLAN.md (Email Notification System)
+Last session: 2026-02-13T17:44:00Z
+Stopped at: Completed 03-11-PLAN.md (Group Chat Features)
 Resume file: None
