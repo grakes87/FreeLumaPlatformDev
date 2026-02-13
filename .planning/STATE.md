@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 3 of 6 (Real-Time)
-Plan: 11 of 13 complete
-Status: In progress
-Last activity: 2026-02-13 — Completed 03-11-PLAN.md (Group Chat Features)
+Plan: 13 of 13 complete
+Status: Phase complete
+Last activity: 2026-02-13 — Completed 03-13-PLAN.md (App Integration)
 
-Progress: [█████████████████████████████████████░░░░] 37/39 plans (95%)
+Progress: [███████████████████████████████████████░░] 39/39 plans (100% Phase 3)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 37
+- Total plans completed: 39
 - Average duration: 5 min
-- Total execution time: 177 min
+- Total execution time: 185 min
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [███████████████████████
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
-| 03-real-time | 11/13 | 41 min | 4 min |
+| 03-real-time | 13/13 | 49 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-07 (3 min), 03-09 (4 min), 03-10 (6 min), 03-12 (5 min), 03-11 (9 min)
+- Last 5 plans: 03-10 (6 min), 03-12 (5 min), 03-11 (9 min), 03-12 (5 min), 03-13 (8 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -188,6 +188,12 @@ Recent decisions affecting current work:
 - **System messages for membership:** Member add/remove/leave creates Message with type='system', rendered centered without bubble
 - **@mention cursor detection:** MessageInput detects "@" preceded by whitespace, shows MentionPicker filtered by query after @
 - **Mention notifications via createNotification:** Messages API creates MENTION type notifications for mentioned participants
+- **Chat badge polling hook:** useChatUnreadBadge polls conversations every 60s + window focus for TopBar red dot
+- **Per-category email toggles in settings UI:** 4 separate toggle rows for DM, follow, prayer, daily reminder emails
+- **Messaging access grid in settings:** 2x2 grid selector for everyone/followers/mutual/nobody
+- **Profile message button with access rules:** Creates/finds conversation on tap; disabled based on messagingAccess setting
+- **Non-fatal notification creation pattern:** All createNotification() calls in API routes wrapped in try/catch
+- **Social actions trigger notifications:** Follow, reaction, comment, and prayer API routes call createNotification() on success
 
 ### Pending Todos
 
@@ -252,6 +258,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-13T17:44:00Z
-Stopped at: Completed 03-11-PLAN.md (Group Chat Features)
+Last session: 2026-02-13T17:45:00Z
+Stopped at: Completed 03-13-PLAN.md (App Integration) -- Phase 3 COMPLETE
 Resume file: None
