@@ -169,6 +169,10 @@ Recent decisions affecting current work:
 - **Custom chat relative timestamps:** formatRelativeTime uses now/2m/1h/Yesterday/3d format for Instagram DM-style compact display
 - **Presence bulk query pattern:** usePresence emits presence:query with userIds[] on mount for single-roundtrip initial status
 - **UserPicker createPortal overlay:** Full-screen user picker via createPortal to body, consistent with Modal/PostComposer pattern
+- **Immersive chat page:** Chat conversation page sets ImmersiveContext to hide bottom nav; uses fixed inset-0 z-40 full-screen layout
+- **Optimistic message insert:** Messages inserted with negative temp IDs, reconciled with server response on send success
+- **Two-minute message grouping:** Consecutive same-sender messages within 2 min share avatar and single timestamp (Instagram DM style)
+- **Typing emit debounce:** typing:start emitted immediately, typing:stop auto-sent after 2s of inactivity
 
 ### Pending Todos
 
@@ -233,6 +237,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-13T17:26:00Z
-Stopped at: Completed 03-09-PLAN.md (Voice Messages & Media Attachment)
+Last session: 2026-02-13T17:28:00Z
+Stopped at: Completed 03-08-PLAN.md (Chat Conversation View)
 Resume file: None
