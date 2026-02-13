@@ -2,6 +2,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import type { Namespace } from 'socket.io';
 import { authMiddleware } from '@/lib/socket/auth';
 import { presenceManager } from '@/lib/socket/presence';
+import { registerChatHandlers } from '@/lib/socket/chat';
 
 // Extend globalThis for the Socket.IO instance
 declare global {
@@ -30,17 +31,8 @@ function setupNamespaces(io: SocketIOServer): void {
     // Join user-specific room for targeted messages
     socket.join(`user:${userId}`);
 
-    // Broadcast presence to other connected users
-    chatNs.emit('presence:update', { userId, status: 'online' });
-
-    socket.on('disconnect', () => {
-      const wentOffline = presenceManager.removeSocket(userId, socket.id);
-      if (wentOffline) {
-        chatNs.emit('presence:update', { userId, status: 'offline' });
-      }
-    });
-
-    // Placeholder: chat handlers will be registered in 03-05
+    // Register all chat event handlers (typing, read receipts, presence, rooms)
+    registerChatHandlers(chatNs, socket);
   });
 
   // --- /notifications namespace ---
