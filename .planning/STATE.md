@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 3 of 6 (Real-Time)
-Plan: 3 of 13 complete
+Plan: 5 of 13 complete
 Status: In progress
-Last activity: 2026-02-13 — Completed 03-03-PLAN.md (Notification & Email Data Layer)
+Last activity: 2026-02-13 — Completed 03-05-PLAN.md (Chat Namespace Handlers)
 
-Progress: [█████████████████████████████░░░░░░░░░░░░] 29/39 plans (74%)
+Progress: [██████████████████████████████░░░░░░░░░░░] 31/39 plans (79%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 30
+- Total plans completed: 31
 - Average duration: 5 min
-- Total execution time: 146 min
+- Total execution time: 148 min
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [███████████████████████
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
-| 03-real-time | 4/13 | 10 min | 3 min |
+| 03-real-time | 5/13 | 12 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-13 (10 min), 02-10 (12 min), 03-02 (3 min), 03-01 (4 min), 03-03 (3 min)
-- Trend: Stable
+- Last 5 plans: 02-10 (12 min), 03-02 (3 min), 03-01 (4 min), 03-03 (3 min), 03-05 (2 min)
+- Trend: Stable (fast)
 
 *Updated after each plan completion*
 
@@ -152,6 +152,10 @@ Recent decisions affecting current work:
 - **Lazy namespace setup:** getIO() lazily sets up /chat and /notifications namespaces with idempotent guard for HMR safety
 - **Dual globalThis guard:** Module-level + globalThis.__ioNamespacesReady flags handle both production and dev HMR namespace readiness
 - **Cookie-based WebSocket auth:** Socket.IO auth middleware reads auth_token from HTTP cookie header, same as REST API auth
+- **Room-per-conversation targeting:** Chat events target conv:{id} rooms only, never broadcast to namespace
+- **Auto-join conversation rooms on connect:** Users join all active conversation rooms on socket connection for immediate delivery
+- **Volatile typing indicators:** typing:start/stop use socket.to().volatile.emit() for droppable delivery
+- **Batch read receipt pattern:** Single conversation:read event updates ConversationParticipant.last_read_at + batch MessageStatus for 1:1
 
 ### Pending Todos
 
@@ -216,6 +220,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-13T17:10:00Z
-Stopped at: Completed 03-03-PLAN.md (Notification & Email Data Layer)
+Last session: 2026-02-13T17:16:00Z
+Stopped at: Completed 03-05-PLAN.md (Chat Namespace Handlers)
 Resume file: None
