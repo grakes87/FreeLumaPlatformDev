@@ -27,7 +27,8 @@ function getTransporter() {
 export async function sendEmail(
   to: string,
   subject: string,
-  html: string
+  html: string,
+  headers?: Record<string, string>
 ): Promise<void> {
   const transporter = getTransporter();
 
@@ -37,13 +38,24 @@ export async function sendEmail(
     console.log(`To: ${to}`);
     console.log(`Subject: ${subject}`);
     console.log(`HTML length: ${html.length} chars`);
+    if (headers) {
+      console.log('Custom headers:', JSON.stringify(headers));
+    }
     // Extract any URLs from the HTML for easy dev testing
     const urlMatch = html.match(/href="(https?:\/\/[^"]+)"/g);
     if (urlMatch) {
       console.log('Links found:');
       urlMatch.forEach((match) => {
         const url = match.replace(/href="/, '').replace(/"$/, '');
-        if (url.includes('reset-password') || url.includes('verify-email')) {
+        if (
+          url.includes('reset-password') ||
+          url.includes('verify-email') ||
+          url.includes('unsubscribe') ||
+          url.includes('/chat/') ||
+          url.includes('/profile/') ||
+          url.includes('/prayer-wall') ||
+          url.includes('/daily')
+        ) {
           console.log(`  => ${url}`);
         }
       });
@@ -57,6 +69,7 @@ export async function sendEmail(
     to,
     subject,
     html,
+    headers,
   });
 }
 

@@ -31,5 +31,14 @@ app.prepare().then(() => {
 
   httpServer.listen(port, hostname, () => {
     console.log(`> Ready on http://${hostname}:${port}`);
+
+    // Initialize email scheduler after a brief delay to allow Next.js module compilation.
+    // The scheduler self-registers on globalThis.__initEmailScheduler when imported.
+    // Also initialized from socket/index.ts setupNamespaces() as a fallback.
+    setTimeout(() => {
+      if (globalThis.__initEmailScheduler) {
+        globalThis.__initEmailScheduler();
+      }
+    }, 5000);
   });
 });

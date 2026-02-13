@@ -57,6 +57,13 @@ function setupNamespaces(io: SocketIOServer): void {
   if (process.env.NODE_ENV !== 'production') {
     globalThis.__ioNamespacesReady = true;
   }
+
+  // Initialize email scheduler cron jobs (idempotent — safe to call multiple times)
+  import('@/lib/email/scheduler').then(({ initEmailScheduler }) => {
+    initEmailScheduler();
+  }).catch((err) => {
+    console.error('[Socket] Failed to initialize email scheduler:', err);
+  });
 }
 
 /**
