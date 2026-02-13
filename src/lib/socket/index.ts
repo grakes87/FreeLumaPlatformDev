@@ -3,6 +3,7 @@ import type { Namespace } from 'socket.io';
 import { authMiddleware } from '@/lib/socket/auth';
 import { presenceManager } from '@/lib/socket/presence';
 import { registerChatHandlers } from '@/lib/socket/chat';
+import { registerNotificationHandlers } from '@/lib/socket/notifications';
 
 // Extend globalThis for the Socket.IO instance
 declare global {
@@ -43,6 +44,9 @@ function setupNamespaces(io: SocketIOServer): void {
 
     // Join user-specific room for targeted notifications
     socket.join(`user:${userId}`);
+
+    // Register notification event handlers (mark-read, mark-all-read)
+    registerNotificationHandlers(notifNs, socket);
 
     socket.on('disconnect', () => {
       // Presence is tracked on the chat namespace; notifications just needs room membership
