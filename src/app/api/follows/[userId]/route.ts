@@ -81,6 +81,22 @@ export const POST = withAuth(async (_req: NextRequest, context: AuthContext) => 
       status,
     });
 
+    // Create notification for follow or follow request
+    try {
+      const { createNotification } = await import('@/lib/notifications/create');
+      const { NotificationType, NotificationEntityType } = await import('@/lib/notifications/types');
+      await createNotification({
+        recipient_id: targetId,
+        actor_id: userId,
+        type: status === 'active' ? NotificationType.FOLLOW : NotificationType.FOLLOW_REQUEST,
+        entity_type: NotificationEntityType.FOLLOW,
+        entity_id: follow.id,
+        preview_text: status === 'active' ? 'started following you' : 'sent you a follow request',
+      });
+    } catch {
+      // Non-fatal: notification failure should not block the follow action
+    }
+
     return successResponse({ status: follow.status, following_id: follow.id }, 201);
   } catch (error) {
     return serverError(error, 'Failed to follow user');

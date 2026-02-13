@@ -55,6 +55,7 @@ export default function ChatConversationPage({
   const [conversation, setConversation] = useState<ConversationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
   const [showGroupInfo, setShowGroupInfo] = useState(false);
 
@@ -66,7 +67,7 @@ export default function ChatConversationPage({
     return () => setImmersive(false);
   }, [setImmersive]);
 
-  // Fetch conversation info
+  // Fetch conversation info and check for blocks
   const fetchConversation = useCallback(async () => {
     if (isNaN(conversationId)) {
       setError(true);
@@ -78,6 +79,12 @@ export default function ChatConversationPage({
       const res = await fetch(`/api/chat/conversations/${conversationId}`, {
         credentials: 'include',
       });
+      if (res.status === 403) {
+        // Blocked or unavailable
+        setBlocked(true);
+        setLoading(false);
+        return;
+      }
       if (!res.ok) throw new Error('Not found');
       const data = await res.json();
       setConversation(data);
@@ -167,6 +174,32 @@ export default function ChatConversationPage({
   const handleGroupUpdated = useCallback(() => {
     fetchConversation();
   }, [fetchConversation]);
+
+  // Blocked state
+  if (blocked) {
+    return (
+      <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-gray-900">
+        <ChatHeader
+          displayName="Unavailable"
+          onBack={() => router.push('/chat')}
+        />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="text-center px-6">
+            <p className="text-gray-500 dark:text-gray-400">
+              This conversation is unavailable
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push('/chat')}
+              className="mt-3 text-sm text-primary"
+            >
+              Back to messages
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Error state
   if (error || isNaN(conversationId)) {

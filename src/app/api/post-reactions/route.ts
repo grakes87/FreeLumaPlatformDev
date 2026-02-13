@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
-import { PostReaction } from '@/lib/db/models';
+import { PostReaction, Post } from '@/lib/db/models';
 import { REACTION_TYPES } from '@/lib/utils/constants';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 import { fn, col } from 'sequelize';
@@ -91,8 +91,28 @@ export const POST = withAuth(
         }
       }
 
-      // No existing reaction — create
+      // No existing reaction -- create
       await PostReaction.create({ user_id, post_id, reaction_type });
+
+      // Create notification for post owner
+      try {
+        const post = await Post.findByPk(post_id, { attributes: ['id', 'user_id'] });
+        if (post && post.user_id !== user_id) {
+          const { createNotification } = await import('@/lib/notifications/create');
+          const { NotificationType, NotificationEntityType } = await import('@/lib/notifications/types');
+          await createNotification({
+            recipient_id: post.user_id,
+            actor_id: user_id,
+            type: NotificationType.REACTION,
+            entity_type: NotificationEntityType.POST,
+            entity_id: post_id,
+            preview_text: `reacted ${reaction_type} to your post`,
+          });
+        }
+      } catch {
+        // Non-fatal
+      }
+
       return successResponse({ action: 'created', reaction_type });
     } catch (error) {
       return serverError(error, 'Failed to toggle post reaction');

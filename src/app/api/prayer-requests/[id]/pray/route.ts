@@ -102,11 +102,33 @@ export const POST = withAuth(
           return {
             action: 'added' as const,
             pray_count: prayerRequest.pray_count,
+            post_user_id: post.user_id,
           };
         }
       });
 
-      return successResponse(result);
+      // Create notification for prayer request author when someone prays
+      if (result.action === 'added' && result.post_user_id !== userId) {
+        try {
+          const { createNotification } = await import('@/lib/notifications/create');
+          const { NotificationType, NotificationEntityType } = await import('@/lib/notifications/types');
+          await createNotification({
+            recipient_id: result.post_user_id,
+            actor_id: userId,
+            type: NotificationType.PRAYER,
+            entity_type: NotificationEntityType.PRAYER_REQUEST,
+            entity_id: prayerRequestId,
+            preview_text: 'prayed for your prayer request',
+          });
+        } catch {
+          // Non-fatal
+        }
+      }
+
+      return successResponse({
+        action: result.action,
+        pray_count: result.pray_count,
+      });
     } catch (error) {
       return serverError(error, 'Failed to toggle prayer support');
     }

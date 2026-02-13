@@ -35,7 +35,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
         {
           model: User,
           as: 'follower',
-          attributes: ['id', 'display_name', 'username', 'avatar_url', 'avatar_color', 'bio'],
+          attributes: ['id', 'display_name', 'username', 'avatar_url', 'avatar_color', 'bio', 'is_verified'],
         },
       ],
       order: [['id', 'DESC']],
@@ -84,6 +84,23 @@ export const PUT = withAuth(async (req: NextRequest, context: AuthContext) => {
 
     if (action === 'accept') {
       await follow.update({ status: 'active' });
+
+      // Notify the follower that their request was accepted
+      try {
+        const { createNotification } = await import('@/lib/notifications/create');
+        const { NotificationType, NotificationEntityType } = await import('@/lib/notifications/types');
+        await createNotification({
+          recipient_id: follower_id,
+          actor_id: context.user.id,
+          type: NotificationType.FOLLOW,
+          entity_type: NotificationEntityType.FOLLOW,
+          entity_id: follow.id,
+          preview_text: 'accepted your follow request',
+        });
+      } catch {
+        // Non-fatal
+      }
+
       return successResponse({ accepted: true });
     } else {
       await follow.destroy();

@@ -1,15 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Lock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { cn } from '@/lib/utils/cn';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/ProfileTabs';
+import { ProfileGridItem } from '@/components/profile/ProfileGridItem';
+import { ProfilePostViewer } from '@/components/profile/ProfilePostViewer';
 import { FollowList } from '@/components/profile/FollowList';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
-import { encodeCursor } from '@/lib/utils/cursor';
 
 interface ProfileData {
   user: {
@@ -32,8 +32,11 @@ interface ProfileData {
     post_count: number;
     follower_count: number;
     following_count: number;
+    like_count: number;
+    view_count: number;
   };
   relationship: 'self' | 'following' | 'pending' | 'none' | 'follows_you';
+  messaging_access?: 'everyone' | 'followers' | 'mutual' | 'nobody';
   posts: {
     items: Array<Record<string, unknown>>;
     next_cursor: string | null;
@@ -49,22 +52,32 @@ interface ProfileData {
 export default function UserProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user: currentUser } = useAuth();
   const username = params.username as string;
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
+  const initialTab = (searchParams.get('tab') as ProfileTab) || 'posts';
+  const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab);
   const [tabItems, setTabItems] = useState<Array<Record<string, unknown>>>([]);
   const [tabCursor, setTabCursor] = useState<string | null>(null);
   const [tabHasMore, setTabHasMore] = useState(false);
   const [tabLoading, setTabLoading] = useState(false);
 
   const [followListType, setFollowListType] = useState<'followers' | 'following' | null>(null);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const isOwnProfile = !!(currentUser && profile && profile.relationship === 'self');
   const isPrivate = profile?.posts === null && profile?.user.profile_privacy === 'private';
+
+  // Redirect to /profile if viewing own profile
+  useEffect(() => {
+    if (isOwnProfile) {
+      router.replace('/profile');
+    }
+  }, [isOwnProfile, router]);
 
   // Fetch profile data
   const fetchProfile = useCallback(async (tab: ProfileTab = 'posts') => {
@@ -112,6 +125,9 @@ export default function UserProfilePage() {
   // Tab change handler
   const handleTabChange = useCallback(async (tab: ProfileTab) => {
     setActiveTab(tab);
+    // Persist tab in URL for back-navigation
+    const url = tab === 'posts' ? `/profile/${username}` : `/profile/${username}?tab=${tab}`;
+    router.replace(url, { scroll: false });
     setTabLoading(true);
     setTabItems([]);
     setTabCursor(null);
@@ -165,14 +181,14 @@ export default function UserProfilePage() {
   }, [username, activeTab, tabCursor, tabHasMore, tabLoading]);
 
   // Infinite scroll sentinel
-  const { ref: sentinelRef } = useInfiniteScroll();
+  const { ref: sentinelRef, inView } = useInfiniteScroll();
 
-  // Trigger loadMore when sentinel is in view
+  // Trigger loadMore when sentinel scrolls into view
   useEffect(() => {
-    if (tabHasMore && !tabLoading) {
-      // The sentinel observer triggers via useInfiniteScroll
+    if (inView && tabHasMore && !tabLoading) {
+      loadMore();
     }
-  }, [tabHasMore, tabLoading]);
+  }, [inView, tabHasMore, tabLoading, loadMore]);
 
   if (loading) {
     return (
@@ -205,6 +221,7 @@ export default function UserProfilePage() {
         stats={profile.stats}
         relationship={profile.relationship}
         isOwnProfile={isOwnProfile}
+        messagingAccess={profile.messaging_access}
         onEditProfile={() => router.push('/profile/edit')}
         onFollowersTap={() => setFollowListType('followers')}
         onFollowingTap={() => setFollowListType('following')}
@@ -247,36 +264,27 @@ export default function UserProfilePage() {
                 </p>
               </div>
             ) : (
-              <div>
-                {tabItems.map((item, index) => (
-                  <ProfilePostItem
-                    key={`${activeTab}-${(item as { id?: number }).id || index}`}
-                    item={item}
-                    tab={activeTab}
-                  />
-                ))}
+              <>
+                <div className="grid grid-cols-3 gap-0.5">
+                  {tabItems.map((item, index) => (
+                    <ProfileGridItem
+                      key={`${activeTab}-${(item as { id?: number }).id || index}`}
+                      item={item}
+                      tab={activeTab}
+                      onClick={() => setViewerIndex(index)}
+                    />
+                  ))}
+                </div>
 
                 {/* Infinite scroll sentinel */}
                 {tabHasMore && (
-                  <div
-                    ref={sentinelRef}
-                    className="flex justify-center py-4"
-                    onClick={loadMore}
-                  >
-                    {tabLoading ? (
-                      <Loader2 className="h-5 w-5 animate-spin text-text-muted" />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={loadMore}
-                        className="text-sm text-primary hover:underline"
-                      >
-                        Load more
-                      </button>
+                  <div ref={sentinelRef} className="flex justify-center py-4">
+                    {tabLoading && (
+                      <Loader2 className="h-5 w-5 animate-spin text-text-muted dark:text-text-muted-dark" />
                     )}
                   </div>
                 )}
-              </div>
+              </>
             )}
           </div>
         </>
@@ -291,102 +299,20 @@ export default function UserProfilePage() {
           onClose={() => setFollowListType(null)}
         />
       )}
-    </div>
-  );
-}
 
-/**
- * A simplified post preview for profile tab content.
- * Shows author, body preview, timestamp, and engagement counts.
- */
-function ProfilePostItem({
-  item,
-  tab,
-}: {
-  item: Record<string, unknown>;
-  tab: ProfileTab;
-}) {
-  const router = useRouter();
-
-  // For reposts, the item has quotePost + originalPost
-  // For saved, the item has a nested post
-  // For posts, the item IS the post
-  let post: Record<string, unknown> | null = null;
-  let author: Record<string, unknown> | null = null;
-
-  if (tab === 'saved') {
-    post = (item.post as Record<string, unknown>) || null;
-    author = post ? (post.user as Record<string, unknown>) || null : null;
-  } else if (tab === 'reposts') {
-    const quotePost = item.quotePost as Record<string, unknown> | null;
-    const originalPost = item.originalPost as Record<string, unknown> | null;
-    post = quotePost || originalPost || null;
-    author = post ? (post.user as Record<string, unknown>) || null : null;
-  } else {
-    post = item;
-    author = (item.user as Record<string, unknown>) || null;
-  }
-
-  if (!post) return null;
-
-  const body = (post.body as string) || '';
-  const createdAt = post.created_at
-    ? new Date(post.created_at as string).toLocaleDateString()
-    : '';
-  const reactionCount = (post.reaction_count as number) || 0;
-  const commentCount = (post.comment_count as number) || 0;
-  const authorName = author ? String(author.display_name ?? '') : '';
-  const authorUsername = author ? String(author.username ?? '') : '';
-  const hasRepost = tab === 'reposts' && item.originalPost != null;
-
-  return (
-    <div
-      className={cn(
-        'border-b border-border px-4 py-3 dark:border-border-dark',
-        'hover:bg-slate-50 dark:hover:bg-slate-800/30 cursor-pointer transition-colors'
-      )}
-      onClick={() => {
-        // Navigate to post detail (future)
-      }}
-    >
-      {/* Author info */}
-      {authorName && (
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-semibold text-text dark:text-text-dark">
-            {authorName}
-          </span>
-          <span className="text-xs text-text-muted dark:text-text-muted-dark">
-            @{authorUsername}
-          </span>
-          <span className="text-xs text-text-muted dark:text-text-muted-dark">
-            {createdAt}
-          </span>
-        </div>
-      )}
-
-      {/* Repost indicator */}
-      {hasRepost && (
-        <p className="mb-1 text-xs text-text-muted dark:text-text-muted-dark">
-          Reposted
-        </p>
-      )}
-
-      {/* Body */}
-      <p className="text-sm text-text dark:text-text-dark line-clamp-3">
-        {body}
-      </p>
-
-      {/* Engagement counts */}
-      {(reactionCount > 0 || commentCount > 0) && (
-        <div className="mt-1.5 flex gap-4 text-xs text-text-muted dark:text-text-muted-dark">
-          {reactionCount > 0 && (
-            <span>{reactionCount} reaction{reactionCount !== 1 ? 's' : ''}</span>
-          )}
-          {commentCount > 0 && (
-            <span>{commentCount} comment{commentCount !== 1 ? 's' : ''}</span>
-          )}
-        </div>
+      {/* TikTok-style post viewer */}
+      {viewerIndex !== null && (
+        <ProfilePostViewer
+          items={tabItems}
+          tab={activeTab}
+          startIndex={viewerIndex}
+          currentUserId={currentUser?.id ?? null}
+          hasMore={tabHasMore}
+          onLoadMore={loadMore}
+          onClose={() => setViewerIndex(null)}
+        />
       )}
     </div>
   );
 }
+

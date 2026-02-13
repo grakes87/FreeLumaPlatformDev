@@ -1,7 +1,10 @@
 'use client';
 
+import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { MapPin, Link as LinkIcon, Pencil, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 import { InitialsAvatar } from './InitialsAvatar';
 import { ProfileStats } from './ProfileStats';
 import { FollowButton } from '@/components/social/FollowButton';
@@ -14,6 +17,7 @@ interface ProfileUser {
   bio: string | null;
   avatar_url: string | null;
   avatar_color: string;
+  is_verified?: boolean;
   location?: string | null;
   website?: string | null;
 }
@@ -24,9 +28,15 @@ interface ProfileHeaderProps {
     post_count: number;
     follower_count: number;
     following_count: number;
+    like_count: number;
+    view_count: number;
   };
   relationship: 'self' | 'following' | 'pending' | 'none' | 'follows_you';
   isOwnProfile: boolean;
+  /** Whether the current user is blocked by or has blocked this user */
+  isBlocked?: boolean;
+  /** The target user's messaging access preference */
+  messagingAccess?: 'everyone' | 'followers' | 'mutual' | 'nobody';
   onEditProfile?: () => void;
   onFollowersTap?: () => void;
   onFollowingTap?: () => void;
@@ -34,22 +44,89 @@ interface ProfileHeaderProps {
 }
 
 /**
- * Instagram-style profile header with avatar, stats, bio, and action buttons.
+ * TikTok-style profile header with avatar, name, stats, bio, and action buttons.
  */
 export function ProfileHeader({
   user,
   stats,
   relationship,
   isOwnProfile,
+  isBlocked = false,
+  messagingAccess = 'mutual',
   onEditProfile,
   onFollowersTap,
   onFollowingTap,
   className,
 }: ProfileHeaderProps) {
+  const router = useRouter();
+  const [creatingConversation, setCreatingConversation] = useState(false);
+
   const followStatus: FollowStatus =
     relationship === 'following' ? 'active' :
     relationship === 'pending' ? 'pending' :
     'none';
+
+  // Determine if messaging is allowed based on access settings
+  const canMessage = (() => {
+    if (isOwnProfile || isBlocked) return false;
+    if (messagingAccess === 'nobody') return false;
+    if (messagingAccess === 'everyone') return true;
+    if (messagingAccess === 'followers') {
+      // Target allows followers; current user must be following them
+      return relationship === 'following';
+    }
+    if (messagingAccess === 'mutual') {
+      // Both must follow each other
+      return relationship === 'following';
+      // Note: we only know "I follow them" from relationship; mutual detection
+      // is approximate here. The server will enforce the full check.
+    }
+    return false;
+  })();
+
+  const messageDisabledReason =
+    messagingAccess === 'nobody'
+      ? "This user doesn't accept messages"
+      : !canMessage
+        ? 'Follow this user to send a message'
+        : undefined;
+
+  const handleMessageTap = useCallback(async () => {
+    if (!canMessage || creatingConversation) return;
+    setCreatingConversation(true);
+
+    try {
+      // Try to create or find existing conversation
+      const res = await fetch('/api/chat/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          type: 'direct',
+          participant_ids: [user.id],
+        }),
+      });
+
+      if (res.ok || res.status === 200) {
+        const data = await res.json();
+        router.push(`/chat/${data.id || data.conversation?.id}`);
+      } else if (res.status === 202) {
+        // Message request created
+        const data = await res.json();
+        if (data.conversation?.id) {
+          router.push(`/chat/${data.conversation.id}`);
+        } else {
+          router.push('/chat');
+        }
+      } else {
+        // Silently fail - user can try again
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setCreatingConversation(false);
+    }
+  }, [canMessage, creatingConversation, user.id, router]);
 
   const websiteDisplay = user.website
     ? user.website.replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -57,8 +134,8 @@ export function ProfileHeader({
 
   return (
     <div className={cn('px-4 py-4', className)}>
-      {/* Row 1: Avatar + Stats */}
-      <div className="flex items-center gap-6">
+      {/* Row 1: Avatar + Name/Username */}
+      <div className="flex items-center gap-4">
         {/* Avatar */}
         <div className="shrink-0">
           {user.avatar_url ? (
@@ -76,26 +153,28 @@ export function ProfileHeader({
           )}
         </div>
 
-        {/* Stats */}
-        <ProfileStats
-          postCount={stats.post_count}
-          followerCount={stats.follower_count}
-          followingCount={stats.following_count}
-          onFollowersTap={onFollowersTap}
-          onFollowingTap={onFollowingTap}
-          className="flex-1"
-        />
+        {/* Name + Username */}
+        <div className="min-w-0 flex-1">
+          <h1 className="flex items-center gap-1 text-lg font-bold text-text dark:text-text-dark">
+            <span className="truncate">{user.display_name}</span>
+            {user.is_verified && <VerifiedBadge className="h-5 w-5 shrink-0 text-blue-500" />}
+          </h1>
+          <p className="text-sm text-text-muted dark:text-text-muted-dark">
+            @{user.username}
+          </p>
+        </div>
       </div>
 
-      {/* Row 2: Display name + username */}
-      <div className="mt-3">
-        <h1 className="text-base font-bold text-text dark:text-text-dark">
-          {user.display_name}
-        </h1>
-        <p className="text-sm text-text-muted dark:text-text-muted-dark">
-          @{user.username}
-        </p>
-      </div>
+      {/* Row 2: Stats — Following | Followers | Likes */}
+      <ProfileStats
+        followingCount={stats.following_count}
+        followerCount={stats.follower_count}
+        likeCount={stats.like_count}
+        viewCount={stats.view_count}
+        onFollowersTap={onFollowersTap}
+        onFollowingTap={onFollowingTap}
+        className="mt-3"
+      />
 
       {/* Row 3: Bio */}
       {user.bio && (
@@ -150,18 +229,23 @@ export function ProfileHeader({
               size="md"
               className="flex-1 justify-center"
             />
-            <button
-              type="button"
-              disabled
-              className={cn(
-                'flex items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-medium transition-colors',
-                'text-text-muted opacity-50 cursor-not-allowed',
-                'dark:border-border-dark dark:text-text-muted-dark'
-              )}
-              title="Messaging coming in Phase 3"
-            >
-              <MessageCircle className="h-4 w-4" />
-            </button>
+            {!isBlocked && (
+              <button
+                type="button"
+                disabled={!canMessage || creatingConversation}
+                onClick={handleMessageTap}
+                className={cn(
+                  'flex items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-medium transition-colors',
+                  canMessage && !creatingConversation
+                    ? 'text-primary hover:bg-primary/5 dark:text-primary dark:hover:bg-primary/10'
+                    : 'text-text-muted opacity-50 cursor-not-allowed',
+                  'dark:border-border-dark'
+                )}
+                title={messageDisabledReason}
+              >
+                <MessageCircle className="h-4 w-4" />
+              </button>
+            )}
           </>
         )}
       </div>

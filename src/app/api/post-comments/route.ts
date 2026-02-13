@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { Op, literal } from 'sequelize';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
-import { PostComment, Post, User } from '@/lib/db/models';
+import { PostComment, Post, User, Follow } from '@/lib/db/models';
 import { POST_COMMENT_MAX_LENGTH } from '@/lib/utils/constants';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 import { checkAndFlag } from '@/lib/moderation/profanity';
@@ -17,7 +17,7 @@ const createCommentSchema = z.object({
     .max(POST_COMMENT_MAX_LENGTH, `Comment must be ${POST_COMMENT_MAX_LENGTH} characters or less`),
 });
 
-const USER_ATTRIBUTES = ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'] as const;
+const USER_ATTRIBUTES = ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'] as const;
 
 /**
  * GET /api/post-comments
@@ -159,10 +159,21 @@ export const POST = withAuth(
       const { post_id, parent_id, body: commentBody } = parsed.data;
       const userId = context.user.id;
 
-      // Verify post exists
-      const post = await Post.findByPk(post_id, { attributes: ['id'] });
+      // Verify post exists and check visibility
+      const post = await Post.findByPk(post_id, { attributes: ['id', 'user_id', 'visibility'] });
       if (!post) {
         return errorResponse('Post not found', 404);
+      }
+
+      // Enforce followers-only visibility
+      if (post.visibility === 'followers' && post.user_id !== userId) {
+        const isFollowing = await Follow.findOne({
+          where: { follower_id: userId, following_id: post.user_id, status: 'active' },
+          attributes: ['id'],
+        });
+        if (!isFollowing) {
+          return errorResponse('Post not found', 404);
+        }
       }
 
       // Resolve parent for 2-level threading
@@ -203,6 +214,25 @@ export const POST = withAuth(
           },
         ],
       });
+
+      // Create notification for post owner (not for comments on own posts)
+      try {
+        if (post.user_id !== userId) {
+          const { createNotification } = await import('@/lib/notifications/create');
+          const { NotificationType, NotificationEntityType } = await import('@/lib/notifications/types');
+          const previewBody = commentBody.length > 80 ? commentBody.slice(0, 80) + '...' : commentBody;
+          await createNotification({
+            recipient_id: post.user_id,
+            actor_id: userId,
+            type: NotificationType.COMMENT,
+            entity_type: NotificationEntityType.POST,
+            entity_id: post_id,
+            preview_text: `commented: "${previewBody}"`,
+          });
+        }
+      } catch {
+        // Non-fatal
+      }
 
       return successResponse(
         { ...full!.toJSON(), reply_count: 0, replies: [] },

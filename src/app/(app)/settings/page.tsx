@@ -11,6 +11,8 @@ import {
   Moon,
   Monitor,
   ChevronLeft,
+  ChevronDown,
+  Check,
   Lock,
   Eye,
   EyeOff,
@@ -21,6 +23,10 @@ import {
   Clock,
   Info,
   LogOut,
+  MessageCircle,
+  UserPlus,
+  Heart,
+  Send,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils/cn';
@@ -28,22 +34,42 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
-import { TRANSLATIONS, LANGUAGES, MODES } from '@/lib/utils/constants';
+import { LANGUAGES, MODES } from '@/lib/utils/constants';
 
 // ---- Types ----
 
+interface TranslationOption {
+  code: string;
+  name: string;
+  language: string;
+}
+
 interface Settings {
   dark_mode: 'light' | 'dark' | 'system';
-  push_enabled: boolean;
   email_notifications: boolean;
   daily_reminder_time: string;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
   mode: 'bible' | 'positivity';
   language: 'en' | 'es';
   preferred_translation: string;
   timezone: string;
   email: string;
   email_verified: boolean;
+  // Notification preferences (from UserSetting)
+  messaging_access: 'everyone' | 'followers' | 'mutual' | 'nobody';
+  email_dm_notifications: boolean;
+  email_follow_notifications: boolean;
+  email_prayer_notifications: boolean;
+  email_daily_reminder: boolean;
 }
+
+const MESSAGING_ACCESS_OPTIONS = [
+  { value: 'everyone', label: 'Everyone' },
+  { value: 'followers', label: 'Followers' },
+  { value: 'mutual', label: 'Mutual Follows' },
+  { value: 'nobody', label: 'Nobody' },
+] as const;
 
 // ---- Change Password Schema ----
 
@@ -94,10 +120,12 @@ export default function SettingsPage() {
   const router = useRouter();
 
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [translations, setTranslations] = useState<TranslationOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showModeConfirm, setShowModeConfirm] = useState<'bible' | 'positivity' | null>(null);
+  const [showTranslationPicker, setShowTranslationPicker] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   // Debounce timer ref
@@ -115,6 +143,9 @@ export default function SettingsPage() {
         if (res.ok) {
           const data = await res.json();
           setSettings(data.settings);
+          if (data.translations) {
+            setTranslations(data.translations);
+          }
           // Sync saved theme preference to next-themes
           if (data.settings.dark_mode) {
             setTheme(data.settings.dark_mode);
@@ -353,21 +384,103 @@ export default function SettingsPage() {
         {/* Bible Translation (only show for bible mode) */}
         {settings?.mode === 'bible' && (
           <>
-            <div className="flex items-center justify-between px-4 py-3.5">
-              <p className="text-sm font-medium text-text dark:text-text-dark">
-                Default Translation
-              </p>
-              <select
-                value={settings.preferred_translation}
-                onChange={(e) => saveSettings({ preferred_translation: e.target.value })}
-                className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-text dark:border-border-dark dark:bg-background-dark dark:text-text-dark focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                {TRANSLATIONS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+            <div className="px-4 py-3.5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-text dark:text-text-dark">
+                  Default Translation
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowTranslationPicker((v) => !v)}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium transition-colors',
+                    'text-text hover:bg-slate-50',
+                    'dark:border-border-dark dark:text-text-dark dark:hover:bg-slate-800'
+                  )}
+                >
+                  {translations.find((t) => t.code === settings.preferred_translation)?.name ||
+                    settings.preferred_translation}
+                  <ChevronDown className={cn('h-4 w-4 text-text-muted dark:text-text-muted-dark transition-transform', showTranslationPicker && 'rotate-180')} />
+                </button>
+              </div>
+
+              {/* Translation picker list */}
+              {showTranslationPicker && (
+                <div className="mt-3 rounded-xl border border-border dark:border-border-dark overflow-hidden">
+                  {/* English translations */}
+                  {translations.filter((t) => t.language === 'en').length > 0 && (
+                    <>
+                      <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted dark:text-text-muted-dark">
+                        English
+                      </p>
+                      {translations
+                        .filter((t) => t.language === 'en')
+                        .map((t) => {
+                          const isActive = settings.preferred_translation === t.code;
+                          return (
+                            <button
+                              key={t.code}
+                              type="button"
+                              onClick={() => {
+                                saveSettings({ preferred_translation: t.code });
+                                setShowTranslationPicker(false);
+                              }}
+                              className={cn(
+                                'flex w-full items-center justify-between px-3 py-2.5 text-left text-sm transition-colors',
+                                isActive
+                                  ? 'bg-primary/10 text-primary font-medium'
+                                  : 'text-text hover:bg-slate-50 dark:text-text-dark dark:hover:bg-slate-800/50'
+                              )}
+                            >
+                              <div>
+                                <span className="font-medium">{t.code}</span>
+                                <span className="ml-2 text-text-muted dark:text-text-muted-dark">{t.name}</span>
+                              </div>
+                              {isActive && <Check className="h-4 w-4 text-primary" />}
+                            </button>
+                          );
+                        })}
+                    </>
+                  )}
+
+                  {/* Spanish translations */}
+                  {translations.filter((t) => t.language === 'es').length > 0 && (
+                    <>
+                      <div className="mx-3 border-t border-border dark:border-border-dark" />
+                      <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted dark:text-text-muted-dark">
+                        Español
+                      </p>
+                      {translations
+                        .filter((t) => t.language === 'es')
+                        .map((t) => {
+                          const isActive = settings.preferred_translation === t.code;
+                          return (
+                            <button
+                              key={t.code}
+                              type="button"
+                              onClick={() => {
+                                saveSettings({ preferred_translation: t.code });
+                                setShowTranslationPicker(false);
+                              }}
+                              className={cn(
+                                'flex w-full items-center justify-between px-3 py-2.5 text-left text-sm transition-colors',
+                                isActive
+                                  ? 'bg-primary/10 text-primary font-medium'
+                                  : 'text-text hover:bg-slate-50 dark:text-text-dark dark:hover:bg-slate-800/50'
+                              )}
+                            >
+                              <div>
+                                <span className="font-medium">{t.code}</span>
+                                <span className="ml-2 text-text-muted dark:text-text-muted-dark">{t.name}</span>
+                              </div>
+                              {isActive && <Check className="h-4 w-4 text-primary" />}
+                            </button>
+                          );
+                        })}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             <Divider />
           </>
@@ -401,25 +514,82 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      {/* ---- Messaging Section ---- */}
+      <SectionHeader title="Messaging" />
+      <Card padding="sm" className="mb-6 !p-0 overflow-hidden">
+        {/* Messaging Access */}
+        <div className="px-4 py-3.5">
+          <div className="flex items-center gap-2 mb-3">
+            <MessageCircle className="h-4 w-4 text-text-muted dark:text-text-muted-dark" />
+            <p className="text-sm font-medium text-text dark:text-text-dark">
+              Who can message you
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {MESSAGING_ACCESS_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => saveSettings({ messaging_access: opt.value })}
+                className={cn(
+                  'rounded-lg border px-3 py-2 text-xs font-medium transition-colors',
+                  settings?.messaging_access === opt.value
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-text-muted hover:bg-slate-50 dark:border-border-dark dark:text-text-muted-dark dark:hover:bg-slate-800'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
       {/* ---- Notifications Section ---- */}
       <SectionHeader title="Notifications" />
       <Card padding="sm" className="mb-6 !p-0 overflow-hidden">
-        {/* Push Notifications */}
+        {/* Email Notifications (per-category) */}
+        <div className="px-4 py-3.5">
+          <p className="text-sm font-medium text-text dark:text-text-dark mb-1">
+            Email Notifications
+          </p>
+          <p className="text-[10px] text-text-muted dark:text-text-muted-dark mb-3">
+            Choose which emails you receive
+          </p>
+        </div>
+
         <ToggleRow
-          icon={Bell}
-          label="Push Notifications"
-          checked={settings?.push_enabled ?? true}
-          onChange={(val) => saveSettings({ push_enabled: val })}
+          icon={MessageCircle}
+          label="Direct Messages"
+          checked={settings?.email_dm_notifications ?? true}
+          onChange={(val) => saveSettings({ email_dm_notifications: val })}
         />
 
         <Divider />
 
-        {/* Email Notifications */}
         <ToggleRow
-          icon={Bell}
-          label="Email Notifications"
-          checked={settings?.email_notifications ?? true}
-          onChange={(val) => saveSettings({ email_notifications: val })}
+          icon={UserPlus}
+          label="Follow Requests"
+          checked={settings?.email_follow_notifications ?? true}
+          onChange={(val) => saveSettings({ email_follow_notifications: val })}
+        />
+
+        <Divider />
+
+        <ToggleRow
+          icon={Heart}
+          label="Prayer Notifications"
+          checked={settings?.email_prayer_notifications ?? true}
+          onChange={(val) => saveSettings({ email_prayer_notifications: val })}
+        />
+
+        <Divider />
+
+        <ToggleRow
+          icon={Send}
+          label="Daily Content Reminder"
+          checked={settings?.email_daily_reminder ?? true}
+          onChange={(val) => saveSettings({ email_daily_reminder: val })}
         />
 
         <Divider />
@@ -429,7 +599,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-text-muted dark:text-text-muted-dark" />
             <p className="text-sm font-medium text-text dark:text-text-dark">
-              Daily Reminder
+              Reminder Time
             </p>
           </div>
           <input
@@ -442,19 +612,71 @@ export default function SettingsPage() {
 
         <Divider />
 
-        {/* Quiet Hours - disabled coming soon */}
-        <div className="flex items-center justify-between px-4 py-3.5 opacity-50">
-          <div className="flex items-center gap-2">
-            <Moon className="h-4 w-4 text-text-muted dark:text-text-muted-dark" />
-            <div>
-              <p className="text-sm font-medium text-text dark:text-text-dark">
-                Quiet Hours
-              </p>
-              <p className="text-[10px] text-text-muted dark:text-text-muted-dark">
-                Coming soon
-              </p>
+        {/* Quiet Hours */}
+        <div className="px-4 py-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Moon className="h-4 w-4 text-text-muted dark:text-text-muted-dark" />
+              <div>
+                <p className="text-sm font-medium text-text dark:text-text-dark">
+                  Quiet Hours
+                </p>
+                <p className="text-[10px] text-text-muted dark:text-text-muted-dark">
+                  Pause notifications during these hours
+                </p>
+              </div>
             </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={!!(settings?.quiet_hours_start && settings?.quiet_hours_end)}
+              onClick={() => {
+                if (settings?.quiet_hours_start && settings?.quiet_hours_end) {
+                  saveSettings({ quiet_hours_start: null, quiet_hours_end: null });
+                } else {
+                  saveSettings({ quiet_hours_start: '22:00', quiet_hours_end: '07:00' });
+                }
+              }}
+              className={cn(
+                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200',
+                settings?.quiet_hours_start && settings?.quiet_hours_end
+                  ? 'bg-primary'
+                  : 'bg-slate-300 dark:bg-slate-600'
+              )}
+            >
+              <span
+                className={cn(
+                  'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200',
+                  settings?.quiet_hours_start && settings?.quiet_hours_end ? 'translate-x-5' : 'translate-x-0.5',
+                  'mt-0.5'
+                )}
+              />
+            </button>
           </div>
+
+          {/* Time pickers -- shown when quiet hours are enabled */}
+          {settings?.quiet_hours_start && settings?.quiet_hours_end && (
+            <div className="mt-3 flex items-center gap-3">
+              <div className="flex flex-1 items-center gap-2">
+                <span className="text-xs text-text-muted dark:text-text-muted-dark">From</span>
+                <input
+                  type="time"
+                  value={settings.quiet_hours_start}
+                  onChange={(e) => saveSettings({ quiet_hours_start: e.target.value })}
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-text dark:border-border-dark dark:bg-background-dark dark:text-text-dark focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <div className="flex flex-1 items-center gap-2">
+                <span className="text-xs text-text-muted dark:text-text-muted-dark">To</span>
+                <input
+                  type="time"
+                  value={settings.quiet_hours_end}
+                  onChange={(e) => saveSettings({ quiet_hours_end: e.target.value })}
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-text dark:border-border-dark dark:bg-background-dark dark:text-text-dark focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 
