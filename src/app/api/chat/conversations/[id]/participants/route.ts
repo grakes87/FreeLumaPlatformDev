@@ -5,7 +5,9 @@ import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import {
   Conversation,
   ConversationParticipant,
+  Message,
   User,
+  Follow,
 } from '@/lib/db/models';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 import { getBlockedUserIds } from '@/lib/utils/blocks';
@@ -83,11 +85,25 @@ export const POST = withAuth(
       // Verify target user exists
       const targetUser = await User.findOne({
         where: { id: targetUserId, deleted_at: null },
-        attributes: ['id'],
+        attributes: ['id', 'display_name'],
       });
 
       if (!targetUser) {
         return errorResponse('User not found', 404);
+      }
+
+      // Verify added user is in creator's followers
+      const isFollower = await Follow.findOne({
+        where: {
+          follower_id: targetUserId,
+          following_id: userId,
+          status: 'active',
+        },
+        attributes: ['id'],
+      });
+
+      if (!isFollower) {
+        return errorResponse('Can only add your own followers to the group', 403);
       }
 
       // Check max participants
@@ -124,6 +140,20 @@ export const POST = withAuth(
         });
       }
 
+      // Create system message
+      const systemMsg = await Message.create({
+        conversation_id: conversationId,
+        sender_id: userId,
+        type: 'system',
+        content: `${targetUser.display_name} was added to the group`,
+      });
+
+      // Update conversation last_message
+      await Conversation.update(
+        { last_message_id: systemMsg.id, last_message_at: systemMsg.created_at },
+        { where: { id: conversationId } }
+      );
+
       // Emit Socket.IO event
       try {
         const { getIO } = await import('@/lib/socket/index');
@@ -132,6 +162,15 @@ export const POST = withAuth(
         chatNsp.to(`conv:${conversationId}`).emit('participant:added', {
           conversation_id: conversationId,
           user_id: targetUserId,
+        });
+        // Emit the system message to the room
+        chatNsp.to(`conv:${conversationId}`).emit('message:new', {
+          id: systemMsg.id,
+          conversation_id: conversationId,
+          sender_id: userId,
+          type: 'system',
+          content: systemMsg.content,
+          created_at: systemMsg.created_at,
         });
       } catch {
         // Socket.IO not available — skip silently
@@ -212,8 +251,32 @@ export const DELETE = withAuth(
         return errorResponse('Participant not found', 404);
       }
 
+      // Get target user info for system message
+      const targetUser = await User.findByPk(targetUserId, {
+        attributes: ['id', 'display_name'],
+      });
+
       // Soft delete the participant
       await targetParticipation.update({ deleted_at: new Date() });
+
+      // Create system message
+      const isLeaving = targetUserId === userId;
+      const systemContent = isLeaving
+        ? `${targetUser?.display_name || 'A member'} left the group`
+        : `${targetUser?.display_name || 'A member'} was removed from the group`;
+
+      const systemMsg = await Message.create({
+        conversation_id: conversationId,
+        sender_id: userId,
+        type: 'system',
+        content: systemContent,
+      });
+
+      // Update conversation last_message
+      await Conversation.update(
+        { last_message_id: systemMsg.id, last_message_at: systemMsg.created_at },
+        { where: { id: conversationId } }
+      );
 
       // Emit Socket.IO event
       try {
@@ -223,6 +286,14 @@ export const DELETE = withAuth(
         chatNsp.to(`conv:${conversationId}`).emit('participant:removed', {
           conversation_id: conversationId,
           user_id: targetUserId,
+        });
+        chatNsp.to(`conv:${conversationId}`).emit('message:new', {
+          id: systemMsg.id,
+          conversation_id: conversationId,
+          sender_id: userId,
+          type: 'system',
+          content: systemMsg.content,
+          created_at: systemMsg.created_at,
         });
       } catch {
         // Socket.IO not available — skip silently

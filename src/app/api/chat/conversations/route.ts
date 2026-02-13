@@ -21,6 +21,7 @@ const createConversationSchema = z.object({
   type: z.enum(['direct', 'group']),
   participant_ids: z.array(z.number().int().positive()).min(1),
   name: z.string().max(100).optional(),
+  avatar_url: z.string().max(500).nullable().optional(),
 });
 
 /**
@@ -280,7 +281,7 @@ export const POST = withAuth(
         return errorResponse(parsed.error.issues[0]?.message || 'Invalid input');
       }
 
-      const { type, participant_ids, name } = parsed.data;
+      const { type, participant_ids, name, avatar_url } = parsed.data;
       const userId = context.user.id;
 
       // Cannot include self in participant_ids
@@ -412,6 +413,7 @@ export const POST = withAuth(
           {
             type: 'group',
             name: name || null,
+            avatar_url: avatar_url || null,
             creator_id: userId,
           },
           { transaction: t }

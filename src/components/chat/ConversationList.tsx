@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { Users } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { ConversationItem } from './ConversationItem';
 import { MessageRequestBanner } from './MessageRequestBanner';
 import { UserPicker } from './UserPicker';
+import { GroupCreateFlow } from './GroupCreateFlow';
 import type { ConversationData, MessageRequestData } from '@/hooks/useConversations';
 
 interface ConversationListProps {
@@ -35,6 +37,7 @@ export function ConversationList({
   onRefresh,
 }: ConversationListProps) {
   const [showPicker, setShowPicker] = useState(false);
+  const [showGroupCreate, setShowGroupCreate] = useState(false);
   const [localRequests, setLocalRequests] = useState<MessageRequestData[]>(messageRequests);
 
   // Sync external requests when they change
@@ -58,17 +61,27 @@ export function ConversationList({
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">
           Messages
         </h1>
-        <button
-          type="button"
-          onClick={() => setShowPicker(true)}
-          className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
-          aria-label="New message"
-        >
-          {/* Pencil/compose icon */}
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-6 w-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setShowGroupCreate(true)}
+            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
+            aria-label="New group"
+          >
+            <Users className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPicker(true)}
+            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
+            aria-label="New message"
+          >
+            {/* Pencil/compose icon */}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-6 w-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Search bar */}
@@ -168,6 +181,12 @@ export function ConversationList({
       <UserPicker
         isOpen={showPicker}
         onClose={() => setShowPicker(false)}
+      />
+
+      {/* Group create flow overlay */}
+      <GroupCreateFlow
+        isOpen={showGroupCreate}
+        onClose={() => setShowGroupCreate(false)}
       />
     </div>
   );

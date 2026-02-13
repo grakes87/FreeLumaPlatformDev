@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect, useMemo, use } from 'react';
+import { useState, useEffect, useMemo, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Users } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { useImmersive } from '@/context/ImmersiveContext';
 import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
 import { ChatView } from '@/components/chat/ChatView';
+import { GroupInfoSheet } from '@/components/chat/GroupInfoSheet';
 
 interface Participant {
   id: number;
@@ -25,10 +26,11 @@ interface ConversationDetail {
   type: 'direct' | 'group';
   name: string | null;
   avatar_url: string | null;
+  creator_id: number | null;
   participants: Array<{
     id: number;
     user_id: number;
-    role: string;
+    role: 'member' | 'admin';
     user: Participant;
   }>;
 }
@@ -37,6 +39,7 @@ interface ConversationDetail {
  * Individual chat conversation page at /chat/[conversationId].
  * Full-screen layout: custom header with back arrow, user info, online dot.
  * Hides bottom nav for immersive chat experience.
+ * For group conversations, tapping header opens GroupInfoSheet.
  */
 export default function ChatConversationPage({
   params: paramsPromise,
@@ -53,6 +56,7 @@ export default function ChatConversationPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
 
   const conversationId = parseInt(params.conversationId, 10);
 
@@ -63,34 +67,30 @@ export default function ChatConversationPage({
   }, [setImmersive]);
 
   // Fetch conversation info
-  useEffect(() => {
+  const fetchConversation = useCallback(async () => {
     if (isNaN(conversationId)) {
       setError(true);
       setLoading(false);
       return;
     }
 
-    let cancelled = false;
-
-    async function fetchConversation() {
-      try {
-        const res = await fetch(`/api/chat/conversations/${conversationId}`, {
-          credentials: 'include',
-        });
-        if (!res.ok) throw new Error('Not found');
-        const data = await res.json();
-        if (cancelled) return;
-        setConversation(data);
-      } catch {
-        if (!cancelled) setError(true);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    try {
+      const res = await fetch(`/api/chat/conversations/${conversationId}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Not found');
+      const data = await res.json();
+      setConversation(data);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
     }
-
-    fetchConversation();
-    return () => { cancelled = true; };
   }, [conversationId]);
+
+  useEffect(() => {
+    fetchConversation();
+  }, [fetchConversation]);
 
   // Mark conversation as read on mount
   useEffect(() => {
@@ -123,7 +123,13 @@ export default function ChatConversationPage({
     };
   }, [chatSocket]);
 
-  // Derive participants (excluding self)
+  // Derive all participants (for group info)
+  const allParticipants = useMemo(() => {
+    if (!conversation) return [];
+    return conversation.participants;
+  }, [conversation]);
+
+  // Derive participants (excluding self) for display
   const participants: Participant[] = useMemo(() => {
     if (!conversation || !user) return [];
     return conversation.participants
@@ -144,6 +150,23 @@ export default function ChatConversationPage({
     const otherId = participants[0]?.id;
     return otherId ? onlineUsers.has(otherId) : false;
   }, [conversation, participants, onlineUsers]);
+
+  // isOnline function for group info sheet
+  const isOnline = useCallback(
+    (userId: number) => onlineUsers.has(userId),
+    [onlineUsers]
+  );
+
+  // Group member count for header subtitle
+  const memberCount = useMemo(() => {
+    if (!conversation || conversation.type !== 'group') return 0;
+    return allParticipants.length;
+  }, [conversation, allParticipants]);
+
+  // Handle group updated (re-fetch conversation)
+  const handleGroupUpdated = useCallback(() => {
+    fetchConversation();
+  }, [fetchConversation]);
 
   // Error state
   if (error || isNaN(conversationId)) {
@@ -203,7 +226,10 @@ export default function ChatConversationPage({
         }
         isOnline={isOtherOnline}
         showOnline={conversation.type === 'direct'}
+        isGroup={conversation.type === 'group'}
+        memberCount={memberCount}
         onBack={() => router.push('/chat')}
+        onTapInfo={() => setShowGroupInfo(true)}
       />
 
       {/* Chat view */}
@@ -213,6 +239,22 @@ export default function ChatConversationPage({
         participants={participants}
         className="flex-1 min-h-0"
       />
+
+      {/* Group info sheet */}
+      {conversation.type === 'group' && user && (
+        <GroupInfoSheet
+          isOpen={showGroupInfo}
+          onClose={() => setShowGroupInfo(false)}
+          conversationId={conversationId}
+          conversationName={conversation.name}
+          conversationAvatarUrl={conversation.avatar_url}
+          creatorId={conversation.creator_id}
+          currentUserId={user.id}
+          participants={allParticipants}
+          isOnline={isOnline}
+          onGroupUpdated={handleGroupUpdated}
+        />
+      )}
     </div>
   );
 }
@@ -226,7 +268,10 @@ interface ChatHeaderProps {
   avatarColor?: string;
   isOnline?: boolean;
   showOnline?: boolean;
+  isGroup?: boolean;
+  memberCount?: number;
   onBack: () => void;
+  onTapInfo?: () => void;
 }
 
 function ChatHeader({
@@ -236,7 +281,10 @@ function ChatHeader({
   avatarColor,
   isOnline = false,
   showOnline = false,
+  isGroup = false,
+  memberCount = 0,
   onBack,
+  onTapInfo,
 }: ChatHeaderProps) {
   return (
     <header
@@ -255,43 +303,71 @@ function ChatHeader({
         <ArrowLeft className="h-5 w-5" />
       </button>
 
-      {/* Avatar */}
-      {avatarName && (
-        <div className="relative shrink-0">
-          {avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt={avatarName}
-              width={36}
-              height={36}
-              className="h-9 w-9 rounded-full object-cover"
-            />
-          ) : (
-            <InitialsAvatar
-              name={avatarName}
-              color={avatarColor || '#3B82F6'}
-              size={36}
-              className="text-sm"
-            />
+      {/* Tappable area for group info */}
+      <button
+        type="button"
+        onClick={isGroup ? onTapInfo : undefined}
+        className={cn(
+          'flex flex-1 items-center gap-3 min-w-0',
+          isGroup && 'cursor-pointer'
+        )}
+        disabled={!isGroup}
+      >
+        {/* Avatar */}
+        {avatarName && (
+          <div className="relative shrink-0">
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={avatarName}
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-full object-cover"
+              />
+            ) : (
+              <InitialsAvatar
+                name={avatarName}
+                color={avatarColor || '#3B82F6'}
+                size={36}
+                className="text-sm"
+              />
+            )}
+            {/* Online dot */}
+            {showOnline && isOnline && (
+              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-gray-900 bg-green-500" />
+            )}
+          </div>
+        )}
+
+        {/* Name + status */}
+        <div className="flex-1 min-w-0 text-left">
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+            {displayName}
+          </p>
+          {showOnline && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {isOnline ? 'Online' : 'Offline'}
+            </p>
           )}
-          {/* Online dot */}
-          {showOnline && isOnline && (
-            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-gray-900 bg-green-500" />
+          {isGroup && memberCount > 0 && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {memberCount} member{memberCount !== 1 ? 's' : ''}
+            </p>
           )}
         </div>
-      )}
+      </button>
 
-      {/* Name + status */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-          {displayName}
-        </p>
-        {showOnline && (
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {isOnline ? 'Online' : 'Offline'}
-          </p>
-        )}
-      </div>
+      {/* Group info icon */}
+      {isGroup && onTapInfo && (
+        <button
+          type="button"
+          onClick={onTapInfo}
+          className="shrink-0 rounded-full p-1.5 text-gray-500 dark:text-gray-400 transition-colors hover:text-primary"
+          aria-label="Group info"
+        >
+          <Users className="h-5 w-5" />
+        </button>
+      )}
     </header>
   );
 }

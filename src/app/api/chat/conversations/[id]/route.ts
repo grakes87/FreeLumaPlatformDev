@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { Op } from 'sequelize';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import {
@@ -63,6 +64,79 @@ export const GET = withAuth(
       return successResponse(conversation);
     } catch (error) {
       return serverError(error, 'Failed to fetch conversation');
+    }
+  }
+);
+
+const updateConversationSchema = z.object({
+  name: z.string().max(100).optional(),
+  avatar_url: z.string().max(500).nullable().optional(),
+});
+
+/**
+ * PUT /api/chat/conversations/[id]
+ * Update group conversation name or avatar. Creator only.
+ */
+export const PUT = withAuth(
+  async (req: NextRequest, context: AuthContext) => {
+    try {
+      const params = await context.params;
+      const conversationId = parseInt(params.id, 10);
+      if (isNaN(conversationId)) {
+        return errorResponse('Invalid conversation ID');
+      }
+
+      const userId = context.user.id;
+
+      const conversation = await Conversation.findByPk(conversationId, {
+        attributes: ['id', 'type', 'creator_id'],
+      });
+
+      if (!conversation) {
+        return errorResponse('Conversation not found', 404);
+      }
+
+      if (conversation.type !== 'group') {
+        return errorResponse('Can only update group conversations');
+      }
+
+      if (conversation.creator_id !== userId) {
+        return errorResponse('Only the group creator can update group settings', 403);
+      }
+
+      const json = await req.json();
+      const parsed = updateConversationSchema.safeParse(json);
+
+      if (!parsed.success) {
+        return errorResponse(parsed.error.issues[0]?.message || 'Invalid input');
+      }
+
+      const updates: Record<string, unknown> = {};
+      if (parsed.data.name !== undefined) updates.name = parsed.data.name;
+      if (parsed.data.avatar_url !== undefined) updates.avatar_url = parsed.data.avatar_url;
+
+      if (Object.keys(updates).length === 0) {
+        return errorResponse('No fields to update');
+      }
+
+      await Conversation.update(updates, { where: { id: conversationId } });
+
+      // Emit Socket.IO event
+      try {
+        const { getIO } = await import('@/lib/socket/index');
+        const io = getIO();
+        const chatNsp = io.of('/chat');
+        chatNsp.to(`conv:${conversationId}`).emit('conversation:updated', {
+          conversation_id: conversationId,
+          ...updates,
+        });
+      } catch {
+        // Socket.IO not available
+      }
+
+      return successResponse({ message: 'Group updated' });
+    } catch (error) {
+      return serverError(error, 'Failed to update conversation');
     }
   }
 );
