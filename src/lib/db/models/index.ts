@@ -33,6 +33,8 @@ import { MessageMedia } from './MessageMedia';
 import { MessageStatus } from './MessageStatus';
 import { MessageReaction } from './MessageReaction';
 import { MessageRequest } from './MessageRequest';
+import { Notification } from './Notification';
+import { EmailLog } from './EmailLog';
 
 // ---- Associations ----
 
@@ -610,6 +612,38 @@ User.hasMany(MessageRequest, {
   as: 'receivedMessageRequests',
 });
 
+// ---- Phase 3: Notification & Email Log Associations ----
+
+// User -> Notification (as recipient)
+User.hasMany(Notification, {
+  foreignKey: 'recipient_id',
+  as: 'notifications',
+});
+Notification.belongsTo(User, {
+  foreignKey: 'recipient_id',
+  as: 'recipient',
+});
+
+// User -> Notification (as actor)
+User.hasMany(Notification, {
+  foreignKey: 'actor_id',
+  as: 'actedNotifications',
+});
+Notification.belongsTo(User, {
+  foreignKey: 'actor_id',
+  as: 'actor',
+});
+
+// User -> EmailLog (one-to-many)
+User.hasMany(EmailLog, {
+  foreignKey: 'recipient_id',
+  as: 'emailLogs',
+});
+EmailLog.belongsTo(User, {
+  foreignKey: 'recipient_id',
+  as: 'recipient',
+});
+
 export {
   sequelize,
   User,
@@ -646,4 +680,6 @@ export {
   MessageStatus,
   MessageReaction,
   MessageRequest,
+  Notification,
+  EmailLog,
 };

@@ -10,6 +10,12 @@ export interface UserSettingAttributes {
   daily_reminder_time: string;
   quiet_hours_start: string | null;
   quiet_hours_end: string | null;
+  messaging_access: 'everyone' | 'followers' | 'mutual' | 'nobody';
+  email_dm_notifications: boolean;
+  email_follow_notifications: boolean;
+  email_prayer_notifications: boolean;
+  email_daily_reminder: boolean;
+  reminder_timezone: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -22,6 +28,12 @@ export interface UserSettingCreationAttributes extends Optional<UserSettingAttri
   | 'daily_reminder_time'
   | 'quiet_hours_start'
   | 'quiet_hours_end'
+  | 'messaging_access'
+  | 'email_dm_notifications'
+  | 'email_follow_notifications'
+  | 'email_prayer_notifications'
+  | 'email_daily_reminder'
+  | 'reminder_timezone'
   | 'created_at'
   | 'updated_at'
 > {}
@@ -35,6 +47,12 @@ class UserSetting extends Model<UserSettingAttributes, UserSettingCreationAttrib
   declare daily_reminder_time: string;
   declare quiet_hours_start: string | null;
   declare quiet_hours_end: string | null;
+  declare messaging_access: 'everyone' | 'followers' | 'mutual' | 'nobody';
+  declare email_dm_notifications: boolean;
+  declare email_follow_notifications: boolean;
+  declare email_prayer_notifications: boolean;
+  declare email_daily_reminder: boolean;
+  declare reminder_timezone: string | null;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
 }
@@ -81,6 +99,35 @@ UserSetting.init(
     },
     quiet_hours_end: {
       type: DataTypes.STRING(5),
+      allowNull: true,
+    },
+    messaging_access: {
+      type: DataTypes.ENUM('everyone', 'followers', 'mutual', 'nobody'),
+      allowNull: false,
+      defaultValue: 'mutual',
+    },
+    email_dm_notifications: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    email_follow_notifications: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    email_prayer_notifications: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    email_daily_reminder: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    reminder_timezone: {
+      type: DataTypes.STRING(50),
       allowNull: true,
     },
     created_at: DataTypes.DATE,
