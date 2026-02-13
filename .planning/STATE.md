@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 3 of 6 (Real-Time)
-Plan: 6 of 13 complete
+Plan: 7 of 13 complete
 Status: In progress
-Last activity: 2026-02-13 — Completed 03-06-PLAN.md (Notification System Core)
+Last activity: 2026-02-13 — Completed 03-07-PLAN.md (Chat Conversation List Page)
 
-Progress: [████████████████████████████████░░░░░░░░░] 32/39 plans (82%)
+Progress: [█████████████████████████████████░░░░░░░░] 33/39 plans (85%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 32
+- Total plans completed: 33
 - Average duration: 5 min
-- Total execution time: 150 min
+- Total execution time: 153 min
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [███████████████████████
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
-| 03-real-time | 6/13 | 14 min | 2 min |
+| 03-real-time | 7/13 | 17 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (3 min), 03-01 (4 min), 03-03 (3 min), 03-05 (2 min), 03-06 (2 min)
+- Last 5 plans: 03-01 (4 min), 03-03 (3 min), 03-05 (2 min), 03-06 (2 min), 03-07 (3 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -163,6 +163,9 @@ Recent decisions affecting current work:
 - **Batch read receipt on GET messages:** Viewing messages automatically updates last_read_at; no separate mark-as-read endpoint needed
 - **New message restores deleted conversations:** POST message sets deleted_at=null for soft-deleted participants to restore conversation
 - **Chat media audio support:** /api/upload/chat-media accepts audio MIME types (mpeg, wav, ogg, webm, mp4, aac) for voice messages
+- **Custom chat relative timestamps:** formatRelativeTime uses now/2m/1h/Yesterday/3d format for Instagram DM-style compact display
+- **Presence bulk query pattern:** usePresence emits presence:query with userIds[] on mount for single-roundtrip initial status
+- **UserPicker createPortal overlay:** Full-screen user picker via createPortal to body, consistent with Modal/PostComposer pattern
 
 ### Pending Todos
 
@@ -227,6 +230,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-13T17:19:00Z
-Stopped at: Completed 03-04-PLAN.md (Chat REST API)
+Last session: 2026-02-13T17:25:00Z
+Stopped at: Completed 03-07-PLAN.md (Chat Conversation List Page)
 Resume file: None
