@@ -125,10 +125,10 @@ Plans:
   7. User can block other users from sending messages
   8. Chat connection gracefully handles disconnection and reconnection
   9. User receives in-app notification for new follows, likes, comments, prayer interactions, and DMs
-  10. User receives browser push notification for daily content reminder (scheduled time)
+  10. ~~User receives browser push notification~~ DEFERRED per CONTEXT — email-only for offline notifications (no browser push this phase)
   11. User can view in-app notification activity feed with grouped notifications
   12. User can configure notification preferences (email, push, in-app) per category
-  13. User can set quiet hours for push notifications
+  13. User can set quiet hours for email notifications (push quiet hours deferred with browser push)
   14. User can mark notifications as read individually or all at once
   15. Notification badge displays count on bottom nav and browser tab
   16. Push notifications delivered via Socket.IO for real-time in-app alerts
