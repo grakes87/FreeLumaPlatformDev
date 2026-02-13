@@ -2,13 +2,15 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Bell } from 'lucide-react';
+import Link from 'next/link';
+import { Bell, MessageCircle } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils/cn';
 import { LANGUAGES, LANGUAGE_OPTIONS } from '@/lib/utils/constants';
 import type { Language } from '@/lib/utils/constants';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { useNotificationBadge } from '@/components/notifications/useNotificationBadge';
+import { useChatUnreadBadge } from '@/components/chat/useChatUnreadBadge';
 
 interface TopBarProps {
   transparent?: boolean;
@@ -28,6 +30,7 @@ export function TopBar({ transparent = false }: TopBarProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const unreadCount = useNotificationBadge();
+  const hasUnreadMessages = useChatUnreadBadge();
 
   const logoSrc = transparent || resolvedTheme === 'dark'
     ? '/logo-white.png'
@@ -85,8 +88,27 @@ export function TopBar({ transparent = false }: TopBarProps) {
         priority
       />
 
-      {/* Right: Language selector + Notification bell */}
+      {/* Right: Chat + Language selector + Notification bell */}
       <div className="flex items-center gap-1">
+        {/* Chat icon */}
+        <Link
+          href="/chat"
+          className={cn(
+            'relative rounded-lg p-2 transition-colors',
+            transparent
+              ? 'text-white/90 hover:text-white'
+              : 'text-text hover:text-primary dark:text-text-dark dark:hover:text-primary'
+          )}
+          aria-label="Messages"
+          onClick={() => { setShowLangMenu(false); setShowNotifications(false); }}
+        >
+          <MessageCircle className="h-6 w-6" />
+          {/* Unread chat badge (red dot) */}
+          {hasUnreadMessages && (
+            <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-surface dark:ring-surface-dark" />
+          )}
+        </Link>
+
         {/* Language selector */}
         <div ref={menuRef} className="relative">
           <button
