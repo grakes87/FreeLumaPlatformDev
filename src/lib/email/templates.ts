@@ -1,7 +1,15 @@
-const BRAND_COLOR = '#6366F1';
+const BRAND_COLOR = '#62BEBA';
 const BRAND_NAME = 'Free Luma';
 
-function baseTemplate(content: string): string {
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+function baseTemplate(content: string, footer?: string): string {
+  const footerHtml = footer || `
+              <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;line-height:1.5;">
+                &copy; ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.<br />
+                Daily inspiration and faith-based community.
+              </p>`;
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,10 +37,7 @@ function baseTemplate(content: string): string {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 32px;background:#f9fafb;border-top:1px solid #e5e7eb;">
-              <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;line-height:1.5;">
-                &copy; ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.<br />
-                Daily inspiration and faith-based community.
-              </p>
+              ${footerHtml}
             </td>
           </tr>
         </table>
@@ -54,6 +59,44 @@ function actionButton(url: string, label: string): string {
     </tr>
   </table>`;
 }
+
+/**
+ * Build the footer HTML with tracking pixel, unsubscribe link, and copyright.
+ */
+function notificationFooter(params: {
+  trackingId?: string;
+  unsubscribeUrl?: string;
+  category?: string;
+}): string {
+  const { trackingId, unsubscribeUrl, category } = params;
+
+  let html = '';
+
+  // Unsubscribe link
+  if (unsubscribeUrl) {
+    const categoryLabel = category
+      ? category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      : 'these';
+    html += `<p style="margin:0 0 12px;font-size:12px;color:#9ca3af;text-align:center;line-height:1.5;">
+                <a href="${unsubscribeUrl}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe from ${categoryLabel} emails</a>
+              </p>`;
+  }
+
+  // Copyright
+  html += `<p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;line-height:1.5;">
+                &copy; ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.<br />
+                Daily inspiration and faith-based community.
+              </p>`;
+
+  // Tracking pixel (at the very end of the footer)
+  if (trackingId) {
+    html += `<img src="${APP_URL}/api/email/track?id=${trackingId}" width="1" height="1" alt="" style="display:block;" />`;
+  }
+
+  return html;
+}
+
+// ---- Existing templates ----
 
 export function passwordResetTemplate(resetUrl: string): string {
   const content = `
@@ -97,4 +140,183 @@ export function verificationTemplate(verifyUrl: string): string {
     </p>
   `;
   return baseTemplate(content);
+}
+
+// ---- Notification email templates ----
+
+export interface DmBatchEmailParams {
+  recipientName: string;
+  senderName: string;
+  messageCount: number;
+  messagePreview: string;
+  conversationUrl: string;
+  trackingId?: string;
+  unsubscribeUrl?: string;
+}
+
+export function dmBatchEmail(params: DmBatchEmailParams): { html: string; subject: string; headers: Record<string, string> } {
+  const { recipientName, senderName, messageCount, messagePreview, conversationUrl, trackingId, unsubscribeUrl } = params;
+
+  const subject = `You have ${messageCount} unread message${messageCount > 1 ? 's' : ''} from ${senderName}`;
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">New Messages</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${recipientName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      You have <strong>${messageCount}</strong> unread message${messageCount > 1 ? 's' : ''} from <strong>${senderName}</strong>.
+    </p>
+    <div style="padding:16px;background:#f9fafb;border-radius:8px;border-left:3px solid ${BRAND_COLOR};margin:0 0 16px;">
+      <p style="margin:0;font-size:14px;color:#52525b;line-height:1.5;font-style:italic;">
+        "${messagePreview}"
+      </p>
+    </div>
+    ${actionButton(conversationUrl, 'Reply in App')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
+      Open the conversation to see all messages and reply.
+    </p>
+  `;
+
+  const footer = notificationFooter({ trackingId, unsubscribeUrl, category: 'DM' });
+
+  const headers: Record<string, string> = {};
+  if (unsubscribeUrl) {
+    headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  return { html: baseTemplate(content, footer), subject, headers };
+}
+
+export interface FollowRequestEmailParams {
+  recipientName: string;
+  actorName: string;
+  actorAvatarUrl: string | null;
+  profileUrl: string;
+  trackingId?: string;
+  unsubscribeUrl?: string;
+}
+
+export function followRequestEmail(params: FollowRequestEmailParams): { html: string; subject: string; headers: Record<string, string> } {
+  const { recipientName, actorName, profileUrl, trackingId, unsubscribeUrl } = params;
+
+  const subject = `${actorName} wants to follow you on ${BRAND_NAME}`;
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">New Follow Request</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${recipientName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      <strong>${actorName}</strong> wants to follow you. View their profile to accept or decline the request.
+    </p>
+    ${actionButton(profileUrl, 'View Request')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
+      You can manage follow requests in the app.
+    </p>
+  `;
+
+  const footer = notificationFooter({ trackingId, unsubscribeUrl, category: 'Follow' });
+
+  const headers: Record<string, string> = {};
+  if (unsubscribeUrl) {
+    headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  return { html: baseTemplate(content, footer), subject, headers };
+}
+
+export interface PrayerResponseEmailParams {
+  recipientName: string;
+  actorName: string;
+  prayerTitle: string;
+  prayerUrl: string;
+  trackingId?: string;
+  unsubscribeUrl?: string;
+}
+
+export function prayerResponseEmail(params: PrayerResponseEmailParams): { html: string; subject: string; headers: Record<string, string> } {
+  const { recipientName, actorName, prayerTitle, prayerUrl, trackingId, unsubscribeUrl } = params;
+
+  const subject = `${actorName} prayed for your request`;
+
+  const truncatedTitle = prayerTitle.length > 80 ? prayerTitle.slice(0, 77) + '...' : prayerTitle;
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Prayer Support</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${recipientName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      <strong>${actorName}</strong> prayed for your request:
+    </p>
+    <div style="padding:16px;background:#f5f3ff;border-radius:8px;border-left:3px solid #8b5cf6;margin:0 0 16px;">
+      <p style="margin:0;font-size:14px;color:#52525b;line-height:1.5;">
+        "${truncatedTitle}"
+      </p>
+    </div>
+    ${actionButton(prayerUrl, 'View Prayer Request')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
+      Your community is praying with you.
+    </p>
+  `;
+
+  const footer = notificationFooter({ trackingId, unsubscribeUrl, category: 'Prayer' });
+
+  const headers: Record<string, string> = {};
+  if (unsubscribeUrl) {
+    headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  return { html: baseTemplate(content, footer), subject, headers };
+}
+
+export interface DailyReminderEmailParams {
+  recipientName: string;
+  verseText: string;
+  verseReference: string;
+  dailyUrl: string;
+  trackingId?: string;
+  unsubscribeUrl?: string;
+}
+
+export function dailyReminderEmail(params: DailyReminderEmailParams): { html: string; subject: string; headers: Record<string, string> } {
+  const { recipientName, verseText, verseReference, dailyUrl, trackingId, unsubscribeUrl } = params;
+
+  const subject = `Your daily inspiration is ready - ${BRAND_NAME}`;
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Daily Inspiration</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${recipientName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Your daily inspiration is ready. Here is a preview:
+    </p>
+    <div style="padding:20px;background:linear-gradient(135deg, #f0fdfa 0%, #f5f3ff 100%);border-radius:8px;margin:0 0 16px;text-align:center;">
+      <p style="margin:0 0 8px;font-size:16px;color:#18181b;line-height:1.6;font-style:italic;">
+        "${verseText}"
+      </p>
+      <p style="margin:0;font-size:13px;color:#71717a;font-weight:600;">
+        ${verseReference}
+      </p>
+    </div>
+    ${actionButton(dailyUrl, 'Read More')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
+      Start your day with faith and inspiration.
+    </p>
+  `;
+
+  const footer = notificationFooter({ trackingId, unsubscribeUrl, category: 'Daily Reminder' });
+
+  const headers: Record<string, string> = {};
+  if (unsubscribeUrl) {
+    headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  return { html: baseTemplate(content, footer), subject, headers };
 }
