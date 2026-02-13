@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 3 of 6 (Real-Time)
-Plan: 8 of 13 complete
+Plan: 9 of 13 complete
 Status: In progress
-Last activity: 2026-02-13 — Completed 03-09-PLAN.md (Voice Messages & Media Attachment)
+Last activity: 2026-02-13 — Completed 03-10-PLAN.md (Notification UI)
 
-Progress: [██████████████████████████████████░░░░░░░] 34/39 plans (87%)
+Progress: [███████████████████████████████████░░░░░░] 35/39 plans (90%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 34
+- Total plans completed: 35
 - Average duration: 5 min
-- Total execution time: 157 min
+- Total execution time: 163 min
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [███████████████████████
 |-------|-------|-------|----------|
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
-| 03-real-time | 8/13 | 21 min | 3 min |
+| 03-real-time | 9/13 | 27 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-03 (3 min), 03-05 (2 min), 03-06 (2 min), 03-07 (3 min), 03-09 (4 min)
+- Last 5 plans: 03-05 (2 min), 03-06 (2 min), 03-07 (3 min), 03-09 (4 min), 03-10 (6 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -173,6 +173,10 @@ Recent decisions affecting current work:
 - **Optimistic message insert:** Messages inserted with negative temp IDs, reconciled with server response on send success
 - **Two-minute message grouping:** Consecutive same-sender messages within 2 min share avatar and single timestamp (Instagram DM style)
 - **Typing emit debounce:** typing:start emitted immediately, typing:stop auto-sent after 2s of inactivity
+- **Notification provider in authenticated layout:** SocketProvider + NotificationProvider wrap AppShell only for authenticated users
+- **Safe notification badge hook:** useNotificationBadge uses raw useContext (returns 0 when null) instead of throwing useNotificationContext
+- **Portal-rendered toast notifications:** NotificationToastManager uses createPortal to document.body for z-index escape
+- **Notification type color coding:** Consistent mapping: reaction=pink, comment=blue, follow=green, prayer=purple, message=teal, mention=orange
 
 ### Pending Todos
 
@@ -237,6 +241,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-13T17:28:00Z
-Stopped at: Completed 03-08-PLAN.md (Chat Conversation View)
+Last session: 2026-02-13T17:30:00Z
+Stopped at: Completed 03-10-PLAN.md (Notification UI)
 Resume file: None
