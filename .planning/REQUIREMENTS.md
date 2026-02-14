@@ -114,11 +114,11 @@ Requirements for initial release (switchover MVP + essential features). Each map
 - [ ] **CONT-05**: User can create personal notes attached to posts or daily content
 - [ ] **CONT-06**: User can view, edit, and delete their own notes
 - [ ] **CONT-07**: Notes remain private by default with option to share
-- [ ] **CONT-08**: User can access video library with on-demand recorded content
-- [ ] **CONT-09**: User can play videos with progress tracking (resume where left off)
-- [ ] **CONT-10**: Video library supports filtering by category and search by title
+- [x] **CONT-08**: User can access video library with on-demand recorded content
+- [x] **CONT-09**: User can play videos with progress tracking (resume where left off)
+- [x] **CONT-10**: Video library supports filtering by category and search by title
 - [ ] **CONT-11**: User can bookmark videos for later viewing
-- [ ] **CONT-12**: Video player tracks listen duration for analytics
+- [x] **CONT-12**: Video player tracks listen duration for analytics
 
 ### Social Interactions
 
@@ -145,12 +145,12 @@ Requirements for initial release (switchover MVP + essential features). Each map
 - [ ] **SETT-03**: User can select language preference (English, Spanish)
 - [ ] **SETT-04**: User can configure notification preferences by category
 - [ ] **SETT-05**: User can set daily content reminder time with timezone support
-- [ ] **SETT-06**: User can update account email address with verification
-- [ ] **SETT-07**: User can change password with current password confirmation
+- [x] **SETT-06**: User can update account email address with verification
+- [x] **SETT-07**: User can change password with current password confirmation
 - [ ] **SETT-08**: User can configure privacy settings (profile visibility, who can message)
 - [ ] **SETT-09**: User can manage blocked users list
-- [ ] **SETT-10**: User can view account stats (join date, activity streaks)
-- [ ] **SETT-11**: User can delete account with confirmation (soft delete with grace period)
+- [x] **SETT-10**: User can view account stats (join date, activity streaks)
+- [x] **SETT-11**: User can delete account with confirmation (soft delete with grace period)
 - [ ] **SETT-12**: Settings persist across devices and sessions
 
 ### UI/UX (Mobile-First Design)
@@ -184,8 +184,8 @@ Requirements for initial release (switchover MVP + essential features). Each map
 
 - [ ] **MOD-01**: User can report posts or comments with reason selection
 - [ ] **MOD-02**: User can block other users (blocked user cannot see or interact with content)
-- [ ] **MOD-03**: Admin can view reported content in moderation queue
-- [ ] **MOD-04**: Admin can remove inappropriate content with reason logging
+- [x] **MOD-03**: Admin can view reported content in moderation queue
+- [x] **MOD-04**: Admin can remove inappropriate content with reason logging
 - [ ] **MOD-05**: All user-generated content runs through basic profanity filter on submission
 
 ### Data Migration

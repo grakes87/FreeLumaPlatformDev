@@ -156,31 +156,25 @@ Plans:
 
 **Depends on**: Phase 2 (requires posts and content system)
 
-**Requirements**: CONT-05 through CONT-12, SETT-01, SETT-04 through SETT-12, MOD-03, MOD-04
+**Requirements**: CONT-08, CONT-09, CONT-10, CONT-12, SETT-06, SETT-07, SETT-10, SETT-11, MOD-03, MOD-04
+
+**Deferred from original scope**: CONT-05/06/07 (Personal Notes), CONT-11 (video bookmarks), CONT-10 search (browse-only)
+**Already built in Phases 1-3**: SETT-01, SETT-02/03, SETT-04/05, SETT-08/09, SETT-12
 
 **Success Criteria** (what must be TRUE):
-  1. User can create personal notes attached to posts or daily content
-  2. User can view, edit, and delete their own notes
-  3. Notes remain private by default with option to share
-  4. User can access video library with on-demand recorded content
-  5. User can play videos with progress tracking (resume where left off)
-  6. Video library supports filtering by category and search by title
-  7. User can bookmark videos for later viewing
-  8. Video player tracks listen duration for analytics
-  9. User can access settings page from account menu
-  10. User can toggle appearance mode (light, dark, system)
-  11. User can select language preference (English, Spanish) with instant UI update
-  12. User can configure notification preferences by category
-  13. User can set daily content reminder time with timezone support
-  14. User can update account email address with verification
-  15. User can change password with current password confirmation
-  16. User can configure privacy settings (profile visibility, who can message)
-  17. User can manage blocked users list
-  18. User can view account stats (join date, activity streaks)
-  19. User can delete account with confirmation (soft delete with grace period)
-  20. Settings persist across devices and sessions
-  21. Admin can view reported content in moderation queue
-  22. Admin can remove inappropriate content with reason logging
+  1. User can access video library with Netflix-style browse (hero banner, category rows, continue watching)
+  2. User can play videos with progress tracking (resume where left off)
+  3. Video library supports browsing by admin-defined categories (no search)
+  4. Video player tracks watch duration for analytics
+  5. User can react to videos (same 6 types as posts) and share videos to chat
+  6. User can update account email address with verification
+  7. User can change password with current password confirmation
+  8. User can view account stats (join date, activity streaks)
+  9. User can deactivate account (temporary, reversible on re-login)
+  10. User can delete account with 30-day soft delete grace period
+  11. Admin can view grouped report queue and take moderation actions (remove/warn/ban/dismiss)
+  12. Admin can manage users (search, edit, ban) with moderator role support
+  13. All moderation actions logged in searchable audit trail
 
 **Plans**: 14 plans in 4 waves
 
@@ -271,7 +265,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Foundation | 12/12 | Complete | 2026-02-12 |
 | 2. Core Social | 14/14 | Complete | 2026-02-14 |
 | 3. Real-Time | 13/13 | Complete | 2026-02-13 |
-| 4. Enhanced Content | 0/TBD | Not started | - |
+| 4. Enhanced Content | 14/14 | Complete | 2026-02-14 |
 | 5. Workshops (v2) | 0/TBD | Deferred | - |
 | 6. Migration & Launch | 0/TBD | Not started | - |
 
@@ -280,4 +274,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 *Phase 1 planned: 2026-02-11 (12 plans in 5 waves)*
 *Phase 2 planned: 2026-02-12 (14 plans in 4 waves)*
 *Phase 3 planned: 2026-02-13 (13 plans in 4 waves)*
+*Phase 4 planned: 2026-02-13 (14 plans in 4 waves)*
 *Depth: Comprehensive (6 phases covering 165 v1 requirements)*
