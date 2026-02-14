@@ -44,6 +44,53 @@ export function withAuth(handler: AuthHandler) {
       );
     }
 
+    // --- Ban / account status enforcement ---
+    // Lazy-import to avoid circular dependency at module init
+    const { User, Ban } = await import('@/lib/db/models');
+
+    const dbUser = await User.findByPk(user.id, {
+      attributes: ['id', 'status'],
+    });
+
+    if (!dbUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 401 }
+      );
+    }
+
+    if (dbUser.status === 'banned') {
+      // Check for an active (non-lifted) ban
+      const activeBan = await Ban.findOne({
+        where: { user_id: user.id, lifted_at: null },
+        order: [['created_at', 'DESC']],
+      });
+
+      if (activeBan && (activeBan.expires_at === null || new Date(activeBan.expires_at) > new Date())) {
+        // Active ban still in effect
+        return NextResponse.json(
+          {
+            error: 'Account suspended',
+            reason: activeBan.reason,
+            expires_at: activeBan.expires_at,
+          },
+          { status: 403 }
+        );
+      }
+
+      // Ban expired or no active ban found — auto-unban
+      if (activeBan) {
+        await activeBan.update({ lifted_at: new Date() });
+      }
+      await dbUser.update({ status: 'active' });
+      // Continue — user is now active
+    } else if (dbUser.status === 'deactivated' || dbUser.status === 'pending_deletion') {
+      return NextResponse.json(
+        { error: 'Account inactive', status: dbUser.status },
+        { status: 403 }
+      );
+    }
+
     return handler(req, { ...context, user, token });
   };
 }
@@ -51,6 +98,7 @@ export function withAuth(handler: AuthHandler) {
 /**
  * Optional auth middleware: if token exists, verify and inject user.
  * If no token or invalid, user is null (no 401).
+ * NOTE: Does NOT check ban status — guest endpoints stay accessible.
  */
 export interface OptionalAuthContext {
   params: Promise<Record<string, string>>;
@@ -105,5 +153,39 @@ export function withAdmin(handler: AuthHandler) {
     }
 
     return handler(req, context);
+  });
+}
+
+/**
+ * Moderator middleware: wraps withAuth and checks the user is either
+ * an admin (is_admin) or has role === 'moderator'.
+ * Passes `isAdmin` flag in context for downstream logic.
+ */
+export interface ModeratorContext extends AuthContext {
+  isAdmin: boolean;
+}
+
+type ModeratorHandler = (
+  req: NextRequest,
+  context: ModeratorContext
+) => Promise<NextResponse>;
+
+export function withModerator(handler: ModeratorHandler) {
+  return withAuth(async (req: NextRequest, context: AuthContext) => {
+    // Lazy-import to avoid circular dependency at module init
+    const { User } = await import('@/lib/db/models');
+
+    const dbUser = await User.findByPk(context.user.id, {
+      attributes: ['id', 'is_admin', 'role'],
+    });
+
+    if (!dbUser || (!dbUser.is_admin && dbUser.role !== 'moderator')) {
+      return NextResponse.json(
+        { error: 'Forbidden: moderator access required' },
+        { status: 403 }
+      );
+    }
+
+    return handler(req, { ...context, isAdmin: dbUser.is_admin } as ModeratorContext);
   });
 }
