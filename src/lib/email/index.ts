@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { passwordResetTemplate, verificationTemplate } from './templates';
+import { passwordResetTemplate, verificationTemplate, emailChangeVerificationTemplate, passwordChangeAlertTemplate } from './templates';
 
 const FROM_ADDRESS = process.env.SMTP_FROM || 'noreply@freeluma.com';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -50,6 +50,7 @@ export async function sendEmail(
         if (
           url.includes('reset-password') ||
           url.includes('verify-email') ||
+          url.includes('verify-email-change') ||
           url.includes('unsubscribe') ||
           url.includes('/chat/') ||
           url.includes('/profile/') ||
@@ -89,4 +90,20 @@ export async function sendVerificationEmail(
   const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${token}`;
   const html = verificationTemplate(verifyUrl);
   await sendEmail(to, 'Verify Your Email - Free Luma', html);
+}
+
+export async function sendEmailChangeVerification(
+  newEmail: string,
+  token: string
+): Promise<void> {
+  const verifyUrl = `${APP_URL}/api/auth/verify-email-change?token=${token}`;
+  const html = emailChangeVerificationTemplate(newEmail, verifyUrl);
+  await sendEmail(newEmail, 'Verify Your New Email Address - Free Luma', html);
+}
+
+export async function sendPasswordChangeAlert(
+  email: string
+): Promise<void> {
+  const html = passwordChangeAlertTemplate(email);
+  await sendEmail(email, 'Your password was changed - Free Luma', html);
 }

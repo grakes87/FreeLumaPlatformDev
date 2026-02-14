@@ -274,6 +274,66 @@ export function prayerResponseEmail(params: PrayerResponseEmailParams): { html: 
   return { html: baseTemplate(content, footer), subject, headers };
 }
 
+// ---- Account security templates ----
+
+export function emailChangeVerificationTemplate(newEmail: string, verifyUrl: string): string {
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Verify Your New Email Address</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      You requested to change your email address to <strong>${newEmail}</strong>. Click the button below to confirm this change.
+    </p>
+    ${actionButton(verifyUrl, 'Verify New Email')}
+    <p style="margin:0 0 8px;font-size:13px;color:#71717a;line-height:1.5;">
+      This link expires in <strong>24 hours</strong>.
+    </p>
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+      If you didn&rsquo;t request this change, you can safely ignore this email. Your account email will remain unchanged.
+    </p>
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;" />
+    <p style="margin:0;font-size:12px;color:#a1a1aa;line-height:1.5;">
+      If the button doesn&rsquo;t work, copy and paste this URL into your browser:<br />
+      <a href="${verifyUrl}" style="color:${BRAND_COLOR};word-break:break-all;">${verifyUrl}</a>
+    </p>
+  `;
+  return baseTemplate(content);
+}
+
+export function emailChangeAlertTemplate(oldEmail: string, newEmail: string): string {
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Email Address Changed</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Your ${BRAND_NAME} account email was changed from <strong>${oldEmail}</strong> to <strong>${newEmail}</strong>.
+    </p>
+    <div style="padding:16px;background:#fef2f2;border-radius:8px;border-left:3px solid #ef4444;margin:16px 0;">
+      <p style="margin:0;font-size:14px;color:#991b1b;line-height:1.5;">
+        If you did not make this change, please contact support immediately to secure your account.
+      </p>
+    </div>
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+      This is an automated security alert. No action is needed if you made this change.
+    </p>
+  `;
+  return baseTemplate(content);
+}
+
+export function passwordChangeAlertTemplate(email: string): string {
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Password Changed</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      The password for your ${BRAND_NAME} account (${email}) was recently changed.
+    </p>
+    <div style="padding:16px;background:#fef2f2;border-radius:8px;border-left:3px solid #ef4444;margin:16px 0;">
+      <p style="margin:0;font-size:14px;color:#991b1b;line-height:1.5;">
+        If you did not make this change, please reset your password immediately or contact support to secure your account.
+      </p>
+    </div>
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+      This is an automated security alert. No action is needed if you made this change.
+    </p>
+  `;
+  return baseTemplate(content);
+}
+
 export interface DailyReminderEmailParams {
   recipientName: string;
   verseText: string;
