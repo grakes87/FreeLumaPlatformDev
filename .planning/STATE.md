@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 4 of 6 (Enhanced Content)
-Plan: 8 of 14 complete
+Plan: 9 of 14 complete
 Status: In progress
-Last activity: 2026-02-14 — Completed 04-10-PLAN.md (Video Library Home Page)
+Last activity: 2026-02-14 — Completed 04-11-PLAN.md (Video Detail Page + Immersive Player)
 
-Progress: [████████████████████████████████████████████░░░░░░░░] 47/53 plans (89%)
+Progress: [█████████████████████████████████████████████░░░░░░░] 48/53 plans (91%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 47
+- Total plans completed: 48
 - Average duration: 4 min
-- Total execution time: 208 min
+- Total execution time: 214 min
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [███████████████████████
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
-| 04-enhanced-content | 8/14 | 24 min | 3 min |
+| 04-enhanced-content | 9/14 | 30 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-04 (3 min), 04-05 (3 min), 04-07 (2 min), 04-08 (4 min), 04-10 (3 min)
+- Last 5 plans: 04-05 (3 min), 04-07 (2 min), 04-08 (4 min), 04-10 (3 min), 04-11 (6 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -229,6 +229,10 @@ Recent decisions affecting current work:
 - **Old animations redirect:** /animations page redirects to /watch for backwards compatibility
 - **VideoData shared type:** VideoCard exports VideoData interface reused by HeroBanner and watch page
 - **Video component directory:** src/components/video/ for all video-related UI components
+- **Video player native controls:** Native HTML5 video with custom controls overlay via createPortal; no player library
+- **Video progress keepalive save:** keepalive fetch on unmount for reliable progress save (preserves cookies/auth)
+- **Video player dynamic import:** VideoPlayer loaded via next/dynamic for code splitting from detail page
+- **useVideoReactions separate hook:** Separate from usePostReactions due to different API endpoint (video-reactions)
 
 ### Pending Todos
 
@@ -293,6 +297,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-14T07:01:59Z
-Stopped at: Completed 04-10-PLAN.md (Video Library Home Page)
+Last session: 2026-02-14T07:05:47Z
+Stopped at: Completed 04-11-PLAN.md (Video Detail Page + Immersive Player)
 Resume file: None
