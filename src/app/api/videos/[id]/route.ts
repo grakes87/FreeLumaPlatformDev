@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import { withAdmin } from '@/lib/auth/middleware';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
-import { fn, col } from 'sequelize';
+import { fn, col, Op } from 'sequelize';
 
 const updateVideoSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -147,6 +147,9 @@ export const PUT = withAdmin(
 
       const data = parsed.data;
 
+      // Track whether this is a first-time publish
+      const wasPublished = video.published;
+
       // Verify category if changed
       if (data.category_id && data.category_id !== video.category_id) {
         const category = await VideoCategory.findByPk(data.category_id);
@@ -161,6 +164,11 @@ export const PUT = withAdmin(
       }
 
       await video.update(data);
+
+      // Fire-and-forget: send new_video notifications on first publish
+      if (data.published === true && !wasPublished) {
+        dispatchNewVideoNotifications(videoId, video.title, context.user.id).catch(() => {});
+      }
 
       // Reload with category
       const updated = await Video.findByPk(videoId, {
@@ -207,3 +215,53 @@ export const DELETE = withAdmin(
     }
   }
 );
+
+/**
+ * Fire-and-forget: send new_video notifications to all active users.
+ * Only sends on first publish (checks for existing new_video notification for this video).
+ */
+async function dispatchNewVideoNotifications(
+  videoId: number,
+  videoTitle: string,
+  adminId: number
+): Promise<void> {
+  const { User, Notification } = await import('@/lib/db/models');
+  const { createNotification } = await import('@/lib/notifications/create');
+  const { NotificationType, NotificationEntityType } = await import('@/lib/notifications/types');
+
+  // Check if notifications were already sent for this video (dedup on first publish)
+  const existing = await Notification.findOne({
+    where: {
+      type: NotificationType.NEW_VIDEO,
+      entity_type: NotificationEntityType.VIDEO,
+      entity_id: videoId,
+    },
+    attributes: ['id'],
+  });
+
+  if (existing) {
+    return; // Already notified
+  }
+
+  // Fetch all active users except the admin
+  const activeUsers = await User.findAll({
+    where: { status: 'active', id: { [Op.ne]: adminId } },
+    attributes: ['id'],
+    raw: true,
+  });
+
+  for (const user of activeUsers) {
+    try {
+      await createNotification({
+        recipient_id: user.id,
+        actor_id: adminId,
+        type: NotificationType.NEW_VIDEO,
+        entity_type: NotificationEntityType.VIDEO,
+        entity_id: videoId,
+        preview_text: videoTitle,
+      });
+    } catch {
+      // Non-fatal
+    }
+  }
+}

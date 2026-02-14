@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils/cn';
 import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
 import { SharedPostCard } from './SharedPostCard';
+import { SharedVideoMessage } from './SharedVideoMessage';
 import { VoiceMessagePlayer } from './VoiceMessagePlayer';
 import { useMessageStatus } from '@/hooks/useMessageStatus';
 import { REACTION_EMOJI_MAP } from '@/lib/utils/constants';
@@ -200,10 +201,15 @@ export function MessageBubble({
           {message.type === 'shared_post' && message.sharedPost && (
             <SharedPostCard post={message.sharedPost} className="m-1" />
           )}
+
+          {/* Shared video */}
+          {message.type === 'shared_video' && message.sharedVideo && (
+            <SharedVideoMessage video={message.sharedVideo} className="m-1" />
+          )}
         </div>
 
         {/* React · Reply link for media/voice (since tapping media opens viewer, not context menu) */}
-        {(message.type === 'media' || message.type === 'voice') && (
+        {(message.type === 'media' || message.type === 'voice' || message.type === 'shared_video') && (
           <button
             type="button"
             onClick={handleBubbleTap}

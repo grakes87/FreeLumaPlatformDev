@@ -11,6 +11,10 @@ import {
   AtSign,
   Bell,
   X,
+  Play,
+  Trash2,
+  AlertTriangle,
+  ShieldAlert,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils/cn';
@@ -51,6 +55,10 @@ const TYPE_ICON_MAP: Record<string, { icon: typeof Heart; color: string }> = {
   mention: { icon: AtSign, color: 'bg-orange-500' },
   group_invite: { icon: UserPlus, color: 'bg-cyan-500' },
   daily_reminder: { icon: Bell, color: 'bg-amber-500' },
+  new_video: { icon: Play, color: 'bg-indigo-500' },
+  content_removed: { icon: Trash2, color: 'bg-red-500' },
+  warning: { icon: AlertTriangle, color: 'bg-amber-600' },
+  ban: { icon: ShieldAlert, color: 'bg-red-600' },
 };
 
 /** Generate notification text from type, actor name, and actor count */
@@ -82,6 +90,14 @@ function getNotificationText(
       return `${actorName} invited you to a group`;
     case 'daily_reminder':
       return 'Your daily content is ready';
+    case 'new_video':
+      return 'New video available';
+    case 'content_removed':
+      return 'Your content was removed';
+    case 'warning':
+      return 'You received a warning';
+    case 'ban':
+      return 'Your account has been suspended';
     default:
       return `${actorName} interacted with your content`;
   }
@@ -107,6 +123,14 @@ function getNotificationHref(type: string, entityType: string, entityId: number,
       return `/chat/${entityId}`;
     case 'daily_reminder':
       return '/';
+    case 'new_video':
+      return `/watch/${entityId}`;
+    case 'content_removed':
+      return '/notifications';
+    case 'warning':
+      return '/notifications';
+    case 'ban':
+      return '/banned';
     default:
       return '/notifications';
   }

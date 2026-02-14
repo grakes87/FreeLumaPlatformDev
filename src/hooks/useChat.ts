@@ -52,14 +52,22 @@ export interface ReplyToMessage {
   sender: { id: number; display_name: string };
 }
 
+export interface SharedVideo {
+  id: number;
+  title: string;
+  thumbnail_url: string | null;
+  duration_seconds: number;
+}
+
 export interface ChatMessage {
   id: number;
   conversation_id: number;
   sender_id: number;
-  type: 'text' | 'media' | 'voice' | 'shared_post' | 'system';
+  type: 'text' | 'media' | 'voice' | 'shared_post' | 'shared_video' | 'system';
   content: string | null;
   reply_to_id: number | null;
   shared_post_id: number | null;
+  shared_video_id: number | null;
   is_unsent: boolean;
   flagged: boolean;
   created_at: string;
@@ -68,6 +76,7 @@ export interface ChatMessage {
   media: MessageMedia[];
   replyTo: ReplyToMessage | null;
   sharedPost: SharedPost | null;
+  sharedVideo: SharedVideo | null;
   reactions: Record<string, { count: number; reacted: boolean }>;
   delivery_status: 'sent' | 'delivered' | 'read';
   // Optimistic insert marker
@@ -80,9 +89,10 @@ export interface TypingUser {
 }
 
 interface SendMessageOptions {
-  type?: 'text' | 'media' | 'voice' | 'shared_post';
+  type?: 'text' | 'media' | 'voice' | 'shared_post' | 'shared_video';
   reply_to_id?: number | null;
   shared_post_id?: number | null;
+  shared_video_id?: number | null;
   mentioned_user_ids?: number[];
   media?: Array<{
     media_url: string;
@@ -178,6 +188,7 @@ export function useChat(conversationId: number) {
         content: msgType === 'text' ? content : content || null,
         reply_to_id: options?.reply_to_id ?? null,
         shared_post_id: options?.shared_post_id ?? null,
+        shared_video_id: options?.shared_video_id ?? null,
         is_unsent: false,
         flagged: false,
         created_at: new Date().toISOString(),
@@ -202,6 +213,7 @@ export function useChat(conversationId: number) {
             }
           : null,
         sharedPost: null,
+        sharedVideo: null,
         reactions: {},
         delivery_status: 'sent',
         _optimistic: true,
@@ -220,6 +232,7 @@ export function useChat(conversationId: number) {
         const body: Record<string, unknown> = { content, type: msgType };
         if (options?.reply_to_id) body.reply_to_id = options.reply_to_id;
         if (options?.shared_post_id) body.shared_post_id = options.shared_post_id;
+        if (options?.shared_video_id) body.shared_video_id = options.shared_video_id;
         if (options?.media) body.media = options.media;
         if (options?.mentioned_user_ids && options.mentioned_user_ids.length > 0) {
           body.mentioned_user_ids = options.mentioned_user_ids;

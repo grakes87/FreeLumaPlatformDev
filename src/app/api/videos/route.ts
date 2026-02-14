@@ -210,9 +210,65 @@ export const POST = withAdmin(
         ],
       });
 
+      // Fire-and-forget: send new_video notifications if published on creation
+      if (video.published) {
+        dispatchNewVideoNotifications(video.id, video.title, context.user.id).catch(() => {});
+      }
+
       return successResponse({ video: created }, 201);
     } catch (error) {
       return serverError(error, 'Failed to create video');
     }
   }
 );
+
+/**
+ * Fire-and-forget: send new_video notifications to all active users.
+ * Only sends on first publish (checks for existing new_video notification for this video).
+ */
+async function dispatchNewVideoNotifications(
+  videoId: number,
+  videoTitle: string,
+  adminId: number
+): Promise<void> {
+  const { User, Notification } = await import('@/lib/db/models');
+  const { createNotification } = await import('@/lib/notifications/create');
+  const { NotificationType, NotificationEntityType } = await import('@/lib/notifications/types');
+
+  // Check if notifications were already sent for this video (dedup on first publish)
+  const existing = await Notification.findOne({
+    where: {
+      type: NotificationType.NEW_VIDEO,
+      entity_type: NotificationEntityType.VIDEO,
+      entity_id: videoId,
+    },
+    attributes: ['id'],
+  });
+
+  if (existing) {
+    return; // Already notified — skip
+  }
+
+  // Fetch all active users except the admin
+  const activeUsers = await User.findAll({
+    where: { status: 'active', id: { [Op.ne]: adminId } },
+    attributes: ['id'],
+    raw: true,
+  });
+
+  // Send notifications in batches to avoid blocking
+  for (const user of activeUsers) {
+    try {
+      await createNotification({
+        recipient_id: user.id,
+        actor_id: adminId,
+        type: NotificationType.NEW_VIDEO,
+        entity_type: NotificationEntityType.VIDEO,
+        entity_id: videoId,
+        preview_text: videoTitle,
+      });
+    } catch {
+      // Non-fatal: continue sending to other users
+    }
+  }
+}
