@@ -7,6 +7,10 @@ import { PostCard } from './PostCard';
 import { EmptyFeedState } from './EmptyFeedState';
 import { cn } from '@/lib/utils/cn';
 
+function getScrollContainer() {
+  return document.getElementById('immersive-scroll');
+}
+
 interface PostFeedProps {
   posts: FeedPost[];
   loading: boolean;
@@ -44,27 +48,69 @@ export function PostFeed({
   const [isPulling, setIsPulling] = useState(false);
   const touchStartY = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const preloadTriggeredRef = useRef(false);
 
-  // Trigger load more when sentinel enters viewport
+  // Trigger load more when sentinel enters viewport (Instagram mode)
   useEffect(() => {
     if (inView && hasMore && !loading) {
       onLoadMore();
     }
   }, [inView, hasMore, loading, onLoadMore]);
 
+  // TikTok mode: scroll to top on mount
+  useEffect(() => {
+    if (feedStyle !== 'tiktok') return;
+    getScrollContainer()?.scrollTo(0, 0);
+  }, [feedStyle]);
+
+  // TikTok preloading: load next batch when user is 3 posts from the end
+  useEffect(() => {
+    if (feedStyle !== 'tiktok' || !hasMore || loading) return;
+
+    const container = getScrollContainer();
+    if (!container) return;
+
+    const handleScroll = () => {
+      const cardHeight = container.clientHeight;
+      if (cardHeight === 0) return;
+      const currentIndex = Math.round(container.scrollTop / cardHeight);
+      const threshold = posts.length - 3;
+
+      if (currentIndex >= threshold && !preloadTriggeredRef.current) {
+        preloadTriggeredRef.current = true;
+        onLoadMore();
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [feedStyle, posts.length, hasMore, loading, onLoadMore]);
+
+  // Reset preload trigger when posts change (new batch loaded)
+  useEffect(() => {
+    preloadTriggeredRef.current = false;
+  }, [posts.length]);
+
   // Pull-to-refresh handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const container = containerRef.current;
-    if (container && container.scrollTop <= 0) {
-      touchStartY.current = e.touches[0].clientY;
+    if (feedStyle === 'tiktok') {
+      const container = getScrollContainer();
+      if (container && container.scrollTop <= 1) {
+        touchStartY.current = e.touches[0].clientY;
+      }
+    } else {
+      const container = containerRef.current;
+      if (container && container.scrollTop <= 1) {
+        touchStartY.current = e.touches[0].clientY;
+      }
     }
-  }, []);
+  }, [feedStyle]);
 
   const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
       if (touchStartY.current === null || refreshing) return;
       const diff = e.touches[0].clientY - touchStartY.current;
-      if (diff > 0) {
+      if (diff > 10) {
         setPullDistance(Math.min(diff * 0.5, 100));
         setIsPulling(true);
       }
@@ -73,7 +119,7 @@ export function PostFeed({
   );
 
   const handleTouchEnd = useCallback(() => {
-    if (pullDistance > 80 && !refreshing) {
+    if (pullDistance > 60 && !refreshing) {
       onRefresh();
     }
     setPullDistance(0);
@@ -86,12 +132,11 @@ export function PostFeed({
     return <EmptyFeedState />;
   }
 
-  // TikTok mode: full-screen vertical snap
+  // TikTok mode: cards scroll inside #immersive-scroll container
   if (feedStyle === 'tiktok') {
     return (
       <div
-        ref={containerRef}
-        className="h-[calc(100vh-3.5rem-4rem)] snap-y snap-mandatory overflow-y-auto"
+        className="bg-black"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -123,7 +168,8 @@ export function PostFeed({
         {posts.map((post) => (
           <div
             key={post.id}
-            className="h-[calc(100vh-3.5rem-4rem)] w-full snap-start snap-always"
+            className="w-full snap-start snap-always"
+            style={{ height: '100svh' }}
           >
             <PostCard
               post={post}

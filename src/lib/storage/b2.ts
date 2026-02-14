@@ -34,6 +34,9 @@ export const b2Client = isB2Configured
         accessKeyId: B2_KEY_ID!,
         secretAccessKey: B2_APP_KEY!,
       },
+      // B2 doesn't support AWS SDK v3 automatic checksums
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
     })
   : null;
 

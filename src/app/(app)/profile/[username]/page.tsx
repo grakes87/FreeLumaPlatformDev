@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, Lock } from 'lucide-react';
+import { ArrowLeft, Loader2, Lock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/ProfileTabs';
 import { ProfileGridItem } from '@/components/profile/ProfileGridItem';
 import { ProfilePostViewer } from '@/components/profile/ProfilePostViewer';
 import { FollowList } from '@/components/profile/FollowList';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 interface ProfileData {
@@ -55,6 +56,7 @@ export default function UserProfilePage() {
   const searchParams = useSearchParams();
   const { user: currentUser } = useAuth();
   const username = params.username as string;
+  const fromChat = searchParams.get('from') === 'chat';
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,9 +70,27 @@ export default function UserProfilePage() {
 
   const [followListType, setFollowListType] = useState<'followers' | 'following' | null>(null);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
 
   const isOwnProfile = !!(currentUser && profile && profile.relationship === 'self');
   const isPrivate = profile?.posts === null && profile?.user.profile_privacy === 'private';
+
+  const handleBlockConfirm = useCallback(async () => {
+    if (!profile) return;
+    try {
+      const res = await fetch('/api/blocks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ user_id: profile.user.id }),
+      });
+      if (res.ok) {
+        router.back();
+      }
+    } catch {
+      // Silently fail
+    }
+  }, [profile, router]);
 
   // Redirect to /profile if viewing own profile
   useEffect(() => {
@@ -191,15 +211,29 @@ export default function UserProfilePage() {
   }, [inView, tabHasMore, tabLoading, loadMore]);
 
   if (loading) {
-    return (
+    const loader = (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-text-muted dark:text-text-muted-dark" />
       </div>
     );
+    if (fromChat) {
+      return (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900 overflow-y-auto">
+          <div className="sticky top-0 z-10 flex h-12 items-center gap-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3">
+            <button type="button" onClick={() => router.back()} className="rounded-full p-1.5 text-gray-600 dark:text-gray-300 transition-colors hover:text-primary" aria-label="Back to chat">
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Profile</span>
+          </div>
+          {loader}
+        </div>
+      );
+    }
+    return loader;
   }
 
   if (error || !profile) {
-    return (
+    const errContent = (
       <div className="flex flex-col items-center justify-center py-20 text-text-muted dark:text-text-muted-dark">
         <p className="text-lg font-medium">{error || 'User not found'}</p>
         <button
@@ -211,10 +245,24 @@ export default function UserProfilePage() {
         </button>
       </div>
     );
+    if (fromChat) {
+      return (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900 overflow-y-auto">
+          <div className="sticky top-0 z-10 flex h-12 items-center gap-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3">
+            <button type="button" onClick={() => router.back()} className="rounded-full p-1.5 text-gray-600 dark:text-gray-300 transition-colors hover:text-primary" aria-label="Back to chat">
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Profile</span>
+          </div>
+          {errContent}
+        </div>
+      );
+    }
+    return errContent;
   }
 
-  return (
-    <div className="mx-auto max-w-lg">
+  const profileContent = (
+    <>
       {/* Profile Header */}
       <ProfileHeader
         user={profile.user}
@@ -225,6 +273,7 @@ export default function UserProfilePage() {
         onEditProfile={() => router.push('/profile/edit')}
         onFollowersTap={() => setFollowListType('followers')}
         onFollowingTap={() => setFollowListType('following')}
+        onBlock={() => setShowBlockConfirm(true)}
       />
 
       {/* Private profile gate */}
@@ -312,6 +361,47 @@ export default function UserProfilePage() {
           onClose={() => setViewerIndex(null)}
         />
       )}
+
+      {/* Block confirmation dialog */}
+      <ConfirmDialog
+        isOpen={showBlockConfirm}
+        onClose={() => setShowBlockConfirm(false)}
+        onConfirm={handleBlockConfirm}
+        title="Block User"
+        message={`Are you sure you want to block @${profile.user.username}? They won't be able to see your profile, posts, or message you.`}
+        confirmLabel="Block"
+        danger
+      />
+    </>
+  );
+
+  // When opened from chat: render as a fixed overlay above the chat (z-50 > chat's z-40)
+  if (fromChat) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900">
+        <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="rounded-full p-1.5 text-gray-600 dark:text-gray-300 transition-colors hover:text-primary"
+            aria-label="Back to chat"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Profile</span>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-lg">
+            {profileContent}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-lg">
+      {profileContent}
     </div>
   );
 }

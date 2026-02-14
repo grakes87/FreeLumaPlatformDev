@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { Op } from 'sequelize';
 import { sequelize, User, ActivationCode, UserSetting } from '@/lib/db/models';
 import { verifyAppleToken } from '@/lib/auth/apple';
-import { signJWT, setAuthCookie } from '@/lib/auth/jwt';
+import { signJWT, AUTH_COOKIE_OPTIONS } from '@/lib/auth/jwt';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 import { AVATAR_COLORS } from '@/lib/utils/constants';
 
@@ -47,8 +47,9 @@ export async function POST(req: NextRequest) {
       const response = successResponse({
         user: buildUserResponse(user),
         isNewUser: false,
+        token,
       });
-      response.headers.set('Set-Cookie', setAuthCookie(token));
+      response.cookies.set('auth_token', token, AUTH_COOKIE_OPTIONS);
       return response;
     }
 
@@ -72,8 +73,9 @@ export async function POST(req: NextRequest) {
         const response = successResponse({
           user: buildUserResponse(user),
           isNewUser: false,
+          token,
         });
-        response.headers.set('Set-Cookie', setAuthCookie(token));
+        response.cookies.set('auth_token', token, AUTH_COOKIE_OPTIONS);
         return response;
       }
     }
@@ -193,10 +195,11 @@ export async function POST(req: NextRequest) {
       {
         user: buildUserResponse(newUser),
         isNewUser: true,
+        token,
       },
       201
     );
-    response.headers.set('Set-Cookie', setAuthCookie(token));
+    response.cookies.set('auth_token', token, AUTH_COOKIE_OPTIONS);
     return response;
   } catch (error) {
     if (error instanceof Error && error.message === 'ACTIVATION_CODE_RACE') {

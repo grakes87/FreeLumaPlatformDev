@@ -42,6 +42,14 @@ export function Modal({
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = '';
+      // iOS Safari: blur active input and force viewport reset after keyboard dismissal
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      window.scrollTo(0, 0);
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+      });
     };
   }, [isOpen, handleEscape]);
 

@@ -9,6 +9,7 @@ import { FollowButton } from '@/components/social/FollowButton';
 import { useAuth } from '@/hooks/useAuth';
 import type { FollowStatus } from '@/hooks/useFollow';
 import Link from 'next/link';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 interface FollowUser {
   id: number;
@@ -17,13 +18,14 @@ interface FollowUser {
   avatar_url: string | null;
   avatar_color: string;
   bio?: string | null;
+  is_verified?: boolean;
 }
 
 interface FollowListItem {
   id: number;
   follower?: FollowUser;
   followedUser?: FollowUser;
-  // The user detail can come from either association depending on type
+  follow_status?: FollowStatus;
 }
 
 interface FollowListProps {
@@ -218,8 +220,9 @@ export function FollowList({ userId, type, isOpen, onClose }: FollowListProps) {
                   href={`/profile/${u.username}`}
                   className="min-w-0 flex-1"
                 >
-                  <p className="truncate text-sm font-semibold text-text dark:text-text-dark">
-                    {u.display_name}
+                  <p className="flex items-center gap-1 text-sm font-semibold text-text dark:text-text-dark">
+                    <span className="truncate">{u.display_name}</span>
+                    {u.is_verified && <VerifiedBadge />}
                   </p>
                   <p className="truncate text-xs text-text-muted dark:text-text-muted-dark">
                     @{u.username}
@@ -229,7 +232,7 @@ export function FollowList({ userId, type, isOpen, onClose }: FollowListProps) {
                 {!isSelf && (
                   <FollowButton
                     userId={u.id}
-                    initialStatus="none"
+                    initialStatus={item.follow_status || 'none'}
                     size="sm"
                   />
                 )}

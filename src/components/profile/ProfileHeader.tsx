@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { MapPin, Link as LinkIcon, Pencil, MessageCircle } from 'lucide-react';
+import { MapPin, Link as LinkIcon, Pencil, MessageCircle, MoreHorizontal, ShieldBan, Flag } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import VerifiedBadge from '@/components/ui/VerifiedBadge';
 import { InitialsAvatar } from './InitialsAvatar';
@@ -40,6 +40,7 @@ interface ProfileHeaderProps {
   onEditProfile?: () => void;
   onFollowersTap?: () => void;
   onFollowingTap?: () => void;
+  onBlock?: () => void;
   className?: string;
 }
 
@@ -56,77 +57,44 @@ export function ProfileHeader({
   onEditProfile,
   onFollowersTap,
   onFollowingTap,
+  onBlock,
   className,
 }: ProfileHeaderProps) {
   const router = useRouter();
-  const [creatingConversation, setCreatingConversation] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const followStatus: FollowStatus =
     relationship === 'following' ? 'active' :
     relationship === 'pending' ? 'pending' :
     'none';
 
-  // Determine if messaging is allowed based on access settings
-  const canMessage = (() => {
-    if (isOwnProfile || isBlocked) return false;
-    if (messagingAccess === 'nobody') return false;
-    if (messagingAccess === 'everyone') return true;
-    if (messagingAccess === 'followers') {
-      // Target allows followers; current user must be following them
-      return relationship === 'following';
-    }
-    if (messagingAccess === 'mutual') {
-      // Both must follow each other
-      return relationship === 'following';
-      // Note: we only know "I follow them" from relationship; mutual detection
-      // is approximate here. The server will enforce the full check.
-    }
-    return false;
-  })();
+  // Message button: always enabled except for 'nobody' or blocked.
+  // Don't create conversation here — navigate to compose view. Server creates on first message send.
+  const canMessage = !isOwnProfile && !isBlocked && messagingAccess !== 'nobody';
 
   const messageDisabledReason =
     messagingAccess === 'nobody'
       ? "This user doesn't accept messages"
-      : !canMessage
-        ? 'Follow this user to send a message'
-        : undefined;
+      : undefined;
 
-  const handleMessageTap = useCallback(async () => {
-    if (!canMessage || creatingConversation) return;
-    setCreatingConversation(true);
+  const handleMessageTap = useCallback(() => {
+    if (!canMessage) return;
+    // Navigate to chat compose with this user — conversation created on first message
+    router.push(`/chat/new?userId=${user.id}`);
+  }, [canMessage, user.id, router]);
 
-    try {
-      // Try to create or find existing conversation
-      const res = await fetch('/api/chat/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          type: 'direct',
-          participant_ids: [user.id],
-        }),
-      });
-
-      if (res.ok || res.status === 200) {
-        const data = await res.json();
-        router.push(`/chat/${data.id || data.conversation?.id}`);
-      } else if (res.status === 202) {
-        // Message request created
-        const data = await res.json();
-        if (data.conversation?.id) {
-          router.push(`/chat/${data.conversation.id}`);
-        } else {
-          router.push('/chat');
-        }
-      } else {
-        // Silently fail - user can try again
+  // Close menu on outside click
+  useEffect(() => {
+    if (!showMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
       }
-    } catch {
-      // Silently fail
-    } finally {
-      setCreatingConversation(false);
-    }
-  }, [canMessage, creatingConversation, user.id, router]);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showMenu]);
 
   const websiteDisplay = user.website
     ? user.website.replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -232,11 +200,11 @@ export function ProfileHeader({
             {!isBlocked && (
               <button
                 type="button"
-                disabled={!canMessage || creatingConversation}
+                disabled={!canMessage}
                 onClick={handleMessageTap}
                 className={cn(
                   'flex items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-medium transition-colors',
-                  canMessage && !creatingConversation
+                  canMessage
                     ? 'text-primary hover:bg-primary/5 dark:text-primary dark:hover:bg-primary/10'
                     : 'text-text-muted opacity-50 cursor-not-allowed',
                   'dark:border-border-dark'
@@ -246,6 +214,53 @@ export function ProfileHeader({
                 <MessageCircle className="h-4 w-4" />
               </button>
             )}
+
+            {/* More menu (block / report) */}
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setShowMenu((v) => !v)}
+                className={cn(
+                  'flex items-center justify-center rounded-xl border border-border px-3 py-2 text-sm transition-colors',
+                  'text-text-muted hover:bg-slate-50',
+                  'dark:border-border-dark dark:text-text-muted-dark dark:hover:bg-slate-800/50'
+                )}
+                aria-label="More options"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+
+              {showMenu && (
+                <div className={cn(
+                  'absolute right-0 top-full z-30 mt-1 w-48 overflow-hidden rounded-xl border shadow-lg',
+                  'bg-white border-border',
+                  'dark:bg-gray-800 dark:border-border-dark'
+                )}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMenu(false);
+                      onBlock?.();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <ShieldBan className="h-4 w-4" />
+                    Block User
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMenu(false);
+                      // TODO: Report modal
+                    }}
+                    className="flex w-full items-center gap-2.5 border-t border-border px-4 py-3 text-sm font-medium text-text-muted transition-colors hover:bg-slate-50 dark:border-border-dark dark:text-text-muted-dark dark:hover:bg-slate-800"
+                  >
+                    <Flag className="h-4 w-4" />
+                    Report User
+                  </button>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

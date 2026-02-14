@@ -5,6 +5,8 @@ import { verifyJWT, type JWTPayload } from './jwt';
 export interface AuthContext {
   params: Promise<Record<string, string>>;
   user: JWTPayload;
+  /** Raw JWT token (for forwarding to Socket.IO) */
+  token: string;
 }
 
 type AuthHandler = (
@@ -17,7 +19,15 @@ type RouteContext = { params: Promise<Record<string, string>> };
 export function withAuth(handler: AuthHandler) {
   return async (req: NextRequest, context: RouteContext): Promise<NextResponse> => {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
+    let token = cookieStore.get('auth_token')?.value;
+
+    // Fallback: check Authorization header
+    if (!token) {
+      const authHeader = req.headers.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.slice(7);
+      }
+    }
 
     if (!token) {
       return NextResponse.json(
@@ -34,7 +44,7 @@ export function withAuth(handler: AuthHandler) {
       );
     }
 
-    return handler(req, { ...context, user });
+    return handler(req, { ...context, user, token });
   };
 }
 
@@ -55,7 +65,15 @@ type OptionalAuthHandler = (
 export function withOptionalAuth(handler: OptionalAuthHandler) {
   return async (req: NextRequest, context: RouteContext): Promise<NextResponse> => {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
+    let token = cookieStore.get('auth_token')?.value;
+
+    // Fallback: check Authorization header
+    if (!token) {
+      const authHeader = req.headers.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.slice(7);
+      }
+    }
 
     let user: JWTPayload | null = null;
     if (token) {

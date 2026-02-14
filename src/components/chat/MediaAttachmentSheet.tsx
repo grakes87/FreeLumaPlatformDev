@@ -2,18 +2,14 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Image, Camera, Mic, X, Send } from 'lucide-react';
+import { Image, X, Send } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface MediaAttachmentSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Conversation ID for uploading media */
-  conversationId: string;
-  /** Called when voice recording is requested (switches to VoiceRecorder) */
-  onVoiceRecord: () => void;
-  /** Called after media message is successfully sent */
-  onSent?: () => void;
+  /** Called with uploaded media items to create the message via useChat */
+  onSendMedia: (media: Array<{ media_url: string; media_type: 'image' | 'video' }>) => void;
 }
 
 interface SelectedMedia {
@@ -24,31 +20,85 @@ interface SelectedMedia {
 const MAX_ATTACHMENTS = 10;
 
 /**
+ * Upload a file to /api/upload/chat-media via XHR for real progress tracking.
+ * Returns { public_url }.
+ */
+function uploadChatMedia(
+  file: File,
+  onProgress: (percent: number) => void,
+  signal?: { aborted: boolean }
+): Promise<{ public_url: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        // Cap at 95% during transfer — remaining 5% is server processing
+        const percent = Math.round((e.loaded / e.total) * 95);
+        onProgress(percent);
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (signal?.aborted) return;
+      onProgress(100);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve(data);
+        } catch {
+          reject(new Error('Invalid response from server'));
+        }
+      } else {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          reject(new Error(data.error || `Upload failed (${xhr.status})`));
+        } catch {
+          reject(new Error(`Upload failed (${xhr.status})`));
+        }
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      if (!signal?.aborted) reject(new Error('Network error during upload'));
+    });
+
+    xhr.addEventListener('abort', () => {
+      reject(new Error('Upload cancelled'));
+    });
+
+    xhr.open('POST', '/api/upload/chat-media');
+    xhr.withCredentials = true;
+    xhr.send(formData);
+  });
+}
+
+/**
  * Bottom sheet for attaching media to a chat message.
  *
- * Options:
- * - Gallery: select images/videos from device
- * - Camera: capture photo with camera
- * - Voice: triggers voice recording mode (delegates to parent)
- *
+ * Opens the device gallery to pick photos/videos (mobile prompts take-or-choose).
  * Selected media shown as thumbnail previews with remove buttons.
- * Upload flow: presigned URLs from /api/upload/chat-media -> PUT to B2 -> send message.
+ * Upload flow: POST FormData to /api/upload/chat-media with real XHR progress tracking.
  */
 export function MediaAttachmentSheet({
   isOpen,
   onClose,
-  conversationId,
-  onVoiceRecord,
-  onSent,
+  onSendMedia,
 }: MediaAttachmentSheetProps) {
   const [selected, setSelected] = useState<SelectedMedia[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef<number | null>(null);
   const [translateY, setTranslateY] = useState(0);
+
+  // Upload progress: overall 0-100
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadLabel, setUploadLabel] = useState('');
+  const cancelledRef = useRef(false);
 
   // Reset state when sheet opens
   useEffect(() => {
@@ -57,12 +107,18 @@ export function MediaAttachmentSheet({
       setError(null);
       setIsSending(false);
       setTranslateY(0);
+      setUploadProgress(0);
+      setUploadLabel('');
+      cancelledRef.current = false;
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
     };
   }, [isOpen]);
 
@@ -90,7 +146,6 @@ export function MediaAttachmentSheet({
       }));
 
       setSelected((prev) => [...prev, ...newMedia]);
-      // Reset input so same file can be re-selected
       e.target.value = '';
     },
     [selected.length]
@@ -108,76 +163,61 @@ export function MediaAttachmentSheet({
     if (isSending || selected.length === 0) return;
     setIsSending(true);
     setError(null);
+    setUploadProgress(0);
+    cancelledRef.current = false;
+
+    const total = selected.length;
+    const signal = { aborted: false };
 
     try {
-      const mediaItems: Array<{
-        url: string;
-        type: 'image' | 'video';
-        mime_type: string;
-      }> = [];
+      const mediaItems: Array<{ media_url: string; media_type: 'image' | 'video' }> = [];
 
-      // Upload each file via presigned URL
-      for (const item of selected) {
-        const contentType = item.file.type;
+      for (let i = 0; i < selected.length; i++) {
+        if (cancelledRef.current) {
+          signal.aborted = true;
+          throw new Error('Upload cancelled');
+        }
 
-        // 1. Get presigned URL
-        const presignRes = await fetch(
-          `/api/upload/chat-media?contentType=${encodeURIComponent(contentType)}`
+        const item = selected[i];
+        setUploadLabel(
+          total > 1
+            ? `Uploading ${i + 1} of ${total}...`
+            : 'Uploading...'
         );
-        if (!presignRes.ok) {
-          const data = await presignRes.json().catch(() => ({}));
-          throw new Error(data.error || 'Failed to get upload URL');
-        }
-        const { upload_url, public_url } = await presignRes.json();
 
-        // 2. Upload file
-        const uploadRes = await fetch(upload_url, {
-          method: 'PUT',
-          headers: { 'Content-Type': contentType },
-          body: item.file,
-        });
-        if (!uploadRes.ok) {
-          throw new Error(`Failed to upload ${item.file.name}`);
-        }
+        const result = await uploadChatMedia(
+          item.file,
+          (filePercent) => {
+            // Overall progress: completed files + current file fraction
+            const overallPercent = Math.round(
+              ((i + filePercent / 100) / total) * 100
+            );
+            setUploadProgress(overallPercent);
+          },
+          signal
+        );
 
         mediaItems.push({
-          url: public_url,
-          type: contentType.startsWith('video/') ? 'video' : 'image',
-          mime_type: contentType,
+          media_url: result.public_url,
+          media_type: item.file.type.startsWith('video/') ? 'video' : 'image',
         });
-      }
-
-      // 3. Send message with all media
-      const msgRes = await fetch(
-        `/api/chat/conversations/${conversationId}/messages`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'media',
-            media: mediaItems,
-          }),
-        }
-      );
-      if (!msgRes.ok) {
-        const data = await msgRes.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to send message');
       }
 
       // Clean up previews
       selected.forEach((item) => URL.revokeObjectURL(item.preview));
-      onSent?.();
+
+      // Delegate message creation to parent (goes through useChat.sendMessage)
+      onSendMedia(mediaItems);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send media');
+      if (!cancelledRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to send media');
+      }
       setIsSending(false);
+      setUploadProgress(0);
+      setUploadLabel('');
     }
-  }, [isSending, selected, conversationId, onSent, onClose]);
-
-  const handleVoice = useCallback(() => {
-    onClose();
-    onVoiceRecord();
-  }, [onClose, onVoiceRecord]);
+  }, [isSending, selected, onSendMedia, onClose]);
 
   // Swipe to dismiss
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -250,74 +290,31 @@ export function MediaAttachmentSheet({
           </button>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex gap-4 px-4 pb-4">
-          {/* Gallery */}
+        {/* Gallery button */}
+        <div className="px-4 pb-4">
           <button
             type="button"
             onClick={() => galleryRef.current?.click()}
             disabled={selected.length >= MAX_ATTACHMENTS || isSending}
             className={cn(
-              'flex flex-1 flex-col items-center gap-2 rounded-2xl py-4',
+              'flex w-full items-center gap-3 rounded-2xl px-4 py-4',
               'bg-white/10 text-white transition-colors',
-              'hover:bg-white/15 active:scale-95',
+              'hover:bg-white/15 active:scale-[0.98]',
               'disabled:opacity-40'
             )}
             aria-label="Select from gallery"
           >
             <Image className="h-6 w-6" />
-            <span className="text-xs">Gallery</span>
-          </button>
-
-          {/* Camera */}
-          <button
-            type="button"
-            onClick={() => cameraRef.current?.click()}
-            disabled={selected.length >= MAX_ATTACHMENTS || isSending}
-            className={cn(
-              'flex flex-1 flex-col items-center gap-2 rounded-2xl py-4',
-              'bg-white/10 text-white transition-colors',
-              'hover:bg-white/15 active:scale-95',
-              'disabled:opacity-40'
-            )}
-            aria-label="Take photo"
-          >
-            <Camera className="h-6 w-6" />
-            <span className="text-xs">Camera</span>
-          </button>
-
-          {/* Voice */}
-          <button
-            type="button"
-            onClick={handleVoice}
-            disabled={isSending}
-            className={cn(
-              'flex flex-1 flex-col items-center gap-2 rounded-2xl py-4',
-              'bg-white/10 text-white transition-colors',
-              'hover:bg-white/15 active:scale-95',
-              'disabled:opacity-40'
-            )}
-            aria-label="Record voice message"
-          >
-            <Mic className="h-6 w-6" />
-            <span className="text-xs">Voice</span>
+            <span className="text-sm font-medium">Choose Photo or Video</span>
           </button>
         </div>
 
-        {/* Hidden file inputs */}
+        {/* Hidden file input */}
         <input
           ref={galleryRef}
           type="file"
           accept="image/*,video/*"
           multiple
-          className="hidden"
-          onChange={handleFileSelect}
-        />
-        <input
-          ref={cameraRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={handleFileSelect}
         />
@@ -344,6 +341,8 @@ export function MediaAttachmentSheet({
                     <video
                       src={item.preview}
                       className="h-full w-full object-cover"
+                      preload="metadata"
+                      playsInline
                       muted
                     />
                   ) : (
@@ -371,6 +370,24 @@ export function MediaAttachmentSheet({
               ))}
             </div>
 
+            {/* Upload progress bar */}
+            {isSending && (
+              <div className="mt-2 mb-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-white/70">{uploadLabel}</span>
+                  <span className="text-xs font-mono tabular-nums text-white/70">
+                    {uploadProgress}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Send button */}
             <button
               type="button"
@@ -378,15 +395,15 @@ export function MediaAttachmentSheet({
               disabled={isSending || selected.length === 0}
               className={cn(
                 'mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-2.5',
-                'bg-blue-500 text-white font-medium transition-colors',
-                'hover:bg-blue-600 active:scale-[0.98]',
+                'bg-primary text-white font-medium transition-colors',
+                'hover:bg-primary/90 active:scale-[0.98]',
                 'disabled:opacity-50'
               )}
             >
               {isSending ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  <span>Uploading...</span>
+                  <span>{uploadLabel}</span>
                 </>
               ) : (
                 <>

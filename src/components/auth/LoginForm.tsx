@@ -45,7 +45,7 @@ export function LoginForm() {
         return;
       }
 
-      login(result.user);
+      login(result.user, result.token);
       toast.success('Welcome back!');
       router.push('/');
     } catch {

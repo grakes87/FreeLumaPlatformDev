@@ -62,6 +62,7 @@ export function ChatView({
   const [contextMenu, setContextMenu] = useState<{
     message: ChatMessage;
     isOwn: boolean;
+    bubbleRect: DOMRect;
   } | null>(null);
 
   // Build participant name map for typing indicator
@@ -151,12 +152,24 @@ export function ChatView({
     [sendMessage, replyTo]
   );
 
+  // Media/voice send handler (uses sendMessage for optimistic insert + socket)
+  const handleSendMedia = useCallback(
+    (opts: {
+      type: 'media' | 'voice';
+      media: Array<{ media_url: string; media_type: 'image' | 'video' | 'voice'; duration?: number }>;
+    }) => {
+      sendMessage('', { type: opts.type, media: opts.media });
+    },
+    [sendMessage]
+  );
+
   // Context menu handlers
   const handleLongPress = useCallback(
-    (message: ChatMessage) => {
+    (message: ChatMessage, bubbleRect: DOMRect) => {
       setContextMenu({
         message,
         isOwn: message.sender_id === user?.id,
+        bubbleRect,
       });
     },
     [user?.id]
@@ -236,8 +249,11 @@ export function ChatView({
                 const next = idx < group.messages.length - 1 ? group.messages[idx + 1] : null;
 
                 // Show avatar only for first message in a consecutive group
+                // System messages don't count for grouping (they're centered, not bubbles)
                 const isSameSenderAsPrev =
                   prev &&
+                  prev.type !== 'system' &&
+                  msg.type !== 'system' &&
                   prev.sender_id === msg.sender_id &&
                   !prev.is_unsent &&
                   new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() <
@@ -245,6 +261,8 @@ export function ChatView({
 
                 const isSameSenderAsNext =
                   next &&
+                  next.type !== 'system' &&
+                  msg.type !== 'system' &&
                   next.sender_id === msg.sender_id &&
                   !msg.is_unsent &&
                   new Date(next.created_at).getTime() - new Date(msg.created_at).getTime() <
@@ -281,11 +299,13 @@ export function ChatView({
       {/* Input */}
       <MessageInput
         onSend={handleSend}
+        onSendMedia={handleSendMedia}
         onTyping={emitTyping}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
         isGroup={conversationType === 'group'}
         groupMembers={groupMembers}
+        conversationId={conversationId}
       />
 
       {/* Context menu */}
@@ -293,6 +313,7 @@ export function ChatView({
         isOpen={!!contextMenu}
         message={contextMenu?.message ?? null}
         isOwnMessage={contextMenu?.isOwn ?? false}
+        bubbleRect={contextMenu?.bubbleRect ?? null}
         onClose={() => setContextMenu(null)}
         onReply={handleReply}
         onReact={handleReact}

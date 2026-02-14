@@ -118,28 +118,28 @@ export function useConversations() {
   useEffect(() => {
     if (!chatSocket) return;
 
-    const handleNewMessage = (data: {
-      conversationId: number;
-      message: {
-        content: string | null;
-        type: string;
-        sender: { display_name: string };
-      };
+    // The server emits the raw message object with snake_case fields:
+    // { conversation_id, content, type, sender: { display_name }, ... }
+    const handleNewMessage = (msg: {
+      conversation_id: number;
+      content: string | null;
+      type: string;
+      sender?: { display_name: string };
     }) => {
       setConversations((prev) => {
         const updated = prev.map((conv) => {
-          if (conv.id !== data.conversationId) return conv;
+          if (conv.id !== msg.conversation_id) return conv;
 
           let preview: string | null = null;
-          if (data.message.content) {
-            preview = data.message.content.length > 40
-              ? data.message.content.slice(0, 40) + '...'
-              : data.message.content;
-          } else if (data.message.type === 'media') {
+          if (msg.content) {
+            preview = msg.content.length > 40
+              ? msg.content.slice(0, 40) + '...'
+              : msg.content;
+          } else if (msg.type === 'media') {
             preview = 'Sent a photo';
-          } else if (data.message.type === 'voice') {
+          } else if (msg.type === 'voice') {
             preview = 'Voice message';
-          } else if (data.message.type === 'shared_post') {
+          } else if (msg.type === 'shared_post') {
             preview = 'Shared a post';
           }
 
@@ -148,7 +148,7 @@ export function useConversations() {
             last_message_at: new Date().toISOString(),
             last_message_preview: preview,
             last_message_sender: conv.type === 'group'
-              ? data.message.sender.display_name
+              ? msg.sender?.display_name ?? null
               : null,
             unread_count: conv.unread_count + 1,
           };
@@ -177,7 +177,7 @@ export function useConversations() {
       );
     };
 
-    const handleMessageUnsent = (data: { conversationId: number }) => {
+    const handleMessageUnsent = (data: { conversation_id: number }) => {
       // Refresh to get the correct last message preview
       fetchConversations(search);
     };

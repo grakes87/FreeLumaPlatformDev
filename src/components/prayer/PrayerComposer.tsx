@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { X, Camera, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { X, Camera, Image as ImageIcon, Loader2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { compressMediaFile } from '@/lib/utils/compressMedia';
+import { uploadWithProgress } from '@/lib/utils/uploadWithProgress';
 import { useDraft } from '@/hooks/useDraft';
 
 interface PrayerComposerProps {
@@ -11,7 +13,22 @@ interface PrayerComposerProps {
   onSubmit: () => void;
 }
 
-type PrayerPrivacy = 'public' | 'followers' | 'private';
+type PrayerPrivacy = 'public' | 'followers';
+
+interface MediaAttachment {
+  file: File;
+  previewUrl: string;
+  publicUrl: string | null;
+  uploading: boolean;
+  progress: number;
+  error: string | null;
+}
+
+const MAX_MEDIA = 4;
+const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200 MB (images compressed client-side before upload)
+function isAllowedMediaType(mimeType: string): boolean {
+  return mimeType.startsWith('image/') || mimeType.startsWith('video/');
+}
 
 export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProps) {
   const { draft, loading: draftLoading, saving, updateDraft, clearDraft } = useDraft('prayer_request');
@@ -21,6 +38,9 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [media, setMedia] = useState<MediaAttachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // Load draft on mount
   useEffect(() => {
@@ -60,6 +80,161 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
     [updateDraft]
   );
 
+  const uploadFileWithProgress = useCallback(
+    async (file: File, previewUrl: string): Promise<string> => {
+      // Compress image before upload (videos pass through as-is)
+      const compressed = await compressMediaFile(file);
+
+      const { public_url } = await uploadWithProgress(compressed, (percent) => {
+        setMedia((prev) =>
+          prev.map((m) =>
+            m.previewUrl === previewUrl ? { ...m, progress: percent } : m
+          )
+        );
+      });
+
+      return public_url;
+    },
+    []
+  );
+
+  const handleFilesSelected = useCallback(
+    async (files: FileList | null) => {
+      if (!files || files.length === 0) return;
+
+      const remaining = MAX_MEDIA - media.length;
+      const toAdd = Array.from(files).slice(0, remaining);
+
+      for (const file of toAdd) {
+        if (!isAllowedMediaType(file.type)) {
+          setError(`Unsupported file type: ${file.type}`);
+          continue;
+        }
+        if (file.size > MAX_FILE_SIZE) {
+          setError('File too large (max 20 MB)');
+          continue;
+        }
+
+        const previewUrl = URL.createObjectURL(file);
+        const attachment: MediaAttachment = {
+          file,
+          previewUrl,
+          publicUrl: null,
+          uploading: true,
+          progress: 0,
+          error: null,
+        };
+
+        setMedia((prev) => [...prev, attachment]);
+
+        try {
+          const publicUrl = await uploadFileWithProgress(file, previewUrl);
+          setMedia((prev) =>
+            prev.map((m) =>
+              m.previewUrl === previewUrl
+                ? { ...m, publicUrl, uploading: false, progress: 100 }
+                : m
+            )
+          );
+        } catch (err) {
+          setMedia((prev) =>
+            prev.map((m) =>
+              m.previewUrl === previewUrl
+                ? { ...m, uploading: false, error: err instanceof Error ? err.message : 'Upload failed' }
+                : m
+            )
+          );
+        }
+      }
+    },
+    [media.length, uploadFileWithProgress]
+  );
+
+  const removeMedia = useCallback((previewUrl: string) => {
+    setMedia((prev) => {
+      const item = prev.find((m) => m.previewUrl === previewUrl);
+      if (item) URL.revokeObjectURL(item.previewUrl);
+      return prev.filter((m) => m.previewUrl !== previewUrl);
+    });
+  }, []);
+
+  const reorderMedia = useCallback((fromIndex: number, toIndex: number) => {
+    setMedia((prev) => {
+      const items = [...prev];
+      const [moved] = items.splice(fromIndex, 1);
+      items.splice(toIndex, 0, moved);
+      return items;
+    });
+  }, []);
+
+  // Drag-and-drop state for media reorder
+  const [mediaDragIndex, setMediaDragIndex] = useState<number | null>(null);
+  const [mediaOverIndex, setMediaOverIndex] = useState<number | null>(null);
+  const mediaContainerRef = useRef<HTMLDivElement>(null);
+  const mediaLongPressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const mediaDragStateRef = useRef({ dragIndex: -1, overIndex: -1, active: false });
+
+  // Non-passive touch move listener for media drag
+  useEffect(() => {
+    const container = mediaContainerRef.current;
+    if (!container || media.length <= 1) return;
+
+    const handleTouchMove = (e: globalThis.TouchEvent) => {
+      if (!mediaDragStateRef.current.active) {
+        if (mediaLongPressTimer.current) clearTimeout(mediaLongPressTimer.current);
+        return;
+      }
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      const children = Array.from(container.children) as HTMLElement[];
+      for (let i = 0; i < children.length; i++) {
+        const rect = children[i].getBoundingClientRect();
+        if (touch.clientX >= rect.left && touch.clientX <= rect.right) {
+          if (i !== mediaDragStateRef.current.dragIndex) {
+            mediaDragStateRef.current.overIndex = i;
+            setMediaOverIndex(i);
+          } else {
+            mediaDragStateRef.current.overIndex = -1;
+            setMediaOverIndex(null);
+          }
+          break;
+        }
+      }
+    };
+
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    return () => container.removeEventListener('touchmove', handleTouchMove);
+  }, [media.length]);
+
+  useEffect(() => {
+    return () => {
+      if (mediaLongPressTimer.current) clearTimeout(mediaLongPressTimer.current);
+    };
+  }, []);
+
+  const handleMediaTouchStart = useCallback((index: number) => {
+    if (media.length <= 1) return;
+    if (mediaLongPressTimer.current) clearTimeout(mediaLongPressTimer.current);
+    mediaDragStateRef.current = { dragIndex: index, overIndex: -1, active: false };
+    mediaLongPressTimer.current = setTimeout(() => {
+      mediaDragStateRef.current.active = true;
+      setMediaDragIndex(index);
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 400);
+  }, [media.length]);
+
+  const handleMediaTouchEnd = useCallback(() => {
+    if (mediaLongPressTimer.current) clearTimeout(mediaLongPressTimer.current);
+    const { active, dragIndex: from, overIndex: to } = mediaDragStateRef.current;
+    if (active && from !== -1 && to !== -1 && from !== to) {
+      reorderMedia(from, to);
+    }
+    mediaDragStateRef.current = { dragIndex: -1, overIndex: -1, active: false };
+    setMediaDragIndex(null);
+    setMediaOverIndex(null);
+  }, [reorderMedia]);
+
   const handleSubmit = useCallback(async () => {
     if (!body.trim()) {
       setError('Please enter your prayer request');
@@ -70,8 +245,23 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
       return;
     }
 
+    // Check if any media is still uploading
+    if (media.some((m) => m.uploading)) {
+      setError('Please wait for media to finish uploading');
+      return;
+    }
+
     setError('');
     setSubmitting(true);
+
+    // Build media array from uploaded attachments
+    const uploadedMedia = media
+      .filter((m) => m.publicUrl && !m.error)
+      .map((m, i) => ({
+        url: m.publicUrl!,
+        media_type: m.file.type.startsWith('video/') ? 'video' as const : 'image' as const,
+        sort_order: i,
+      }));
 
     try {
       const res = await fetch('/api/prayer-requests', {
@@ -82,7 +272,7 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
           body: body.trim(),
           privacy,
           is_anonymous: isAnonymous,
-          media_keys: draft.media_keys.length > 0 ? draft.media_keys : undefined,
+          media: uploadedMedia.length > 0 ? uploadedMedia : undefined,
         }),
       });
 
@@ -96,6 +286,8 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
       setBody('');
       setPrivacy('public');
       setIsAnonymous(false);
+      media.forEach((m) => URL.revokeObjectURL(m.previewUrl));
+      setMedia([]);
       onSubmit();
       onClose();
     } catch (err) {
@@ -103,7 +295,7 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
     } finally {
       setSubmitting(false);
     }
-  }, [body, privacy, isAnonymous, draft.media_keys, clearDraft, onSubmit, onClose]);
+  }, [body, privacy, isAnonymous, media, clearDraft, onSubmit, onClose]);
 
   const handleClose = useCallback(() => {
     // Draft is auto-saved, so just close
@@ -121,6 +313,14 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
     return () => {
       document.removeEventListener('keydown', handleKey);
       document.body.style.overflow = '';
+      // iOS Safari: blur active input and force viewport reset after keyboard dismissal
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      window.scrollTo(0, 0);
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+      });
     };
   }, [isOpen, handleClose]);
 
@@ -188,11 +388,93 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
               <span>{body.length}/5000</span>
             </div>
 
-            {/* Media buttons (placeholder -- media upload not yet wired) */}
+            {/* Media previews with drag-and-drop reorder */}
+            {media.length > 0 && (
+              <div
+                ref={mediaContainerRef}
+                className="flex gap-3 overflow-x-auto pt-2 pb-1"
+                onDragOver={(e) => e.preventDefault()}
+              >
+                {media.map((m, index) => (
+                  <div
+                    key={m.previewUrl}
+                    draggable={media.length > 1 && !m.uploading}
+                    onDragStart={() => setMediaDragIndex(index)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (mediaDragIndex !== null && index !== mediaDragIndex) setMediaOverIndex(index);
+                    }}
+                    onDragEnd={() => {
+                      if (mediaDragIndex !== null && mediaOverIndex !== null && mediaDragIndex !== mediaOverIndex) {
+                        reorderMedia(mediaDragIndex, mediaOverIndex);
+                      }
+                      setMediaDragIndex(null);
+                      setMediaOverIndex(null);
+                    }}
+                    onTouchStart={() => handleMediaTouchStart(index)}
+                    onTouchEnd={handleMediaTouchEnd}
+                    onTouchCancel={handleMediaTouchEnd}
+                    className={cn(
+                      'relative flex-shrink-0 transition-all duration-150',
+                      media.length > 1 && !m.uploading && 'cursor-grab',
+                      mediaDragIndex === index && 'opacity-40 scale-90',
+                      mediaOverIndex === index && mediaDragIndex !== null && mediaDragIndex !== index &&
+                        'ring-2 ring-primary ring-offset-1 rounded-lg',
+                    )}
+                  >
+                    {m.file.type.startsWith('video/') ? (
+                      <video
+                        src={m.previewUrl}
+                        preload="metadata"
+                        playsInline
+                        muted
+                        className="h-24 w-24 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={m.previewUrl}
+                        alt=""
+                        className="h-24 w-24 rounded-lg object-cover"
+                      />
+                    )}
+                    {m.uploading && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-lg bg-black/60">
+                        <span className="text-xs font-semibold text-white">
+                          {m.progress > 0 ? `${m.progress}%` : '...'}
+                        </span>
+                        <div className="mx-2 h-1.5 w-16 overflow-hidden rounded-full bg-white/20">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all duration-200"
+                            style={{ width: `${m.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {m.error && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-red-900/50">
+                        <span className="text-[10px] text-red-300">Failed</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeMedia(m.previewUrl)}
+                      className="absolute -right-1.5 -top-1.5 rounded-full bg-gray-900 text-white/70 hover:text-white"
+                      aria-label="Remove"
+                    >
+                      <XCircle className="h-5 w-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Media buttons */}
             <div className="flex items-center gap-2 border-t border-white/10 pt-3">
               <button
                 type="button"
-                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-white/40 transition-colors hover:bg-white/5 hover:text-white/60"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={media.length >= MAX_MEDIA}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-white/40 transition-colors hover:bg-white/5 hover:text-white/60 disabled:opacity-30 disabled:cursor-not-allowed"
                 aria-label="Take photo"
               >
                 <Camera className="h-4 w-4" />
@@ -200,13 +482,42 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
               </button>
               <button
                 type="button"
-                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-white/40 transition-colors hover:bg-white/5 hover:text-white/60"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={media.length >= MAX_MEDIA}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-white/40 transition-colors hover:bg-white/5 hover:text-white/60 disabled:opacity-30 disabled:cursor-not-allowed"
                 aria-label="Choose from gallery"
               >
                 <ImageIcon className="h-4 w-4" />
                 <span>Gallery</span>
               </button>
+              {media.length > 0 && (
+                <span className="ml-auto text-xs text-white/30">{media.length}/{MAX_MEDIA}</span>
+              )}
             </div>
+
+            {/* Hidden file inputs */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                handleFilesSelected(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                handleFilesSelected(e.target.files);
+                e.target.value = '';
+              }}
+            />
 
             {/* Options */}
             <div className="space-y-4 border-t border-white/10 pt-4">
@@ -216,7 +527,7 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
                   Visibility
                 </label>
                 <div className="flex gap-2">
-                  {(['public', 'followers', 'private'] as const).map((opt) => (
+                  {(['public', 'followers'] as const).map((opt) => (
                     <button
                       key={opt}
                       type="button"

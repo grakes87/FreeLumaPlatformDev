@@ -1,53 +1,185 @@
 'use client';
 
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination, Keyboard } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 
-import { useDailyContent } from '@/hooks/useDailyContent';
+import { useDailyContent, type DailyContentData } from '@/hooks/useDailyContent';
+import { useDailyTranslation } from '@/context/DailyTranslationContext';
 import { DailyPostSlide } from './DailyPostSlide';
 import { AudioPlayerSlide } from './AudioPlayerSlide';
 import { LumaShortSlide } from './LumaShortSlide';
 
 interface DailyPostCarouselProps {
+  /** Single-day mode: fetch by date (existing behavior) */
   date?: string;
+  /** Feed mode: use prefetched content instead of fetching */
+  prefetchedContent?: DailyContentData;
+  /** Whether this card is the currently visible one (media isolation) */
+  isActive?: boolean;
+  /** Whether we're in vertical feed mode (controls date label vs DateNavigator) */
+  feedMode?: boolean;
 }
 
-export function DailyPostCarousel({ date }: DailyPostCarouselProps) {
+export function DailyPostCarousel({
+  date,
+  prefetchedContent,
+  isActive = true,
+  feedMode = false,
+}: DailyPostCarouselProps) {
+  // --- Feed mode: use prefetched data ---
+  if (prefetchedContent) {
+    return (
+      <FeedModeCarousel
+        content={prefetchedContent}
+        isActive={isActive}
+        feedMode={feedMode}
+      />
+    );
+  }
+
+  // --- Single-day mode: fetch data via hook ---
+  return <SingleDayCarousel date={date} />;
+}
+
+/** Single-day carousel (e.g. /daily/[date]) — also uses global context */
+function SingleDayCarousel({ date }: { date?: string }) {
   const {
     content,
     loading,
     error,
-    activeTranslation,
-    availableTranslations,
-    switchTranslation,
+    resolvedAudioUrl,
+    resolvedSrtUrl,
   } = useDailyContent(date);
 
-  // Loading state: full-screen skeleton with pulsing gradient
+  const dailyTranslation = useDailyTranslation();
+
+  // Register translations into global context when content loads
+  useEffect(() => {
+    if (!content || !dailyTranslation) return;
+    const codes = content.translations.map((t) => t.code);
+    dailyTranslation.registerTranslations(codes, content.translation_names);
+  }, [content, dailyTranslation]);
+
+  const activeTranslation = dailyTranslation?.activeTranslation ?? null;
+
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-[#1A1A2E] via-[#16213E] to-[#0F3460]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-          <p className="animate-pulse text-sm text-white/60">Loading daily content...</p>
-        </div>
+      <div className="flex w-full items-center justify-center bg-[#0a0a0f]" style={{ height: '100svh' }}>
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
       </div>
     );
   }
 
-  // Error state
   if (error || !content) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-[#1A1A2E] via-[#16213E] to-[#0F3460] px-6 text-center">
-        <div className="mb-4 text-4xl">&#x2728;</div>
-        <h2 className="text-lg font-semibold text-white">No content for today</h2>
-        <p className="mt-2 max-w-sm text-sm text-white/60">
-          {error || 'Daily content is not available yet. Check back later.'}
-        </p>
+      <div className="flex w-full items-center justify-center bg-[#0a0a0f]" style={{ height: '100svh' }}>
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
       </div>
     );
   }
+
+  return (
+    <CarouselSwiper
+      content={content}
+      activeTranslation={activeTranslation}
+      resolvedAudioUrl={resolvedAudioUrl}
+      resolvedSrtUrl={resolvedSrtUrl}
+      isActive={true}
+      feedMode={false}
+    />
+  );
+}
+
+/** Feed-mode carousel: reads translation from global context */
+function FeedModeCarousel({
+  content,
+  isActive,
+  feedMode,
+}: {
+  content: DailyContentData;
+  isActive: boolean;
+  feedMode: boolean;
+}) {
+  const dailyTranslation = useDailyTranslation();
+  const activeTranslation = dailyTranslation?.activeTranslation ?? null;
+
+  const [localContent, setLocalContent] = useState(content);
+  const translationCacheRef = useRef(
+    new Map<string, { text: string; audio_url: string | null; audio_srt_url: string | null }>(
+      content.translations.map((t) => [t.code, { text: t.text, audio_url: t.audio_url, audio_srt_url: t.audio_srt_url }])
+    )
+  );
+
+  // When global translation changes, fetch if not cached for this day
+  useEffect(() => {
+    if (!activeTranslation) return;
+    const code = activeTranslation.toUpperCase();
+    if (translationCacheRef.current.has(code)) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(
+          `/api/translations?daily_content_id=${content.id}&translation_code=${code}`
+        );
+        if (!response.ok || cancelled) return;
+        const data = await response.json();
+        const entry = {
+          text: data.text,
+          audio_url: data.audio_url ?? null,
+          audio_srt_url: data.audio_srt_url ?? null,
+        };
+        translationCacheRef.current.set(code, entry);
+        setLocalContent((prev) => {
+          if (prev.translations.some((t) => t.code === code)) return prev;
+          return { ...prev, translations: [...prev.translations, { code, ...entry }] };
+        });
+      } catch {
+        // Silently fail — show base content
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeTranslation, content.id]);
+
+  // Resolve audio/SRT from active translation
+  const activeT = activeTranslation
+    ? localContent.translations.find((t) => t.code === activeTranslation)
+    : null;
+  const resolvedAudioUrl = activeT?.audio_url || localContent.audio_url || null;
+  const resolvedSrtUrl = activeT?.audio_srt_url || localContent.audio_srt_url || null;
+
+  return (
+    <CarouselSwiper
+      content={localContent}
+      activeTranslation={activeTranslation}
+      resolvedAudioUrl={resolvedAudioUrl}
+      resolvedSrtUrl={resolvedSrtUrl}
+      isActive={isActive}
+      feedMode={feedMode}
+    />
+  );
+}
+
+/** Shared Swiper carousel rendering */
+function CarouselSwiper({
+  content,
+  activeTranslation,
+  resolvedAudioUrl,
+  resolvedSrtUrl,
+  isActive,
+  feedMode,
+}: {
+  content: DailyContentData;
+  activeTranslation: string | null;
+  resolvedAudioUrl: string | null;
+  resolvedSrtUrl: string | null;
+  isActive: boolean;
+  feedMode: boolean;
+}) {
+  const [activeSlide, setActiveSlide] = useState(0);
 
   return (
     <Swiper
@@ -59,10 +191,11 @@ export function DailyPostCarousel({ date }: DailyPostCarouselProps) {
         bulletActiveClass: '!bg-white !opacity-100 !scale-125',
       }}
       keyboard={{ enabled: true }}
-      className="h-screen w-full"
+      onSlideChange={(swiper) => setActiveSlide(swiper.activeIndex)}
+      className="h-full w-full"
       style={
         {
-          '--swiper-pagination-bottom': '72px',
+          '--swiper-pagination-bottom': 'calc(4rem + env(safe-area-inset-bottom, 0px) + 8px)',
         } as React.CSSProperties
       }
     >
@@ -71,19 +204,25 @@ export function DailyPostCarousel({ date }: DailyPostCarouselProps) {
         <DailyPostSlide
           content={content}
           activeTranslation={activeTranslation}
-          availableTranslations={availableTranslations}
-          onSwitchTranslation={switchTranslation}
+          isActive={isActive && activeSlide === 0}
+          feedMode={feedMode}
         />
       </SwiperSlide>
 
       {/* Slide 2: Audio player with SRT subtitle sync */}
       <SwiperSlide>
-        <AudioPlayerSlide content={content} />
+        <AudioPlayerSlide
+          content={content}
+          activeTranslation={activeTranslation}
+          resolvedAudioUrl={resolvedAudioUrl}
+          resolvedSrtUrl={resolvedSrtUrl}
+          isActive={isActive && activeSlide === 1}
+        />
       </SwiperSlide>
 
       {/* Slide 3: LumaShort video */}
       <SwiperSlide>
-        <LumaShortSlide content={content} />
+        <LumaShortSlide content={content} isActive={isActive && activeSlide === 2} />
       </SwiperSlide>
     </Swiper>
   );

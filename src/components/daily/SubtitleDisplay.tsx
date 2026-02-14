@@ -15,6 +15,7 @@ interface SubtitleEntry {
 interface SubtitleDisplayProps {
   srtUrl: string | null;
   currentTime: number;
+  isPlaying: boolean;
 }
 
 /**
@@ -35,7 +36,7 @@ async function parseSrt(content: string): Promise<SubtitleEntry[]> {
   }));
 }
 
-export function SubtitleDisplay({ srtUrl, currentTime }: SubtitleDisplayProps) {
+export function SubtitleDisplay({ srtUrl, currentTime, isPlaying }: SubtitleDisplayProps) {
   const [subtitles, setSubtitles] = useState<SubtitleEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,17 +85,10 @@ export function SubtitleDisplay({ srtUrl, currentTime }: SubtitleDisplayProps) {
     (sub) => currentTime >= sub.startSeconds && currentTime <= sub.endSeconds
   );
 
-  // Auto-scroll to keep active subtitle visible
+  // Auto-scroll to keep active subtitle centered
   const scrollToActive = useCallback(() => {
-    if (activeRef.current && containerRef.current) {
-      const container = containerRef.current;
-      const active = activeRef.current;
-      const containerRect = container.getBoundingClientRect();
-      const activeRect = active.getBoundingClientRect();
-
-      // Center the active element in the container
-      const offset = activeRect.top - containerRect.top - containerRect.height / 2 + activeRect.height / 2;
-      container.scrollBy({ top: offset, behavior: 'smooth' });
+    if (activeRef.current) {
+      activeRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
   }, []);
 
@@ -137,22 +131,25 @@ export function SubtitleDisplay({ srtUrl, currentTime }: SubtitleDisplayProps) {
         WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
       }}
     >
-      <div className="flex flex-col gap-3 py-16">
+      <div className="flex flex-col gap-6 py-16">
         {subtitles.map((sub, index) => {
           const isActive = index === activeIndex;
           const isPast = activeIndex >= 0 && index < activeIndex;
+          const isIdle = !isPlaying;
 
           return (
             <div
               key={sub.id}
               ref={isActive ? activeRef : undefined}
               className={cn(
-                'text-center transition-all duration-300 ease-in-out',
-                isActive
-                  ? 'scale-105 text-lg font-medium text-white sm:text-xl'
-                  : isPast
-                    ? 'text-base text-white/30'
-                    : 'text-base text-white/50'
+                'border-l-2 pl-4 text-left text-lg leading-relaxed transition-all duration-300 ease-in-out sm:text-xl',
+                isIdle
+                  ? 'border-transparent text-white'
+                  : isActive
+                    ? 'border-white text-white'
+                    : isPast
+                      ? 'border-transparent text-white/25'
+                      : 'border-transparent text-white/40'
               )}
             >
               {sub.text}

@@ -22,7 +22,7 @@ export const GET = withAuth(
         return errorResponse('User not found', 404);
       }
 
-      return successResponse({ user });
+      return successResponse({ user, token: context.token });
     } catch (error) {
       return serverError(error, 'Failed to get user data');
     }

@@ -86,7 +86,7 @@ export function SignupForm() {
         return;
       }
 
-      login(result.user);
+      login(result.user, result.token);
       toast.success('Account created successfully!');
 
       // Redirect to onboarding with mode hint if available

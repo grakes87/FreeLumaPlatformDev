@@ -56,7 +56,7 @@ export function InitialsAvatar({
  * A random color is assigned at signup and stored permanently.
  */
 export const AVATAR_COLORS = [
-  '#6366F1', // Indigo
+  '#62BEBA', // Teal
   '#8B5CF6', // Violet
   '#EC4899', // Pink
   '#EF4444', // Red

@@ -136,7 +136,7 @@ export function AppleButton({
         return;
       }
 
-      login(result.user);
+      login(result.user, result.token);
 
       if (result.isNewUser) {
         toast.success('Account created with Apple!');

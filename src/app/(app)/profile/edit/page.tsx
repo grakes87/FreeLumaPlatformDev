@@ -17,7 +17,6 @@ interface FullProfileData {
     date_of_birth: string | null;
     location: string | null;
     website: string | null;
-    mode: string;
     denomination: string | null;
     church: string | null;
   };
@@ -77,7 +76,6 @@ export default function EditProfilePage() {
         date_of_birth: profileData.user.date_of_birth,
         location: profileData.user.location,
         website: profileData.user.website,
-        mode: profileData.user.mode,
         denomination: profileData.user.denomination,
         church: profileData.user.church,
       }}

@@ -4,10 +4,16 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Send, Plus, Mic, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { MentionPicker, type MentionMember } from './MentionPicker';
+import { MediaAttachmentSheet } from './MediaAttachmentSheet';
+import { VoiceRecorder } from './VoiceRecorder';
 import type { ChatMessage } from '@/hooks/useChat';
 
 interface MessageInputProps {
   onSend: (content: string, mentionedUserIds?: number[]) => void;
+  onSendMedia: (options: {
+    type: 'media' | 'voice';
+    media: Array<{ media_url: string; media_type: 'image' | 'video' | 'voice'; duration?: number }>;
+  }) => void;
   onTyping: () => void;
   replyTo: ChatMessage | null;
   onCancelReply: () => void;
@@ -17,6 +23,8 @@ interface MessageInputProps {
   groupMembers?: MentionMember[];
   /** Whether this is a group conversation */
   isGroup?: boolean;
+  /** Conversation ID for media/voice uploads */
+  conversationId: number;
 }
 
 /**
@@ -26,6 +34,7 @@ interface MessageInputProps {
  */
 export function MessageInput({
   onSend,
+  onSendMedia,
   onTyping,
   replyTo,
   onCancelReply,
@@ -33,6 +42,7 @@ export function MessageInput({
   className,
   groupMembers = [],
   isGroup = false,
+  conversationId,
 }: MessageInputProps) {
   const [text, setText] = useState('');
   const [mentionState, setMentionState] = useState<{
@@ -41,6 +51,8 @@ export function MessageInput({
     startIndex: number;
   }>({ active: false, query: '', startIndex: -1 });
   const [mentionedUserIds, setMentionedUserIds] = useState<number[]>([]);
+  const [showMediaSheet, setShowMediaSheet] = useState(false);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea
@@ -217,66 +229,87 @@ export function MessageInput({
         </div>
       )}
 
-      {/* Input row */}
-      <div className="flex items-end gap-1.5 px-3 py-2">
-        {/* Attachment button (placeholder for 03-09) */}
-        <button
-          type="button"
-          className="shrink-0 rounded-full p-2 text-gray-500 dark:text-gray-400 transition-colors hover:text-primary"
-          aria-label="Add attachment"
-          disabled={disabled}
-        >
-          <Plus className="h-5 w-5" />
-        </button>
-
-        {/* Text input */}
-        <div className="flex-1 min-w-0">
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            onSelect={handleSelect}
-            placeholder="Message..."
-            disabled={disabled}
-            rows={1}
-            className={cn(
-              'w-full resize-none rounded-2xl border border-gray-200 dark:border-gray-700',
-              'bg-gray-50 dark:bg-gray-800 px-3.5 py-2 text-sm',
-              'text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500',
-              'focus:outline-none focus:ring-1 focus:ring-primary/50',
-              'max-h-24',
-              disabled && 'opacity-50'
-            )}
-          />
-        </div>
-
-        {/* Send or Mic button */}
-        {hasText ? (
+      {/* Input row — swapped for VoiceRecorder when recording */}
+      {showVoiceRecorder ? (
+        <VoiceRecorder
+          onSendVoice={(media) => {
+            onSendMedia({ type: 'voice', media: [media] });
+            setShowVoiceRecorder(false);
+          }}
+          onClose={() => setShowVoiceRecorder(false)}
+        />
+      ) : (
+        <div className="flex items-end gap-1.5 px-3 py-2">
+          {/* Attachment button */}
           <button
             type="button"
-            onClick={handleSend}
-            disabled={disabled}
-            className={cn(
-              'shrink-0 rounded-full bg-primary p-2 text-white transition-all',
-              'active:scale-90 hover:bg-primary/90',
-              disabled && 'opacity-50'
-            )}
-            aria-label="Send message"
-          >
-            <Send className="h-5 w-5" />
-          </button>
-        ) : (
-          <button
-            type="button"
+            onClick={() => setShowMediaSheet(true)}
             className="shrink-0 rounded-full p-2 text-gray-500 dark:text-gray-400 transition-colors hover:text-primary"
-            aria-label="Record voice message"
+            aria-label="Add attachment"
             disabled={disabled}
           >
-            <Mic className="h-5 w-5" />
+            <Plus className="h-5 w-5" />
           </button>
-        )}
-      </div>
+
+          {/* Text input */}
+          <div className="flex-1 min-w-0">
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onSelect={handleSelect}
+              placeholder="Message..."
+              disabled={disabled}
+              rows={1}
+              className={cn(
+                'w-full resize-none rounded-2xl border border-gray-200 dark:border-gray-700',
+                'bg-gray-50 dark:bg-gray-800 px-3.5 py-2 text-sm',
+                'text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500',
+                'focus:outline-none focus:ring-1 focus:ring-primary/50',
+                'max-h-24',
+                disabled && 'opacity-50'
+              )}
+            />
+          </div>
+
+          {/* Send or Mic button */}
+          {hasText ? (
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={disabled}
+              className={cn(
+                'shrink-0 rounded-full bg-primary p-2 text-white transition-all',
+                'active:scale-90 hover:bg-primary/90',
+                disabled && 'opacity-50'
+              )}
+              aria-label="Send message"
+            >
+              <Send className="h-5 w-5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowVoiceRecorder(true)}
+              className="shrink-0 rounded-full p-2 text-gray-500 dark:text-gray-400 transition-colors hover:text-primary"
+              aria-label="Record voice message"
+              disabled={disabled}
+            >
+              <Mic className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Media attachment bottom sheet */}
+      <MediaAttachmentSheet
+        isOpen={showMediaSheet}
+        onClose={() => setShowMediaSheet(false)}
+        onSendMedia={(media) => {
+          onSendMedia({ type: 'media', media });
+        }}
+      />
     </div>
   );
 }

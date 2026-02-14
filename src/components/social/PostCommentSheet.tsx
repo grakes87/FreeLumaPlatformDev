@@ -39,6 +39,14 @@ export function PostCommentSheet({
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = '';
+      // iOS Safari: blur active input and force viewport reset after keyboard dismissal
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      window.scrollTo(0, 0);
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+      });
     };
   }, [isOpen, handleEscape]);
 
@@ -83,7 +91,7 @@ export function PostCommentSheet({
       {/* Sheet -- liquid glass */}
       <div
         ref={sheetRef}
-        className="fixed inset-x-0 bottom-0 z-10 flex max-h-[80vh] flex-col rounded-t-3xl border-t border-white/20 bg-white/10 shadow-[0_-8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl transition-transform"
+        className="fixed inset-x-0 bottom-0 z-10 flex max-h-[65vh] flex-col overflow-hidden rounded-t-3xl border-t border-white/20 bg-white/10 shadow-[0_-8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl transition-transform"
         style={{
           transform: translateY > 0 ? `translateY(${translateY}px)` : undefined,
           transition: translateY > 0 ? 'none' : undefined,

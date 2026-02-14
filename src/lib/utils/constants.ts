@@ -13,7 +13,7 @@ export const LANGUAGE_OPTIONS: Array<{ code: Language; flag: string; label: stri
 ];
 
 export const AVATAR_COLORS = [
-  '#6366F1', '#8B5CF6', '#EC4899', '#EF4444', '#F97316',
+  '#62BEBA', '#8B5CF6', '#EC4899', '#EF4444', '#F97316',
   '#EAB308', '#22C55E', '#14B8A6', '#06B6D4', '#3B82F6',
 ] as const;
 

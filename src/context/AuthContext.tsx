@@ -4,9 +4,12 @@ import React, {
   createContext,
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
+
+const TOKEN_KEY = '__fl_auth_token';
 
 export interface UserData {
   id: number;
@@ -29,7 +32,9 @@ export interface AuthContextValue {
   user: UserData | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (userData: UserData) => void;
+  /** Auth token for Socket.IO (persisted in sessionStorage across AuthProvider boundaries) */
+  authToken: string | null;
+  login: (userData: UserData, token?: string) => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -39,18 +44,54 @@ export const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authToken, setAuthToken] = useState<string | null>(() => {
+    // Restore token from sessionStorage (survives navigation between
+    // login page AuthProvider and app layout AuthProvider)
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem(TOKEN_KEY);
+    }
+    return null;
+  });
+
+  // Guard: prevent fetchUser from clearing state set by a recent login() call
+  const loginTimestampRef = useRef(0);
 
   const fetchUser = useCallback(async () => {
+    const fetchStarted = Date.now();
     try {
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      // Primary: try cookie-based auth
+      const headers: Record<string, string> = {};
+      const storedToken = sessionStorage.getItem(TOKEN_KEY);
+      if (storedToken) {
+        headers['Authorization'] = `Bearer ${storedToken}`;
+      }
+      const res = await fetch('/api/auth/me', {
+        credentials: 'include',
+        headers,
+      });
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
-      } else {
+        // Always refresh the token from the server response
+        if (data.token) {
+          setAuthToken(data.token);
+          sessionStorage.setItem(TOKEN_KEY, data.token);
+        }
+        return;
+      }
+
+      // Both failed — only clear if no login() happened while we were fetching
+      if (fetchStarted > loginTimestampRef.current) {
         setUser(null);
+        setAuthToken(null);
+        sessionStorage.removeItem(TOKEN_KEY);
       }
     } catch {
-      setUser(null);
+      if (fetchStarted > loginTimestampRef.current) {
+        setUser(null);
+        setAuthToken(null);
+        sessionStorage.removeItem(TOKEN_KEY);
+      }
     } finally {
       setLoading(false);
     }
@@ -60,8 +101,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser();
   }, [fetchUser]);
 
-  const login = useCallback((userData: UserData) => {
+  const login = useCallback((userData: UserData, token?: string) => {
+    loginTimestampRef.current = Date.now();
     setUser(userData);
+    if (token) {
+      setAuthToken(token);
+      sessionStorage.setItem(TOKEN_KEY, token);
+    }
   }, []);
 
   const logout = useCallback(async () => {
@@ -74,6 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Proceed with client-side logout even if API call fails
     }
     setUser(null);
+    setAuthToken(null);
+    sessionStorage.removeItem(TOKEN_KEY);
     window.location.href = '/login';
   }, []);
 
@@ -85,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, isAuthenticated, login, logout, refreshUser }}
+      value={{ user, loading, isAuthenticated, authToken, login, logout, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

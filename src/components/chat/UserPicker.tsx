@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
+import { X, Search, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
 
@@ -21,63 +22,105 @@ interface UserPickerProps {
   onClose: () => void;
 }
 
+const PAGE_SIZE = 20;
+
 /**
  * Full-screen overlay for selecting users to start new conversations.
- * Searches users via /api/users/search and creates/navigates to conversations.
+ * Shows followers by default, with search to find any user.
+ * Supports infinite scroll pagination.
  */
 export function UserPicker({ isOpen, onClose }: UserPickerProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<UserResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [creating, setCreating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const offsetRef = useRef(0);
 
-  // Focus search input when opened
+  // Fetch users (followers or search results)
+  const fetchUsers = useCallback(async (searchQuery: string, offset: number, append: boolean) => {
+    if (offset === 0) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    try {
+      const isSearch = searchQuery.length >= 2;
+      const params = new URLSearchParams();
+      params.set('q', searchQuery);
+      params.set('limit', String(PAGE_SIZE));
+      params.set('offset', String(offset));
+      if (!isSearch) {
+        params.set('followers_only', 'true');
+      }
+
+      const res = await fetch(`/api/users/search?${params}`, {
+        credentials: 'include',
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const users = data.users ?? [];
+        setHasMore(data.hasMore ?? false);
+        offsetRef.current = offset + users.length;
+
+        if (append) {
+          setResults((prev) => [...prev, ...users]);
+        } else {
+          setResults(users);
+        }
+      }
+    } catch (err) {
+      console.error('[UserPicker] fetch error:', err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, []);
+
+  // Reset and load followers when opened
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
       setQuery('');
       setResults([]);
+      setHasMore(false);
+      offsetRef.current = 0;
+      setTimeout(() => inputRef.current?.focus(), 100);
+      // Load followers immediately
+      fetchUsers('', 0, false);
     }
-  }, [isOpen]);
+  }, [isOpen, fetchUsers]);
 
-  // Debounced search
+  // Debounced search on query change
   useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
+    if (!isOpen) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (query.length < 2) {
-      setResults([]);
-      return;
-    }
-
-    debounceRef.current = setTimeout(async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`, {
-          credentials: 'include',
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setResults(data.users ?? []);
-        }
-      } catch (err) {
-        console.error('[UserPicker] search error:', err);
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
+    debounceRef.current = setTimeout(() => {
+      offsetRef.current = 0;
+      fetchUsers(query, 0, false);
+    }, query.length >= 2 ? 300 : 100);
 
     return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query]);
+  }, [query, isOpen, fetchUsers]);
+
+  // Infinite scroll
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || loadingMore || !hasMore) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distFromBottom < 100) {
+      fetchUsers(query, offsetRef.current, true);
+    }
+  }, [query, loadingMore, hasMore, fetchUsers]);
 
   const handleSelectUser = useCallback(async (userId: number) => {
     try {
@@ -101,12 +144,11 @@ export function UserPicker({ isOpen, onClose }: UserPickerProps) {
           router.push(`/chat/${conversationId}`);
         }
       } else {
-        const errData = await res.json().catch(() => null);
         // 202 means message request sent
         if (res.status === 202) {
           onClose();
-          // Optionally show a toast that request was sent
         } else {
+          const errData = await res.json().catch(() => null);
           console.error('[UserPicker] create conversation error:', errData?.error);
         }
       }
@@ -119,6 +161,8 @@ export function UserPicker({ isOpen, onClose }: UserPickerProps) {
 
   if (!isOpen) return null;
 
+  const isSearchMode = query.length >= 2;
+
   return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900">
       {/* Header */}
@@ -129,9 +173,7 @@ export function UserPicker({ isOpen, onClose }: UserPickerProps) {
           className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
           aria-label="Close"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-6 w-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <X className="h-6 w-6" />
         </button>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
           New Message
@@ -140,10 +182,8 @@ export function UserPicker({ isOpen, onClose }: UserPickerProps) {
 
       {/* Search bar */}
       <div className="border-b border-gray-200 px-4 py-2 dark:border-white/10">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            To:
-          </span>
+        <div className="flex items-center gap-2 rounded-xl bg-gray-100 dark:bg-gray-800 px-3 py-2">
+          <Search className="h-4 w-4 shrink-0 text-gray-400" />
           <input
             ref={inputRef}
             type="text"
@@ -155,71 +195,95 @@ export function UserPicker({ isOpen, onClose }: UserPickerProps) {
               'placeholder:text-gray-400 dark:text-white dark:placeholder:text-gray-500'
             )}
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Section label */}
+      {!loading && results.length > 0 && (
+        <div className="px-4 pt-3 pb-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            {isSearchMode ? 'Search Results' : 'Suggested'}
+          </p>
+        </div>
+      )}
+
       {/* Results */}
-      <div className="flex-1 overflow-y-auto">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto"
+        onScroll={handleScroll}
+      >
         {loading && (
           <div className="flex justify-center py-8">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
           </div>
         )}
 
-        {!loading && query.length >= 2 && results.length === 0 && (
+        {!loading && results.length === 0 && (
           <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-            No users found
+            {isSearchMode ? 'No users found' : 'No followers yet'}
           </div>
         )}
 
-        {!loading && query.length < 2 && (
-          <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-            Search for people to message
-          </div>
-        )}
-
-        {results.map((user) => (
-          <button
-            key={user.id}
-            type="button"
-            disabled={creating}
-            onClick={() => handleSelectUser(user.id)}
-            className={cn(
-              'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
-              'hover:bg-gray-50 dark:hover:bg-white/5',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
-            )}
-          >
-            <div className="shrink-0">
-              {user.avatar_url ? (
-                <img
-                  src={user.avatar_url}
-                  alt={user.display_name}
-                  className="h-12 w-12 rounded-full object-cover"
-                />
-              ) : (
-                <InitialsAvatar
-                  name={user.display_name}
-                  color={user.avatar_color}
-                  size={48}
-                />
+        {!loading &&
+          results.map((user) => (
+            <button
+              key={user.id}
+              type="button"
+              disabled={creating}
+              onClick={() => handleSelectUser(user.id)}
+              className={cn(
+                'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
+                'hover:bg-gray-50 dark:hover:bg-white/5',
+                'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                {user.display_name}
+            >
+              <div className="shrink-0">
+                {user.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt={user.display_name}
+                    className="h-12 w-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <InitialsAvatar
+                    name={user.display_name}
+                    color={user.avatar_color}
+                    size={48}
+                  />
+                )}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                @{user.username}
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {user.display_name}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  @{user.username}
+                </div>
               </div>
-            </div>
-            {user.follow_status === 'active' && (
-              <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">
-                Following
-              </span>
-            )}
-          </button>
-        ))}
+              {user.follow_status === 'active' && (
+                <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">
+                  Following
+                </span>
+              )}
+            </button>
+          ))}
+
+        {/* Load more spinner */}
+        {loadingMore && (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+          </div>
+        )}
       </div>
 
       {/* Creating overlay */}
@@ -227,7 +291,7 @@ export function UserPicker({ isOpen, onClose }: UserPickerProps) {
         <div className="absolute inset-0 flex items-center justify-center bg-black/20">
           <div className="rounded-xl bg-white px-6 py-4 shadow-lg dark:bg-gray-800">
             <div className="flex items-center gap-3">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
+              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
               <span className="text-sm text-gray-700 dark:text-gray-200">
                 Opening conversation...
               </span>

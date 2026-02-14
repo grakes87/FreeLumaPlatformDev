@@ -37,10 +37,10 @@ export const GET = withAuth(async (_req: NextRequest, context: AuthContext) => {
     // Combined query: popular + interest-based + new users
     // Using UNION to merge three strategies, then deduplicate with outer query
     const query = `
-      SELECT id, display_name, username, avatar_url, avatar_color, bio, mode, score
+      SELECT id, display_name, username, avatar_url, avatar_color, is_verified, bio, mode, score
       FROM (
         -- Popular: users with most active followers
-        SELECT u.id, u.display_name, u.username, u.avatar_url, u.avatar_color, u.bio, u.mode,
+        SELECT u.id, u.display_name, u.username, u.avatar_url, u.avatar_color, u.is_verified, u.bio, u.mode,
                COUNT(f.id) AS score
         FROM users u
         LEFT JOIN follows f ON f.following_id = u.id AND f.status = 'active'
@@ -63,7 +63,7 @@ export const GET = withAuth(async (_req: NextRequest, context: AuthContext) => {
         UNION ALL
 
         -- Interest-based: users sharing the most categories with current user
-        SELECT u.id, u.display_name, u.username, u.avatar_url, u.avatar_color, u.bio, u.mode,
+        SELECT u.id, u.display_name, u.username, u.avatar_url, u.avatar_color, u.is_verified, u.bio, u.mode,
                COUNT(uc2.category_id) AS score
         FROM users u
         INNER JOIN user_categories uc2 ON uc2.user_id = u.id
@@ -87,7 +87,7 @@ export const GET = withAuth(async (_req: NextRequest, context: AuthContext) => {
         UNION ALL
 
         -- New users: registered in the last 30 days
-        SELECT u.id, u.display_name, u.username, u.avatar_url, u.avatar_color, u.bio, u.mode,
+        SELECT u.id, u.display_name, u.username, u.avatar_url, u.avatar_color, u.is_verified, u.bio, u.mode,
                0 AS score
         FROM users u
         WHERE u.id != :userId

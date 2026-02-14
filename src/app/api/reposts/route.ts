@@ -16,7 +16,7 @@ const REPOST_BODY_MAX = 5000;
 
 const createRepostSchema = z.object({
   original_post_id: z.number().int().positive(),
-  body: z.string().min(1, 'Quote body is required').max(REPOST_BODY_MAX, `Quote body must be ${REPOST_BODY_MAX} characters or less`),
+  body: z.string().max(REPOST_BODY_MAX, `Quote body must be ${REPOST_BODY_MAX} characters or less`).optional().default(''),
 });
 
 /**
@@ -41,7 +41,7 @@ export const POST = withAuth(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
           },
           {
             model: PostMedia,
@@ -53,6 +53,11 @@ export const POST = withAuth(
 
       if (!originalPost) {
         return errorResponse('Original post not found', 404);
+      }
+
+      // Cannot repost your own post
+      if (originalPost.user_id === userId) {
+        return errorResponse('You cannot repost your own post', 400);
       }
 
       // Check if the original post author has blocked the user or vice versa
@@ -76,7 +81,7 @@ export const POST = withAuth(
       }
 
       // Run profanity check on body (flag, don't block)
-      const { flagged, censored } = checkAndFlag(body);
+      const { flagged, censored } = body ? checkAndFlag(body) : { flagged: false, censored: '' };
 
       // Create the new quote post
       const quotePost = await Post.create({
@@ -100,7 +105,7 @@ export const POST = withAuth(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
           },
         ],
       });

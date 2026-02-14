@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Users } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 interface Supporter {
   id: number;
@@ -10,6 +11,7 @@ interface Supporter {
   display_name: string;
   avatar_url: string | null;
   avatar_color: string;
+  is_verified: boolean;
 }
 
 interface SupportersResponse {
@@ -77,7 +79,7 @@ export function SupportersList({ prayerRequestId, isAuthor, prayCount }: Support
       <button
         type="button"
         onClick={handleExpand}
-        className="flex items-center gap-1.5 text-xs text-white/50 transition-colors hover:text-white/70"
+        className="flex items-center gap-1.5 text-xs text-text-muted transition-colors hover:text-text dark:text-white/50 dark:hover:text-white/70"
       >
         <Users className="h-3.5 w-3.5" />
         <span>{prayCount} {prayCount === 1 ? 'person is' : 'people are'} praying for you</span>
@@ -89,7 +91,7 @@ export function SupportersList({ prayerRequestId, isAuthor, prayCount }: Support
             <a
               key={s.id}
               href={`/profile/${s.username}`}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5"
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-black/5 dark:hover:bg-white/5"
             >
               {s.avatar_url ? (
                 <img
@@ -100,24 +102,25 @@ export function SupportersList({ prayerRequestId, isAuthor, prayCount }: Support
               ) : (
                 <div
                   className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white"
-                  style={{ backgroundColor: s.avatar_color || '#6366F1' }}
+                  style={{ backgroundColor: s.avatar_color || '#62BEBA' }}
                 >
                   {s.display_name.charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="text-sm text-white/80">{s.display_name}</span>
+              <span className="text-sm text-text dark:text-white/80">{s.display_name}</span>
+              {s.is_verified && <VerifiedBadge />}
             </a>
           ))}
 
           {loading && (
-            <div className="py-2 text-center text-xs text-white/40">Loading...</div>
+            <div className="py-2 text-center text-xs text-text-muted dark:text-white/40">Loading...</div>
           )}
 
           {!loading && hasMore && (
             <button
               type="button"
               onClick={() => fetchSupporters()}
-              className="w-full py-1.5 text-center text-xs text-white/50 transition-colors hover:text-white/70"
+              className="w-full py-1.5 text-center text-xs text-text-muted transition-colors hover:text-text dark:text-white/50 dark:hover:text-white/70"
             >
               Load more
             </button>

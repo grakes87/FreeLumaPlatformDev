@@ -181,6 +181,7 @@ export default function ChatConversationPage({
       <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-gray-900">
         <ChatHeader
           displayName="Unavailable"
+          participants={[]}
           onBack={() => router.push('/chat')}
         />
         <div className="flex flex-1 items-center justify-center">
@@ -207,6 +208,7 @@ export default function ChatConversationPage({
       <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-gray-900">
         <ChatHeader
           displayName="Not Found"
+          participants={[]}
           onBack={() => router.push('/chat')}
         />
         <div className="flex flex-1 items-center justify-center">
@@ -229,7 +231,7 @@ export default function ChatConversationPage({
   if (loading || !conversation) {
     return (
       <div className="fixed inset-0 z-40 flex flex-col bg-white dark:bg-gray-900">
-        <ChatHeader displayName="..." onBack={() => router.push('/chat')} />
+        <ChatHeader displayName="..." participants={[]} onBack={() => router.push('/chat')} />
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </div>
@@ -242,27 +244,20 @@ export default function ChatConversationPage({
       {/* Header */}
       <ChatHeader
         displayName={displayName}
-        avatarUrl={
-          conversation.type === 'direct'
-            ? participants[0]?.avatar_url ?? null
-            : conversation.avatar_url
-        }
-        avatarName={
-          conversation.type === 'direct'
-            ? participants[0]?.display_name || 'Chat'
-            : displayName
-        }
-        avatarColor={
-          conversation.type === 'direct'
-            ? participants[0]?.avatar_color || '#3B82F6'
-            : '#3B82F6'
-        }
+        participants={participants}
+        conversationAvatarUrl={conversation.type === 'group' ? conversation.avatar_url : undefined}
         isOnline={isOtherOnline}
         showOnline={conversation.type === 'direct'}
         isGroup={conversation.type === 'group'}
         memberCount={memberCount}
         onBack={() => router.push('/chat')}
-        onTapInfo={() => setShowGroupInfo(true)}
+        onTapInfo={
+          conversation.type === 'group'
+            ? () => setShowGroupInfo(true)
+            : participants[0]
+              ? () => router.push(`/profile/${participants[0].username}?from=chat`)
+              : undefined
+        }
       />
 
       {/* Chat view */}
@@ -296,9 +291,8 @@ export default function ChatConversationPage({
 
 interface ChatHeaderProps {
   displayName: string;
-  avatarUrl?: string | null;
-  avatarName?: string;
-  avatarColor?: string;
+  participants: Participant[];
+  conversationAvatarUrl?: string | null;
   isOnline?: boolean;
   showOnline?: boolean;
   isGroup?: boolean;
@@ -309,9 +303,8 @@ interface ChatHeaderProps {
 
 function ChatHeader({
   displayName,
-  avatarUrl,
-  avatarName,
-  avatarColor,
+  participants,
+  conversationAvatarUrl,
   isOnline = false,
   showOnline = false,
   isGroup = false,
@@ -319,6 +312,10 @@ function ChatHeader({
   onBack,
   onTapInfo,
 }: ChatHeaderProps) {
+  // For direct: show single avatar. For group: show overlapping stack of up to 3.
+  const displayAvatars = isGroup ? participants.slice(0, 3) : participants.slice(0, 1);
+  const extraCount = isGroup ? Math.max(0, participants.length - 3) : 0;
+
   return (
     <header
       className={cn(
@@ -336,41 +333,65 @@ function ChatHeader({
         <ArrowLeft className="h-5 w-5" />
       </button>
 
-      {/* Tappable area for group info */}
+      {/* Tappable area — opens group info or navigates to profile */}
       <button
         type="button"
-        onClick={isGroup ? onTapInfo : undefined}
-        className={cn(
-          'flex flex-1 items-center gap-3 min-w-0',
-          isGroup && 'cursor-pointer'
-        )}
-        disabled={!isGroup}
+        onClick={onTapInfo}
+        className="flex flex-1 items-center gap-3 min-w-0 cursor-pointer"
       >
-        {/* Avatar */}
-        {avatarName && (
-          <div className="relative shrink-0">
-            {avatarUrl ? (
-              <Image
-                src={avatarUrl}
-                alt={avatarName}
-                width={36}
-                height={36}
-                className="h-9 w-9 rounded-full object-cover"
-              />
-            ) : (
-              <InitialsAvatar
-                name={avatarName}
-                color={avatarColor || '#3B82F6'}
-                size={36}
-                className="text-sm"
-              />
-            )}
-            {/* Online dot */}
-            {showOnline && isOnline && (
-              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-gray-900 bg-green-500" />
-            )}
-          </div>
-        )}
+        {/* Avatar stack */}
+        <div className="relative shrink-0 flex items-center">
+          {isGroup && conversationAvatarUrl ? (
+            /* Group has a custom avatar — show just that */
+            <Image
+              src={conversationAvatarUrl}
+              alt={displayName}
+              width={36}
+              height={36}
+              className="h-9 w-9 rounded-full object-cover"
+            />
+          ) : (
+            /* Overlapping avatar stack */
+            <div className="flex items-center" style={{ minWidth: 36 + (displayAvatars.length - 1) * 20 }}>
+              {displayAvatars.map((p, i) => (
+                <div
+                  key={p.id}
+                  className="relative rounded-full ring-2 ring-white dark:ring-gray-900"
+                  style={{ marginLeft: i === 0 ? 0 : -12, zIndex: displayAvatars.length - i }}
+                >
+                  {p.avatar_url ? (
+                    <Image
+                      src={p.avatar_url}
+                      alt={p.display_name}
+                      width={36}
+                      height={36}
+                      className="h-9 w-9 rounded-full object-cover"
+                    />
+                  ) : (
+                    <InitialsAvatar
+                      name={p.display_name}
+                      color={p.avatar_color || '#3B82F6'}
+                      size={36}
+                      className="text-sm"
+                    />
+                  )}
+                </div>
+              ))}
+              {extraCount > 0 && (
+                <div
+                  className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 ring-2 ring-white dark:ring-gray-900 text-xs font-semibold text-gray-600 dark:text-gray-300"
+                  style={{ marginLeft: -12, zIndex: 0 }}
+                >
+                  +{extraCount}
+                </div>
+              )}
+            </div>
+          )}
+          {/* Online dot for direct chats */}
+          {showOnline && isOnline && (
+            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-gray-900 bg-green-500" />
+          )}
+        </div>
 
         {/* Name + status */}
         <div className="flex-1 min-w-0 text-left">
@@ -384,7 +405,7 @@ function ChatHeader({
           )}
           {isGroup && memberCount > 0 && (
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {memberCount} member{memberCount !== 1 ? 's' : ''}
+              {memberCount} member{memberCount !== 1 ? 's' : ''}{extraCount > 0 ? ` · +${extraCount} others` : ''}
             </p>
           )}
         </div>

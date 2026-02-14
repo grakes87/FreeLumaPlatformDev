@@ -4,19 +4,30 @@ import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import { Draft } from '@/lib/db/models';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 
+const metadataSchema = z
+  .object({
+    category_id: z.number().int().positive().optional(),
+    visibility: z.enum(['public', 'followers']).optional(),
+    is_anonymous: z.boolean().optional(),
+    prayer_privacy: z.enum(['public', 'followers']).optional(),
+  })
+  .nullable()
+  .optional();
+
 const saveDraftSchema = z.object({
   draft_type: z.enum(['post', 'prayer_request']),
   body: z.string().max(5000).nullable().optional(),
   media_keys: z.array(z.string()).nullable().optional(),
-  metadata: z
-    .object({
-      category_id: z.number().int().positive().optional(),
-      visibility: z.enum(['public', 'followers']).optional(),
-      is_anonymous: z.boolean().optional(),
-      prayer_privacy: z.enum(['public', 'followers', 'private']).optional(),
-    })
-    .nullable()
-    .optional(),
+  metadata: z.preprocess(
+    (val) => {
+      // MariaDB may return JSON columns as strings; parse if needed
+      if (typeof val === 'string') {
+        try { return JSON.parse(val); } catch { return val; }
+      }
+      return val;
+    },
+    metadataSchema,
+  ),
 });
 
 /**
@@ -30,7 +41,19 @@ export const GET = withAuth(
         order: [['updated_at', 'DESC']],
       });
 
-      return successResponse({ drafts });
+      // Ensure JSON columns are parsed (MariaDB may return them as strings)
+      const parsed = drafts.map((d) => {
+        const plain = d.toJSON() as unknown as Record<string, unknown>;
+        if (typeof plain.metadata === 'string') {
+          try { plain.metadata = JSON.parse(plain.metadata as string); } catch { /* keep as-is */ }
+        }
+        if (typeof plain.media_keys === 'string') {
+          try { plain.media_keys = JSON.parse(plain.media_keys as string); } catch { /* keep as-is */ }
+        }
+        return plain;
+      });
+
+      return successResponse({ drafts: parsed });
     } catch (err) {
       return serverError(err, 'Failed to fetch drafts');
     }

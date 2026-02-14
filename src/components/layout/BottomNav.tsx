@@ -9,12 +9,12 @@ import {
   MessageSquare,
   BookOpen,
   Film,
-  User,
   Plus,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils/cn';
 import { CreatePicker } from './CreatePicker';
+import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
 
 interface NavTab {
   href: string;
@@ -39,7 +39,7 @@ const LEFT_TABS: NavTab[] = [
 const RIGHT_TABS: NavTab[] = [
   { href: '/bible-studies', icon: BookOpen, label: 'Bible Studies' },
   { href: '/animations', icon: Film, label: 'Luma Animations', bibleOnly: true },
-  { href: '/profile', icon: User, label: 'Profile' },
+  { href: '/profile', icon: Sparkles, label: 'Profile' },  // icon unused for profile tab
 ];
 
 interface BottomNavProps {
@@ -77,6 +77,7 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
     const isActive =
       tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href);
     const Icon = tab.icon;
+    const isProfile = tab.href === '/profile';
 
     return (
       <Link
@@ -84,17 +85,42 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
         href={tab.href}
         className={cn(
           'flex flex-col items-center justify-center p-2 transition-colors',
-          isActive
-            ? 'text-primary'
-            : 'text-text-muted dark:text-text-muted-dark'
+          !isProfile && (transparent
+            ? isActive
+              ? 'text-white'
+              : 'text-white/70'
+            : isActive
+              ? 'text-primary'
+              : 'text-text-muted dark:text-text-muted-dark')
         )}
         aria-label={tab.label}
         aria-current={isActive ? 'page' : undefined}
       >
-        <Icon
-          className={cn('h-6 w-6', isActive && 'scale-110')}
-          strokeWidth={isActive ? 2.5 : 2}
-        />
+        {isProfile ? (
+          <div className={cn(
+            'flex items-center justify-center rounded-full',
+            isActive && 'ring-2 ring-primary'
+          )}>
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt=""
+                className="h-7 w-7 rounded-full object-cover"
+              />
+            ) : (
+              <InitialsAvatar
+                name={user?.display_name || '?'}
+                color={user?.avatar_color || '#62BEBA'}
+                size={28}
+              />
+            )}
+          </div>
+        ) : (
+          <Icon
+            className={cn('h-6 w-6', isActive && 'scale-110')}
+            strokeWidth={isActive ? 2.5 : 2}
+          />
+        )}
       </Link>
     );
   };
@@ -103,11 +129,15 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
     <>
       <nav
         className={cn(
-          'fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center justify-around',
+          'fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around',
           transparent
-            ? 'bg-transparent'
+            ? 'border-t border-white/20 bg-black/30 backdrop-blur-md'
             : 'border-t border-border bg-surface/90 backdrop-blur-md dark:border-border-dark dark:bg-surface-dark/90'
         )}
+        style={{
+          height: `calc(4rem + env(safe-area-inset-bottom, 0px))`,
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
         aria-label="Main navigation"
       >
         {/* Left tabs */}
@@ -116,7 +146,15 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
         {/* Center '+' create button */}
         <button
           type="button"
-          onClick={() => setPickerOpen((prev) => !prev)}
+          onClick={() => {
+            if (pathname === '/prayer-wall' || pathname.startsWith('/prayer-wall/')) {
+              router.push('/prayer-wall?compose=prayer_request');
+            } else if (pathname === '/feed' || pathname.startsWith('/feed/')) {
+              router.push('/feed?compose=post');
+            } else {
+              setPickerOpen((prev) => !prev);
+            }
+          }}
           className={cn(
             'flex h-12 w-12 -translate-y-3 items-center justify-center rounded-full shadow-lg transition-transform',
             'bg-primary text-white',

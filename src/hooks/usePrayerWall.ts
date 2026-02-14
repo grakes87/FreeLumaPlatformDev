@@ -11,6 +11,7 @@ export interface PrayerAuthor {
   display_name: string;
   avatar_url: string | null;
   avatar_color: string;
+  is_verified: boolean;
 }
 
 export interface PrayerMedia {
@@ -35,6 +36,8 @@ export interface PrayerPost {
   updated_at: string;
   user: PrayerAuthor;
   media: PrayerMedia[];
+  comment_count: number;
+  user_reposted: boolean;
 }
 
 export interface PrayerItem {
@@ -179,9 +182,16 @@ export function usePrayerWall(): UsePrayerWallReturn {
 
   const updatePrayer = useCallback((id: number, updates: Partial<PrayerItem>) => {
     setPrayers((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+      prev
+        .map((p) => (p.id === id ? { ...p, ...updates } : p))
+        .filter((p) => {
+          // Remove prayer if it no longer matches the active status filter
+          if (statusFilter === 'active' && p.status === 'answered') return false;
+          if (statusFilter === 'answered' && p.status === 'active') return false;
+          return true;
+        })
     );
-  }, []);
+  }, [statusFilter]);
 
   return {
     prayers,

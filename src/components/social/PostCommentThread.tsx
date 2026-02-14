@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/hooks/useAuth';
 import { usePostComments, type PostComment } from '@/hooks/usePostComments';
 import { POST_COMMENT_MAX_LENGTH } from '@/lib/utils/constants';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 // ---- Relative time helper ----
 function relativeTime(dateStr: string): string {
@@ -68,6 +69,20 @@ function ReplySection({
   const [loadingMore, setLoadingMore] = useState(false);
   const { loadReplies, editComment, deleteComment } = usePostComments(postId, commentId);
 
+  // Sync newly added replies from parent state
+  useEffect(() => {
+    setReplies((prev) => {
+      const existingIds = new Set(prev.map((r) => r.id));
+      const newOnes = initialReplies.filter((r) => !existingIds.has(r.id));
+      if (newOnes.length === 0) return prev;
+      return [...prev, ...newOnes];
+    });
+    // Auto-expand when a reply is added
+    if (initialReplies.length > 0) {
+      setExpanded(true);
+    }
+  }, [initialReplies]);
+
   const handleExpand = useCallback(() => {
     if (!expanded) {
       setExpanded(true);
@@ -94,6 +109,19 @@ function ReplySection({
       setLoadingMore(false);
     });
   }, [loadReplies, commentId]);
+
+  const handleEdit = useCallback(
+    async (id: number, body: string) => {
+      const ok = await editComment(id, body);
+      if (ok) {
+        setReplies((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, body, edited: true } : r))
+        );
+      }
+      return ok;
+    },
+    [editComment]
+  );
 
   const handleDelete = useCallback(
     async (id: number) => {
@@ -129,7 +157,7 @@ function ReplySection({
               comment={reply}
               postId={postId}
               depth={1}
-              onUpdate={editComment}
+              onUpdate={handleEdit}
               onDelete={handleDelete}
             />
           ))}
@@ -210,6 +238,7 @@ function CommentItem({
           <span className="text-sm font-semibold text-white">
             {comment.user.display_name}
           </span>
+          {comment.user.is_verified && <VerifiedBadge className="h-3.5 w-3.5 shrink-0 text-blue-400" />}
           <span className="text-xs text-white/40">
             {relativeTime(comment.created_at)}
           </span>
@@ -310,7 +339,7 @@ function InlineReplyInput({
   parentId: number;
   value: string;
   onChange: (v: string) => void;
-  onPosted: () => void;
+  onPosted: (newReply: PostComment) => void;
 }) {
   const { addComment, submitting } = usePostComments(postId);
 
@@ -318,7 +347,7 @@ function InlineReplyInput({
     const text = value.trim();
     if (!text) return;
     const result = await addComment(text, parentId);
-    if (result) onPosted();
+    if (result) onPosted(result);
   };
 
   return (
@@ -368,6 +397,7 @@ export function PostCommentThread({ postId, onCommentCountChange }: PostCommentT
     fetchComments,
     loadMore,
     addComment,
+    addReplyToComment,
     editComment,
     deleteComment,
   } = usePostComments(postId);
@@ -412,7 +442,7 @@ export function PostCommentThread({ postId, onCommentCountChange }: PostCommentT
   return (
     <>
       {/* Scrollable comment list */}
-      <div ref={scrollRef} data-scroll className="flex-1 overflow-y-auto px-4 pb-2">
+      <div ref={scrollRef} data-scroll className="min-h-0 flex-1 overflow-y-auto px-4 pb-2">
         {loading && comments.length === 0 && (
           <div className="py-8 text-center text-sm text-white/40">
             Loading comments...
@@ -443,10 +473,11 @@ export function PostCommentThread({ postId, onCommentCountChange }: PostCommentT
                 parentId={comment.id}
                 value={replyInputText}
                 onChange={setReplyInputText}
-                onPosted={() => {
+                onPosted={(newReply) => {
                   setReplyTo(null);
                   setReplyInputText('');
                   onCommentCountChange?.(1);
+                  addReplyToComment(comment.id, newReply);
                 }}
               />
             )}

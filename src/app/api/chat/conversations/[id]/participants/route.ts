@@ -154,17 +154,21 @@ export const POST = withAuth(
         { where: { id: conversationId } }
       );
 
-      // Emit Socket.IO event
+      // Emit Socket.IO events to all participant user rooms
       try {
         const { getIO } = await import('@/lib/socket/index');
-        const io = getIO();
-        const chatNsp = io.of('/chat');
-        chatNsp.to(`conv:${conversationId}`).emit('participant:added', {
+        const { emitToUsers } = await import('@/lib/socket/emit');
+        const chatNsp = getIO().of('/chat');
+        const allParticipants = await ConversationParticipant.findAll({
+          where: { conversation_id: conversationId, deleted_at: null },
+          attributes: ['user_id'],
+        });
+        const allIds = allParticipants.map((p) => p.user_id);
+        emitToUsers(chatNsp, allIds, 'participant:added', {
           conversation_id: conversationId,
           user_id: targetUserId,
         });
-        // Emit the system message to the room
-        chatNsp.to(`conv:${conversationId}`).emit('message:new', {
+        emitToUsers(chatNsp, allIds, 'message:new', {
           id: systemMsg.id,
           conversation_id: conversationId,
           sender_id: userId,
@@ -278,16 +282,22 @@ export const DELETE = withAuth(
         { where: { id: conversationId } }
       );
 
-      // Emit Socket.IO event
+      // Emit Socket.IO events to all participant user rooms (including removed user)
       try {
         const { getIO } = await import('@/lib/socket/index');
-        const io = getIO();
-        const chatNsp = io.of('/chat');
-        chatNsp.to(`conv:${conversationId}`).emit('participant:removed', {
+        const { emitToUsers } = await import('@/lib/socket/emit');
+        const chatNsp = getIO().of('/chat');
+        const remainingParticipants = await ConversationParticipant.findAll({
+          where: { conversation_id: conversationId, deleted_at: null },
+          attributes: ['user_id'],
+        });
+        // Include removed user so their UI updates too
+        const allIds = [...remainingParticipants.map((p) => p.user_id), targetUserId];
+        emitToUsers(chatNsp, allIds, 'participant:removed', {
           conversation_id: conversationId,
           user_id: targetUserId,
         });
-        chatNsp.to(`conv:${conversationId}`).emit('message:new', {
+        emitToUsers(chatNsp, allIds, 'message:new', {
           id: systemMsg.id,
           conversation_id: conversationId,
           sender_id: userId,

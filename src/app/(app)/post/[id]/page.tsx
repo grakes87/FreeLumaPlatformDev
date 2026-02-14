@@ -11,11 +11,16 @@ import {
   Heart,
   Repeat2,
   Bookmark,
+  BookmarkCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/hooks/useAuth';
 import { usePostComments, type PostComment } from '@/hooks/usePostComments';
+import { usePostReactions } from '@/hooks/usePostReactions';
 import { useBookmark } from '@/hooks/useBookmark';
+import { REACTION_EMOJI_MAP } from '@/lib/utils/constants';
+import type { ReactionType } from '@/lib/utils/constants';
+import { QuickReactionPicker } from '@/components/daily/QuickReactionPicker';
 import { POST_COMMENT_MAX_LENGTH } from '@/lib/utils/constants';
 
 // ---- Types ----
@@ -294,6 +299,40 @@ export default function PostDetailPage() {
     addComment,
   } = usePostComments(isNaN(postId) ? null : postId);
 
+  // Reactions
+  const {
+    counts: reactionCounts,
+    total: reactionTotal,
+    userReaction,
+    toggleReaction,
+  } = usePostReactions(isNaN(postId) ? null : postId);
+
+  // Bookmark
+  const { isBookmarked, toggle: toggleBookmark } = useBookmark(
+    isNaN(postId) ? 0 : postId,
+    post?.is_bookmarked ?? false
+  );
+
+  // Reaction picker state
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerRect, setPickerRect] = useState<DOMRect | null>(null);
+  const reactionBtnRef = useRef<HTMLButtonElement>(null);
+
+  const handleOpenPicker = useCallback(() => {
+    if (reactionBtnRef.current) {
+      setPickerRect(reactionBtnRef.current.getBoundingClientRect());
+    }
+    setPickerOpen(true);
+  }, []);
+
+  const handleSelectReaction = useCallback(
+    (type: ReactionType) => {
+      toggleReaction(type);
+      setPickerOpen(false);
+    },
+    [toggleReaction]
+  );
+
   // Fetch post detail
   useEffect(() => {
     if (isNaN(postId)) {
@@ -414,11 +453,74 @@ export default function PostDetailPage() {
         {/* Media */}
         <PostMediaDisplay media={post.media} />
 
-        {/* Stats bar */}
-        <div className="mt-4 flex items-center gap-4 border-t border-b border-border py-3 text-sm text-text-muted dark:border-border-dark dark:text-text-muted-dark">
-          <span>{post.total_reactions} reactions</span>
+        {/* Stats row */}
+        <div className="mt-4 flex items-center gap-4 border-t border-border py-2 text-sm text-text-muted dark:border-border-dark dark:text-text-muted-dark">
+          <span>{reactionTotal} reactions</span>
           <span>{commentCount} comments</span>
         </div>
+
+        {/* Action bar */}
+        <div className="flex items-center justify-around border-t border-b border-border py-2 dark:border-border-dark">
+          {/* Reaction button */}
+          <button
+            ref={reactionBtnRef}
+            type="button"
+            onClick={handleOpenPicker}
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+              userReaction
+                ? 'text-primary'
+                : 'text-text-muted dark:text-text-muted-dark'
+            )}
+          >
+            {userReaction ? (
+              <span className="text-lg leading-none">{REACTION_EMOJI_MAP[userReaction]}</span>
+            ) : (
+              <Heart className="h-5 w-5" />
+            )}
+            <span>{userReaction ? userReaction.charAt(0).toUpperCase() + userReaction.slice(1) : 'React'}</span>
+          </button>
+
+          {/* Comment button */}
+          <button
+            type="button"
+            onClick={() => {
+              const input = document.querySelector<HTMLInputElement>('input[placeholder*="comment"]');
+              input?.focus();
+            }}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-text-muted dark:text-text-muted-dark"
+          >
+            <MessageSquare className="h-5 w-5" />
+            <span>Comment</span>
+          </button>
+
+          {/* Bookmark button */}
+          <button
+            type="button"
+            onClick={toggleBookmark}
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+              isBookmarked
+                ? 'text-amber-500'
+                : 'text-text-muted dark:text-text-muted-dark'
+            )}
+          >
+            {isBookmarked ? (
+              <BookmarkCheck className="h-5 w-5" fill="currentColor" />
+            ) : (
+              <Bookmark className="h-5 w-5" />
+            )}
+            <span>{isBookmarked ? 'Saved' : 'Save'}</span>
+          </button>
+        </div>
+
+        {/* Reaction picker */}
+        <QuickReactionPicker
+          isOpen={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          onSelect={handleSelectReaction}
+          anchorRect={pickerRect}
+        />
       </div>
 
       {/* Comments section */}
@@ -470,7 +572,7 @@ export default function PostDetailPage() {
 
       {/* Fixed comment input at bottom */}
       {user && (
-        <div className="fixed inset-x-0 bottom-16 z-20 border-t border-border bg-surface px-4 py-3 dark:border-border-dark dark:bg-surface-dark">
+        <div className="fixed inset-x-0 z-20 border-t border-border bg-surface px-4 py-3 dark:border-border-dark dark:bg-surface-dark" style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}>
           {replyToId && (
             <div className="mb-2 flex items-center justify-between text-xs text-text-muted dark:text-text-muted-dark">
               <span>

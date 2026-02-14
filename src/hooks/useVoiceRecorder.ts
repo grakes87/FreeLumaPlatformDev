@@ -1,14 +1,8 @@
 'use client';
 import { useState, useRef, useCallback, useEffect } from 'react';
 
-const MAX_DURATION_MS = 60_000; // 60 seconds
+export const MAX_VOICE_DURATION_S = 120; // 2 minutes
 
-/**
- * Preferred MIME types in order of codec quality/support.
- * WebM/Opus is ideal (Chrome, Firefox, Safari 18.4+).
- * MP4/AAC is fallback for older Safari.
- * Plain WebM as last resort.
- */
 const PREFERRED_MIME_TYPES = [
   'audio/webm;codecs=opus',
   'audio/mp4;codecs=aac',
@@ -16,161 +10,201 @@ const PREFERRED_MIME_TYPES = [
 ];
 
 export interface VoiceRecorderResult {
-  /** Whether actively recording */
   isRecording: boolean;
-  /** Elapsed recording time in seconds */
   duration: number;
-  /** Audio level 0-1 for waveform visualization */
+  /** Audio level 0-1, updated ~15fps via ref polling */
   audioLevel: number;
-  /** Whether MediaRecorder is available in this browser */
   isSupported: boolean;
-  /** The detected MIME type that will be used for recording */
   mimeType: string | undefined;
-  /** Begin recording. Requests microphone permission. */
   startRecording: () => Promise<void>;
-  /** Stop recording and return the audio Blob (or null if nothing recorded) */
   stopRecording: () => Promise<Blob | null>;
-  /** Cancel recording and discard all audio data */
   cancelRecording: () => void;
 }
 
 /**
- * Hook for recording voice messages using the native MediaRecorder API
- * with live waveform visualization via AnalyserNode.
+ * Hook for recording voice messages with live audio level metering.
  *
- * - MIME type detection with cross-browser fallback
- * - Chunks collected every 100ms
- * - Duration tracking (1s intervals)
- * - Audio level (0-1) from AnalyserNode for waveform bars
- * - Auto-stop at 60 seconds
- * - Full cleanup on unmount
+ * Key design decisions:
+ * - Audio level is measured via AnalyserNode (time-domain RMS)
+ * - The analyser runs in a rAF loop writing to a REF (not state)
+ * - A 66ms interval polls the ref → state (≈15fps, avoids flooding React)
+ * - Audio graph: source → analyser → silent gain → destination
+ *   (ensures the graph is processed even on Safari)
  */
 export function useVoiceRecorder(): VoiceRecorderResult {
   const [isRecording, setIsRecording] = useState(false);
   const [duration, setDuration] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0);
 
-  const mediaRecorder = useRef<MediaRecorder | null>(null);
-  const audioContext = useRef<AudioContext | null>(null);
-  const analyser = useRef<AnalyserNode | null>(null);
-  const animFrame = useRef<number>(0);
-  const chunks = useRef<Blob[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
-  const startTime = useRef(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef(0);
+  const chunksRef = useRef<Blob[]>([]);
+  const durationTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const levelPollRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const startTimeRef = useRef(0);
   const stoppedRef = useRef(false);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  // Detect supported MIME type (runs once, safe in SSR because of typeof guard)
+  // Live audio level stored in ref, polled to state at ~15fps
+  const levelRef = useRef(0);
+
   const mimeType =
     typeof MediaRecorder !== 'undefined'
       ? PREFERRED_MIME_TYPES.find((t) => MediaRecorder.isTypeSupported(t))
       : undefined;
 
-  const cleanup = useCallback(() => {
-    clearInterval(timerRef.current);
-    cancelAnimationFrame(animFrame.current);
-    if (audioContext.current && audioContext.current.state !== 'closed') {
-      audioContext.current.close().catch(() => {});
+  /** Stop analysis (AudioContext, rAF, timers) but keep the mic stream alive */
+  const cleanupAnalysis = useCallback(() => {
+    cancelAnimationFrame(animFrameRef.current);
+    clearInterval(durationTimerRef.current);
+    clearInterval(levelPollRef.current);
+
+    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+      audioCtxRef.current.close().catch(() => {});
     }
-    audioContext.current = null;
-    analyser.current = null;
+    audioCtxRef.current = null;
+    analyserRef.current = null;
+  }, []);
+
+  /** Release the mic stream (call on cancel / unmount) */
+  const releaseStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
   }, []);
 
   const stopRecording = useCallback((): Promise<Blob | null> => {
     return new Promise((resolve) => {
-      if (
-        !mediaRecorder.current ||
-        mediaRecorder.current.state === 'inactive'
-      ) {
+      const recorder = mediaRecorderRef.current;
+      if (!recorder || recorder.state === 'inactive') {
         resolve(null);
         return;
       }
 
       stoppedRef.current = true;
 
-      mediaRecorder.current.onstop = () => {
-        const blob = new Blob(chunks.current, { type: mimeType });
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mimeType });
         resolve(blob);
       };
 
-      mediaRecorder.current.stop();
-      mediaRecorder.current.stream.getTracks().forEach((t) => t.stop());
-      cleanup();
+      recorder.stop();
+      // Only stop analysis — keep the mic stream alive for fast re-record
+      cleanupAnalysis();
       setIsRecording(false);
       setAudioLevel(0);
+      levelRef.current = 0;
     });
-  }, [mimeType, cleanup]);
+  }, [mimeType, cleanupAnalysis]);
 
   const startRecording = useCallback(async () => {
-    if (!mimeType) throw new Error('Voice recording not supported in this browser');
+    if (!mimeType) throw new Error('Voice recording not supported');
 
     stoppedRef.current = false;
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // 1. Reuse existing mic stream if available, otherwise request new one
+    let stream = streamRef.current;
+    if (!stream || stream.getTracks().every((t) => t.readyState === 'ended')) {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+    }
 
-    // Set up AnalyserNode for live waveform
-    audioContext.current = new AudioContext();
-    const source = audioContext.current.createMediaStreamSource(stream);
-    analyser.current = audioContext.current.createAnalyser();
-    analyser.current.fftSize = 256;
-    source.connect(analyser.current);
+    // 2. Set up Web Audio graph: source → analyser → silent gain → destination
+    //    Connecting to destination (even silently) ensures the graph is processed.
+    const ctx = new AudioContext();
+    if (ctx.state === 'suspended') await ctx.resume();
 
-    // Animate audio level from frequency data
-    const dataArray = new Uint8Array(analyser.current.frequencyBinCount);
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.3;
+
+    const silentGain = ctx.createGain();
+    silentGain.gain.value = 0; // mute output — we only need analysis
+
+    source.connect(analyser);
+    analyser.connect(silentGain);
+    silentGain.connect(ctx.destination);
+
+    audioCtxRef.current = ctx;
+    analyserRef.current = analyser;
+
+    // 3. rAF loop: compute RMS from time-domain data → write to levelRef
+    const buf = new Uint8Array(analyser.fftSize);
     const updateLevel = () => {
-      if (!analyser.current) return;
-      analyser.current.getByteFrequencyData(dataArray);
-      const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-      setAudioLevel(avg / 255);
-      animFrame.current = requestAnimationFrame(updateLevel);
+      if (!analyserRef.current) return;
+      analyserRef.current.getByteTimeDomainData(buf);
+
+      let sumSq = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const v = (buf[i] - 128) / 128; // normalize to -1..1
+        sumSq += v * v;
+      }
+      const rms = Math.sqrt(sumSq / buf.length);
+      // Scale: normal speech ≈ 0.05-0.2 RMS → we want 0.3-0.9 visual
+      levelRef.current = Math.min(1, rms * 5);
+      animFrameRef.current = requestAnimationFrame(updateLevel);
     };
     updateLevel();
 
-    // Start MediaRecorder
-    const recorder = new MediaRecorder(stream, { mimeType });
-    chunks.current = [];
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunks.current.push(e.data);
-    };
-    mediaRecorder.current = recorder;
-    recorder.start(100); // collect data every 100ms
+    // 4. Poll levelRef → state at ~15fps (avoids flooding React at 60fps)
+    levelPollRef.current = setInterval(() => {
+      setAudioLevel(levelRef.current);
+    }, 66);
 
-    startTime.current = Date.now();
+    // 5. Start MediaRecorder
+    const recorder = new MediaRecorder(stream, { mimeType });
+    chunksRef.current = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
+    };
+    mediaRecorderRef.current = recorder;
+    recorder.start(100);
+
+    startTimeRef.current = Date.now();
     setIsRecording(true);
     setDuration(0);
 
-    // Duration timer + auto-stop at 60s
-    timerRef.current = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime.current) / 1000);
+    // 6. Duration timer (auto-stop is handled by the consuming component)
+    durationTimerRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
       setDuration(elapsed);
-      if (elapsed * 1000 >= MAX_DURATION_MS && !stoppedRef.current) {
-        stopRecording();
-      }
     }, 1000);
-  }, [mimeType, stopRecording]);
+  }, [mimeType]);
 
   const cancelRecording = useCallback(() => {
-    if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
-      mediaRecorder.current.stop();
-      mediaRecorder.current.stream.getTracks().forEach((t) => t.stop());
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop();
     }
-    cleanup();
-    chunks.current = [];
+    cleanupAnalysis();
+    releaseStream();
+    chunksRef.current = [];
     setIsRecording(false);
     setDuration(0);
     setAudioLevel(0);
-  }, [cleanup]);
+    levelRef.current = 0;
+  }, [cleanupAnalysis, releaseStream]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      cancelAnimationFrame(animFrame.current);
-      clearInterval(timerRef.current);
-      if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
-        mediaRecorder.current.stop();
-        mediaRecorder.current.stream.getTracks().forEach((t) => t.stop());
+      cancelAnimationFrame(animFrameRef.current);
+      clearInterval(durationTimerRef.current);
+      clearInterval(levelPollRef.current);
+
+      const recorder = mediaRecorderRef.current;
+      if (recorder && recorder.state !== 'inactive') {
+        recorder.stop();
       }
-      if (audioContext.current && audioContext.current.state !== 'closed') {
-        audioContext.current.close().catch(() => {});
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        audioCtxRef.current.close().catch(() => {});
       }
     };
   }, []);

@@ -191,7 +191,7 @@ export function ProfileSetup() {
       <div className="flex justify-center">
         <AvatarUpload
           currentAvatarUrl={avatarUrl}
-          avatarColor={user?.avatar_color || '#6366F1'}
+          avatarColor={user?.avatar_color || '#62BEBA'}
           displayName={user?.display_name || 'User'}
           onAvatarChange={handleAvatarChange}
           size={96}

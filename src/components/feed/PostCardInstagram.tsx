@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, Fragment } from 'react';
+import { useState, Fragment } from 'react';
 import Link from 'next/link';
 import { Heart, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -15,6 +15,7 @@ import { RepostButton } from '@/components/social/RepostButton';
 import { PostCommentSheet } from '@/components/social/PostCommentSheet';
 import { MediaCarousel } from './MediaCarousel';
 import { PostContextMenu } from './PostContextMenu';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 // ---- Helpers ----
 
@@ -73,6 +74,7 @@ function RichText({ text }: { text: string }) {
 interface PostCardInstagramProps {
   post: FeedPost;
   currentUserId: number | null;
+  isBookmarked: boolean;
   reactionCounts: Record<string, number>;
   reactionTotal: number;
   userReaction: ReactionType | null;
@@ -91,6 +93,7 @@ interface PostCardInstagramProps {
 export function PostCardInstagram({
   post,
   currentUserId,
+  isBookmarked,
   reactionCounts,
   reactionTotal,
   userReaction,
@@ -105,17 +108,11 @@ export function PostCardInstagram({
   const [expanded, setExpanded] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [commentCountDelta, setCommentCountDelta] = useState(0);
-
-  const displayCommentCount = post.comment_count + commentCountDelta;
+  const displayCommentCount = post.comment_count;
 
   const author = post.author;
   const isTextLong = post.body.length > 300;
 
-  const handleCommentDelta = (delta: number) => {
-    setCommentCountDelta((prev) => prev + delta);
-    onCommentCountChange?.(delta);
-  };
 
   return (
     <article className="rounded-2xl border border-border/50 bg-surface p-4 shadow-sm dark:border-border-dark/50 dark:bg-surface-dark">
@@ -144,12 +141,15 @@ export function PostCardInstagram({
 
         <div className="min-w-0 flex-1">
           {author && (
-            <Link
-              href={`/profile/${author.username}`}
-              className="block truncate text-sm font-semibold text-text hover:underline dark:text-text-dark"
-            >
-              {author.display_name}
-            </Link>
+            <div className="flex items-center gap-1 truncate">
+              <Link
+                href={`/profile/${author.username}`}
+                className="truncate text-sm font-semibold text-text hover:underline dark:text-text-dark"
+              >
+                {author.display_name}
+              </Link>
+              {author.is_verified && <VerifiedBadge />}
+            </div>
           )}
           <p className="text-xs text-text-muted dark:text-text-muted-dark">
             {relativeTime(post.created_at)}
@@ -161,8 +161,6 @@ export function PostCardInstagram({
           postId={post.id}
           authorId={post.user_id}
           currentUserId={currentUserId}
-          isBookmarked={post.bookmarked}
-          onBookmark={onBookmark}
           onReport={onReport}
           onBlock={onBlock}
           onEdit={onEdit}
@@ -202,7 +200,10 @@ export function PostCardInstagram({
 
       {/* Quote repost / original post */}
       {post.original_post && (
-        <div className="mb-3 rounded-xl border border-border/50 bg-slate-50 p-3 dark:border-border-dark/50 dark:bg-slate-800/50">
+        <Link
+          href={`/post/${post.original_post.id}`}
+          className="mb-3 block rounded-xl border border-border/50 bg-slate-50 p-3 transition-colors hover:bg-slate-100 dark:border-border-dark/50 dark:bg-slate-800/50 dark:hover:bg-slate-800/70"
+        >
           {post.original_post.deleted ? (
             <p className="text-sm italic text-text-muted dark:text-text-muted-dark">
               This post has been deleted
@@ -227,6 +228,7 @@ export function PostCardInstagram({
                   <span className="text-xs font-semibold text-text dark:text-text-dark">
                     {post.original_post.author.display_name}
                   </span>
+                  {post.original_post.author.is_verified && <VerifiedBadge className="h-3 w-3 shrink-0 text-blue-500" />}
                 </div>
               )}
               <p className="line-clamp-3 text-sm text-text dark:text-text-dark">
@@ -239,7 +241,7 @@ export function PostCardInstagram({
               )}
             </>
           )}
-        </div>
+        </Link>
       )}
 
       {/* Action bar */}
@@ -306,13 +308,15 @@ export function PostCardInstagram({
           <RepostButton
             postId={post.id}
             repostCount={post.repost_count}
+            initialReposted={post.user_reposted}
+            isOwnPost={currentUserId === post.user_id}
           />
         </div>
 
         {/* Bookmark (right-aligned) */}
         <BookmarkButton
           postId={post.id}
-          initialBookmarked={post.bookmarked}
+          initialBookmarked={isBookmarked}
         />
       </div>
 
@@ -334,7 +338,7 @@ export function PostCardInstagram({
         onClose={() => setShowComments(false)}
         postId={post.id}
         commentCount={displayCommentCount}
-        onCommentCountChange={handleCommentDelta}
+        onCommentCountChange={onCommentCountChange}
       />
     </article>
   );

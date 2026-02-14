@@ -95,11 +95,22 @@ function getExtensionFromMime(contentType: string): string {
     'image/png': 'png',
     'image/webp': 'webp',
     'image/gif': 'gif',
+    'image/heic': 'heic',
+    'image/heif': 'heif',
+    'image/avif': 'avif',
+    'image/bmp': 'bmp',
+    'image/tiff': 'tiff',
+    'image/svg+xml': 'svg',
     'video/mp4': 'mp4',
+    'video/quicktime': 'mov',
+    'video/webm': 'webm',
+    'video/x-msvideo': 'avi',
+    'video/x-matroska': 'mkv',
+    'video/3gpp': '3gp',
     'audio/mpeg': 'mp3',
     'audio/wav': 'wav',
     'audio/ogg': 'ogg',
   };
 
-  return mimeToExt[contentType] || 'bin';
+  return mimeToExt[contentType] || contentType.split('/')[1]?.replace(/[^a-z0-9]/g, '') || 'bin';
 }

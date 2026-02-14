@@ -76,7 +76,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
         {
           model: User,
           as: 'followedUser',
-          attributes: ['id', 'display_name', 'username', 'avatar_url', 'avatar_color', 'bio'],
+          attributes: ['id', 'display_name', 'username', 'avatar_url', 'avatar_color', 'bio', 'is_verified'],
         },
       ],
       order: [['id', 'DESC']],
@@ -87,8 +87,39 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
     const items = hasMore ? following.slice(0, limit) : following;
     const nextCursor = hasMore ? items[items.length - 1].id.toString() : null;
 
+    // Determine current user's follow status for each listed user
+    const listedUserIds = items.map((f) => {
+      const u = (f as unknown as Record<string, unknown>).followedUser as { id: number } | null;
+      return u?.id;
+    }).filter(Boolean) as number[];
+
+    const myFollows = listedUserIds.length > 0
+      ? await Follow.findAll({
+          where: {
+            follower_id: context.user.id,
+            following_id: { [Op.in]: listedUserIds },
+          },
+          attributes: ['following_id', 'status'],
+          raw: true,
+        })
+      : [];
+
+    const followStatusMap = new Map<number, string>();
+    for (const f of myFollows) {
+      followStatusMap.set(f.following_id, f.status);
+    }
+
+    // Attach follow_status to each item
+    const enriched = items.map((f) => {
+      const plain = f.toJSON() as unknown as Record<string, unknown>;
+      const u = plain.followedUser as { id: number } | null;
+      const uid = u?.id;
+      plain.follow_status = uid ? (followStatusMap.get(uid) || 'none') : 'none';
+      return plain;
+    });
+
     return successResponse({
-      following: items,
+      following: enriched,
       next_cursor: nextCursor,
     });
   } catch (error) {

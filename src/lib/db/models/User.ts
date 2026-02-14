@@ -27,6 +27,7 @@ export interface UserAttributes {
   email_verification_token: string | null;
   onboarding_complete: boolean;
   is_admin: boolean;
+  is_verified: boolean;
   last_login_at: Date | null;
   failed_login_attempts: number;
   locked_until: Date | null;
@@ -57,6 +58,7 @@ export interface UserCreationAttributes extends Optional<UserAttributes,
   | 'email_verification_token'
   | 'onboarding_complete'
   | 'is_admin'
+  | 'is_verified'
   | 'last_login_at'
   | 'failed_login_attempts'
   | 'locked_until'
@@ -91,6 +93,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   declare email_verification_token: string | null;
   declare onboarding_complete: boolean;
   declare is_admin: boolean;
+  declare is_verified: boolean;
   declare last_login_at: Date | null;
   declare failed_login_attempts: number;
   declare locked_until: Date | null;
@@ -210,6 +213,11 @@ User.init(
       allowNull: false,
     },
     is_admin: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
+    is_verified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false,

@@ -18,9 +18,20 @@ import { fn, col } from 'sequelize';
 
 const POST_BODY_MAX = 5000;
 
+const mediaItemSchema = z.object({
+  url: z.string().url(),
+  media_type: z.enum(['image', 'video']),
+  thumbnail_url: z.string().url().nullable().optional(),
+  width: z.number().int().positive().nullable().optional(),
+  height: z.number().int().positive().nullable().optional(),
+  duration: z.number().int().positive().nullable().optional(),
+  sort_order: z.number().int().min(0).optional(),
+});
+
 const updatePostSchema = z.object({
   body: z.string().min(1).max(POST_BODY_MAX).optional(),
   visibility: z.enum(['public', 'followers']).optional(),
+  media: z.array(mediaItemSchema).max(10).optional(),
 });
 
 /**
@@ -42,7 +53,7 @@ export const GET = withAuth(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
           },
           {
             model: PostMedia,
@@ -198,13 +209,32 @@ export const PUT = withAuth(
 
       await post.update(updates);
 
+      // Replace media if provided
+      if (parsed.data.media !== undefined) {
+        await PostMedia.destroy({ where: { post_id: postId } });
+        if (parsed.data.media.length > 0) {
+          await PostMedia.bulkCreate(
+            parsed.data.media.map((m, index) => ({
+              post_id: postId,
+              media_type: m.media_type,
+              url: m.url,
+              thumbnail_url: m.thumbnail_url ?? null,
+              width: m.width ?? null,
+              height: m.height ?? null,
+              duration: m.duration ?? null,
+              sort_order: m.sort_order ?? index,
+            }))
+          );
+        }
+      }
+
       // Reload with associations
       const updated = await Post.findByPk(postId, {
         include: [
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
           },
           {
             model: PostMedia,

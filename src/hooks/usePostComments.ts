@@ -8,6 +8,7 @@ export interface PostCommentUser {
   display_name: string;
   avatar_url: string | null;
   avatar_color: string;
+  is_verified: boolean;
 }
 
 export interface PostComment {
@@ -139,6 +140,23 @@ export function usePostComments(
     [postId, parentId]
   );
 
+  const addReplyToComment = useCallback(
+    (parentId: number, reply: PostComment) => {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === parentId
+            ? {
+                ...c,
+                reply_count: c.reply_count + 1,
+                replies: [...(c.replies || []), reply],
+              }
+            : c
+        )
+      );
+    },
+    []
+  );
+
   const editComment = useCallback(
     async (id: number, body: string): Promise<boolean> => {
       try {
@@ -194,6 +212,7 @@ export function usePostComments(
     loadMore,
     loadReplies,
     addComment,
+    addReplyToComment,
     editComment,
     deleteComment,
   };

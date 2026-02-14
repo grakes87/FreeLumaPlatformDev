@@ -10,6 +10,7 @@ export interface FeedAuthor {
   display_name: string;
   avatar_url: string | null;
   avatar_color: string;
+  is_verified: boolean;
 }
 
 export interface FeedMedia {
@@ -49,6 +50,7 @@ export interface FeedPost {
   repost_count: number;
   user_reaction: string | null;
   bookmarked: boolean;
+  user_reposted: boolean;
   original_post: FeedOriginalPost | null;
 }
 
@@ -71,6 +73,7 @@ export function useFeed() {
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [cursor, setCursor] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   // Track current tab to prevent stale responses from wrong tab
@@ -86,7 +89,7 @@ export function useFeed() {
       const endpoint = tab === 'fyp' ? '/api/feed/fyp' : '/api/feed';
       const params = new URLSearchParams();
       if (pageCursor) params.set('cursor', pageCursor);
-      params.set('limit', '20');
+      params.set('limit', '10');
 
       const url = `${endpoint}?${params.toString()}`;
 
@@ -96,6 +99,7 @@ export function useFeed() {
         } else {
           setLoading(true);
         }
+        setError(null);
 
         const res = await fetch(url, {
           credentials: 'include',
@@ -129,6 +133,7 @@ export function useFeed() {
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         console.error('[useFeed] fetch error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load feed');
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -197,6 +202,7 @@ export function useFeed() {
     refreshing,
     hasMore,
     activeTab,
+    error,
     fetchNextPage,
     refresh,
     setActiveTab,

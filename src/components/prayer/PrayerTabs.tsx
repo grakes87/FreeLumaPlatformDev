@@ -35,7 +35,7 @@ export function PrayerTabs({ activeTab, onTabChange }: PrayerTabsProps) {
   }, [myDropdownOpen]);
 
   return (
-    <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1 backdrop-blur-sm">
+    <div className="flex items-center gap-1 rounded-xl bg-black/5 p-1 dark:bg-white/5 dark:backdrop-blur-sm">
       {/* Others' Prayers tab */}
       <button
         type="button"
@@ -46,8 +46,8 @@ export function PrayerTabs({ activeTab, onTabChange }: PrayerTabsProps) {
         className={cn(
           'rounded-lg px-4 py-2 text-sm font-medium transition-all',
           activeTab === 'others'
-            ? 'bg-white/15 text-white shadow-sm'
-            : 'text-white/60 hover:text-white/80'
+            ? 'bg-white text-text shadow-sm dark:bg-white/15 dark:text-white'
+            : 'text-text-muted hover:text-text dark:text-white/60 dark:hover:text-white/80'
         )}
       >
         Others&apos; Prayers
@@ -66,8 +66,8 @@ export function PrayerTabs({ activeTab, onTabChange }: PrayerTabsProps) {
           className={cn(
             'flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
             isMyTab
-              ? 'bg-white/15 text-white shadow-sm'
-              : 'text-white/60 hover:text-white/80'
+              ? 'bg-white text-text shadow-sm dark:bg-white/15 dark:text-white'
+              : 'text-text-muted hover:text-text dark:text-white/60 dark:hover:text-white/80'
           )}
         >
           <span>{isMyTab ? activeMyLabel : 'My Prayers'}</span>
@@ -81,7 +81,7 @@ export function PrayerTabs({ activeTab, onTabChange }: PrayerTabsProps) {
 
         {/* Sub-tab dropdown */}
         {myDropdownOpen && (
-          <div className="absolute left-0 top-full z-20 mt-1 w-48 rounded-xl border border-white/20 bg-white/10 py-1 shadow-lg backdrop-blur-2xl">
+          <div className="absolute left-0 top-full z-20 mt-1 w-48 rounded-xl border border-border bg-surface py-1 shadow-lg dark:border-white/20 dark:bg-white/10 dark:backdrop-blur-2xl">
             {MY_PRAYER_SUB_TABS.map((sub) => (
               <button
                 key={sub.value}
@@ -93,8 +93,8 @@ export function PrayerTabs({ activeTab, onTabChange }: PrayerTabsProps) {
                 className={cn(
                   'block w-full px-4 py-2 text-left text-sm transition-colors',
                   activeTab === sub.value
-                    ? 'bg-white/15 text-white font-medium'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white'
+                    ? 'bg-primary/10 text-text font-medium dark:bg-white/15 dark:text-white'
+                    : 'text-text-muted hover:bg-black/5 hover:text-text dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white'
                 )}
               >
                 {sub.label}

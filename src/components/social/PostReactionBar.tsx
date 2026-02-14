@@ -8,7 +8,9 @@ interface PostReactionBarProps {
   counts: Record<string, number>;
   total: number;
   userReaction: ReactionType | null;
-  onOpenPicker: () => void;
+  onOpenPicker: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  /** When set, this reaction type always appears first in the emoji row */
+  prioritizeType?: ReactionType;
 }
 
 export function PostReactionBar({
@@ -16,11 +18,21 @@ export function PostReactionBar({
   total,
   userReaction,
   onOpenPicker,
+  prioritizeType,
 }: PostReactionBarProps) {
   // Sort reaction types by count descending, take top 3
   const sortedTypes = Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .map(([type]) => type as ReactionType);
+
+  // If prioritizeType is set and has counts, move it to front
+  if (prioritizeType && counts[prioritizeType]) {
+    const idx = sortedTypes.indexOf(prioritizeType);
+    if (idx > 0) {
+      sortedTypes.splice(idx, 1);
+      sortedTypes.unshift(prioritizeType);
+    }
+  }
 
   const topEmojis = sortedTypes.slice(0, 3);
 
@@ -32,7 +44,7 @@ export function PostReactionBar({
       onClick={onOpenPicker}
       className={cn(
         'flex items-center gap-1.5 transition-all active:scale-95',
-        userReaction && 'rounded-full bg-indigo-50 px-2 py-0.5 dark:bg-indigo-500/15'
+        userReaction && 'rounded-full bg-primary/10 px-2 py-0.5 dark:bg-primary/15'
       )}
     >
       {/* Overlapping emojis — Meta style */}

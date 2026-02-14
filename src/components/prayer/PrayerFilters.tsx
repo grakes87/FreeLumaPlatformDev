@@ -25,8 +25,8 @@ export function PrayerFilters({ statusFilter, onFilterChange }: PrayerFiltersPro
           className={cn(
             'rounded-full px-3 py-1 text-xs font-medium transition-all',
             statusFilter === f.value
-              ? 'bg-white/20 text-white shadow-sm'
-              : 'text-white/50 hover:text-white/70 hover:bg-white/10'
+              ? 'bg-primary/10 text-primary shadow-sm dark:bg-white/20 dark:text-white'
+              : 'text-text-muted hover:text-text hover:bg-black/5 dark:text-white/50 dark:hover:text-white/70 dark:hover:bg-white/10'
           )}
         >
           {f.label}

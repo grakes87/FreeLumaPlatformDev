@@ -1,17 +1,25 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Play, Film } from 'lucide-react';
 import type { DailyContentData } from '@/hooks/useDailyContent';
 
 interface LumaShortSlideProps {
   content: DailyContentData;
+  isActive?: boolean;
 }
 
-export function LumaShortSlide({ content }: LumaShortSlideProps) {
+export function LumaShortSlide({ content, isActive = true }: LumaShortSlideProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasStarted, setHasStarted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  // Pause video when card scrolls out of view
+  useEffect(() => {
+    if (isActive === false && videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+    }
+  }, [isActive]);
 
   // No LumaShort video available
   if (!content.lumashort_video_url) {
@@ -43,49 +51,73 @@ export function LumaShortSlide({ content }: LumaShortSlideProps) {
   }, [hasStarted, isPlaying]);
 
   return (
-    <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-[#1A1A2E] to-[#0F0F23]">
-      {/* Title */}
-      <div className="absolute top-20 z-10 px-6 text-center">
-        <h2 className="text-lg font-semibold text-white">LumaShort</h2>
-        <p className="mt-1 text-sm text-white/50">
-          {content.chapter_reference || content.title}
-        </p>
+    <div className="relative h-full w-full overflow-hidden bg-black">
+      {/* Fullscreen video */}
+      <video
+        ref={videoRef}
+        playsInline
+        preload="metadata"
+        className="absolute inset-0 h-full w-full object-cover"
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => {
+          setIsPlaying(false);
+          setHasStarted(false);
+        }}
+      >
+        <source src={`${content.lumashort_video_url}#t=0.001`} type="video/mp4" />
+      </video>
+
+      {/* Gradient overlays for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
+
+      {/* Top: Title */}
+      <div className="absolute left-0 right-0 z-10 px-6 text-center" style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px) + 0.5rem)' }}>
+        <p className="text-xs font-medium uppercase tracking-widest text-white/60">LumaShort</p>
+        <h2 className="mt-1 text-lg font-semibold text-white drop-shadow-lg">
+          {(() => {
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const yest = new Date(now);
+            yest.setDate(yest.getDate() - 1);
+            const yesterdayStr = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
+            if (content.post_date === todayStr) return 'Today';
+            if (content.post_date === yesterdayStr) return 'Yesterday';
+            return new Date(content.post_date + 'T00:00:00').toLocaleDateString(undefined, {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+            });
+          })()}
+        </h2>
       </div>
 
-      {/* Video container */}
-      <div className="relative w-full max-w-lg px-6">
-        <div className="relative aspect-video overflow-hidden rounded-2xl bg-black/30 shadow-2xl">
-          <video
-            ref={videoRef}
-            playsInline
-            controls={hasStarted}
-            preload="metadata"
-            className="h-full w-full object-contain"
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            onEnded={() => {
-              setIsPlaying(false);
-              setHasStarted(false);
-            }}
-          >
-            <source src={content.lumashort_video_url} type="video/mp4" />
-          </video>
+      {/* Play/Pause tap area */}
+      <button
+        type="button"
+        onClick={handlePlay}
+        className="absolute inset-0 z-10"
+        aria-label={isPlaying ? 'Pause video' : 'Play video'}
+      />
 
-          {/* Play button overlay (shown before user initiates playback) */}
-          {!hasStarted && (
-            <button
-              type="button"
-              onClick={handlePlay}
-              className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors hover:bg-black/30"
-              aria-label="Play LumaShort video"
-            >
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/90 shadow-xl transition-transform hover:scale-110 active:scale-95">
-                <Play className="h-9 w-9 translate-x-0.5 text-gray-900" fill="currentColor" />
-              </div>
-            </button>
-          )}
+      {/* Play button overlay (before first play) */}
+      {!hasStarted && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/90 shadow-xl">
+            <Play className="h-9 w-9 translate-x-0.5 text-gray-900" fill="currentColor" />
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Pause indicator (briefly shown on tap) */}
+      {hasStarted && !isPlaying && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm">
+            <Play className="h-7 w-7 translate-x-0.5 text-white" fill="currentColor" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

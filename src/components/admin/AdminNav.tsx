@@ -7,6 +7,7 @@ import {
   Shield,
   Settings,
   BarChart3,
+  Users,
   ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -41,6 +42,11 @@ export function AdminNav({ pendingCount = 0 }: AdminNavProps) {
       label: 'Settings',
       href: '/admin/settings',
       icon: Settings,
+    },
+    {
+      label: 'Users',
+      href: '/admin/users',
+      icon: Users,
     },
     {
       label: 'Analytics',

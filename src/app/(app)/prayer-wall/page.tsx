@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useCallback, useState } from 'react';
-import { Heart, Plus, Loader2, Settings } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Heart, Loader2, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePrayerWall } from '@/hooks/usePrayerWall';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
@@ -14,23 +15,23 @@ import type { PrayerItem } from '@/hooks/usePrayerWall';
 
 function PrayerCardSkeleton() {
   return (
-    <div className="animate-pulse rounded-2xl border border-white/10 bg-white/5 p-4">
+    <div className="animate-pulse rounded-2xl border border-border/50 bg-surface/60 p-4 dark:border-white/10 dark:bg-white/5">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-white/10" />
+        <div className="h-10 w-10 rounded-full bg-border dark:bg-white/10" />
         <div className="space-y-2">
-          <div className="h-3 w-24 rounded bg-white/10" />
-          <div className="h-2 w-12 rounded bg-white/10" />
+          <div className="h-3 w-24 rounded bg-border dark:bg-white/10" />
+          <div className="h-2 w-12 rounded bg-border dark:bg-white/10" />
         </div>
       </div>
       <div className="mt-3 space-y-2">
-        <div className="h-3 w-full rounded bg-white/10" />
-        <div className="h-3 w-4/5 rounded bg-white/10" />
-        <div className="h-3 w-3/5 rounded bg-white/10" />
+        <div className="h-3 w-full rounded bg-border dark:bg-white/10" />
+        <div className="h-3 w-4/5 rounded bg-border dark:bg-white/10" />
+        <div className="h-3 w-3/5 rounded bg-border dark:bg-white/10" />
       </div>
       <div className="mt-4 flex gap-3">
-        <div className="h-8 w-20 rounded-full bg-white/10" />
-        <div className="h-8 w-8 rounded-full bg-white/10" />
-        <div className="h-8 w-8 rounded-full bg-white/10" />
+        <div className="h-8 w-20 rounded-full bg-border dark:bg-white/10" />
+        <div className="h-8 w-8 rounded-full bg-border dark:bg-white/10" />
+        <div className="h-8 w-8 rounded-full bg-border dark:bg-white/10" />
       </div>
     </div>
   );
@@ -38,7 +39,17 @@ function PrayerCardSkeleton() {
 
 export default function PrayerWallPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [composerOpen, setComposerOpen] = useState(false);
+
+  // Auto-open composer when navigated from center + nav button, then clear the param
+  useEffect(() => {
+    if (searchParams.get('compose') === 'prayer_request') {
+      setComposerOpen(true);
+      router.replace('/prayer-wall', { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const {
     prayers,
@@ -117,16 +128,16 @@ export default function PrayerWallPage() {
     return (
       <div className="flex min-h-[calc(100vh-7.5rem)] items-center justify-center px-4">
         <div className="text-center">
-          <Heart className="mx-auto h-16 w-16 text-white/20" />
-          <h2 className="mt-4 text-lg font-semibold text-white/80">
+          <Heart className="mx-auto h-16 w-16 text-text-muted/30 dark:text-white/20" />
+          <h2 className="mt-4 text-lg font-semibold text-text dark:text-white/80">
             Prayer Wall
           </h2>
-          <p className="mt-2 max-w-sm text-sm text-white/50">
+          <p className="mt-2 max-w-sm text-sm text-text-muted dark:text-white/50">
             The prayer wall is available in Bible mode. Switch to Bible mode in Settings to access prayer requests.
           </p>
           <a
             href="/settings"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-surface-dark/5 px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-surface-dark/10 hover:text-text dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/15 dark:hover:text-white"
           >
             <Settings className="h-4 w-4" />
             Go to Settings
@@ -152,7 +163,7 @@ export default function PrayerWallPage() {
       case 'my_joined':
         return {
           title: "You haven't joined any prayers yet",
-          description: "Tap 'Praying for you' on someone's request to join in prayer.",
+          description: "Tap the 🙏 reaction on someone's request to join in prayer.",
         };
     }
   };
@@ -171,7 +182,7 @@ export default function PrayerWallPage() {
           style={{ height: pullDistance }}
         >
           <Loader2
-            className="h-5 w-5 animate-spin text-white/40"
+            className="h-5 w-5 animate-spin text-text-muted/40 dark:text-white/40"
             style={{ opacity: pullDistance / 80 }}
           />
         </div>
@@ -180,13 +191,13 @@ export default function PrayerWallPage() {
       {/* Refreshing indicator */}
       {refreshing && (
         <div className="mb-3 flex items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-white/40" />
+          <Loader2 className="h-5 w-5 animate-spin text-text-muted/40 dark:text-white/40" />
         </div>
       )}
 
       {/* Page header */}
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-white">Prayer Wall</h1>
+        <h1 className="text-2xl font-bold text-text dark:text-white">Prayer Wall</h1>
       </div>
 
       {/* Tabs */}
@@ -231,21 +242,11 @@ export default function PrayerWallPage() {
           {/* Loading more indicator */}
           {loading && prayers.length > 0 && (
             <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-5 w-5 animate-spin text-white/40" />
+              <Loader2 className="h-5 w-5 animate-spin text-text-muted/40 dark:text-white/40" />
             </div>
           )}
         </div>
       )}
-
-      {/* FAB to open composer */}
-      <button
-        type="button"
-        onClick={() => setComposerOpen(true)}
-        className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 active:scale-95"
-        aria-label="Create prayer request"
-      >
-        <Plus className="h-7 w-7" />
-      </button>
 
       {/* Prayer composer */}
       <PrayerComposer

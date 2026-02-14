@@ -3,7 +3,7 @@ import { Op } from 'sequelize';
 import { sequelize, User, ActivationCode, UserSetting } from '@/lib/db/models';
 import { registerSchema } from '@/lib/utils/validation';
 import { hashPassword } from '@/lib/auth/password';
-import { signJWT, setAuthCookie } from '@/lib/auth/jwt';
+import { signJWT, AUTH_COOKIE_OPTIONS } from '@/lib/auth/jwt';
 import { registrationRateLimit } from '@/lib/utils/rate-limit';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 import { AVATAR_COLORS } from '@/lib/utils/constants';
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
     // Sign JWT
     const token = await signJWT({ id: user.id, email: user.email });
 
-    // Build response
+    // Build response (include token for Socket.IO auth fallback)
     const response = successResponse(
       {
         user: {
@@ -144,14 +144,21 @@ export async function POST(req: NextRequest) {
           username: user.username,
           avatar_url: user.avatar_url,
           avatar_color: user.avatar_color,
+          bio: user.bio,
           mode: user.mode,
+          email_verified: user.email_verified,
+          is_admin: user.is_admin,
           onboarding_complete: user.onboarding_complete,
+          preferred_translation: user.preferred_translation,
+          language: user.language,
+          timezone: user.timezone,
         },
+        token,
       },
       201
     );
 
-    response.headers.set('Set-Cookie', setAuthCookie(token));
+    response.cookies.set('auth_token', token, AUTH_COOKIE_OPTIONS);
     return response;
   } catch (error) {
     if (error instanceof Error && error.message === 'ACTIVATION_CODE_RACE') {

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { User } from '@/lib/db/models';
 import { loginSchema } from '@/lib/utils/validation';
 import { comparePassword } from '@/lib/auth/password';
-import { signJWT, setAuthCookie } from '@/lib/auth/jwt';
+import { signJWT, AUTH_COOKIE_OPTIONS } from '@/lib/auth/jwt';
 import { loginRateLimit } from '@/lib/utils/rate-limit';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     // Sign JWT
     const token = await signJWT({ id: user.id, email: user.email });
 
-    // Build response
+    // Build response (include token for Socket.IO auth fallback)
     const response = successResponse({
       user: {
         id: user.id,
@@ -91,12 +91,17 @@ export async function POST(req: NextRequest) {
         avatar_color: user.avatar_color,
         bio: user.bio,
         mode: user.mode,
+        email_verified: user.email_verified,
         is_admin: user.is_admin,
         onboarding_complete: user.onboarding_complete,
+        preferred_translation: user.preferred_translation,
+        language: user.language,
+        timezone: user.timezone,
       },
+      token,
     });
 
-    response.headers.set('Set-Cookie', setAuthCookie(token));
+    response.cookies.set('auth_token', token, AUTH_COOKIE_OPTIONS);
     return response;
   } catch (error) {
     return serverError(error, 'Login failed');

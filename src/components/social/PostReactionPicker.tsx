@@ -69,7 +69,7 @@ export function PostReactionPicker({
               className={cn(
                 'flex flex-col items-center gap-1 rounded-xl p-3 transition-all active:scale-90',
                 userReaction === type
-                  ? 'bg-indigo-100 ring-2 ring-indigo-400 dark:bg-indigo-500/25 dark:ring-indigo-400/60'
+                  ? 'bg-primary/15 ring-2 ring-primary dark:bg-primary/25 dark:ring-primary/60'
                   : 'bg-gray-50 hover:bg-gray-100 dark:bg-gray-700/50 dark:hover:bg-gray-700'
               )}
             >

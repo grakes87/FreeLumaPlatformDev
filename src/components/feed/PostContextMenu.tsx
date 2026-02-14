@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   MoreHorizontal,
-  Bookmark,
   Flag,
   Ban,
   Pencil,
@@ -15,8 +14,6 @@ interface PostContextMenuProps {
   postId: number;
   authorId: number;
   currentUserId: number | null;
-  isBookmarked?: boolean;
-  onBookmark?: () => void;
   onReport?: () => void;
   onBlock?: () => void;
   onEdit?: () => void;
@@ -34,8 +31,6 @@ export function PostContextMenu({
   postId: _postId,
   authorId,
   currentUserId,
-  isBookmarked = false,
-  onBookmark,
   onReport,
   onBlock,
   onEdit,
@@ -89,12 +84,6 @@ export function PostContextMenu({
     show: boolean;
   }> = [
     {
-      label: isBookmarked ? 'Remove bookmark' : 'Bookmark',
-      icon: Bookmark,
-      onClick: () => { onBookmark?.(); handleClose(); },
-      show: true,
-    },
-    {
       label: 'Report',
       icon: Flag,
       onClick: () => { onReport?.(); handleClose(); },
@@ -132,21 +121,16 @@ export function PostContextMenu({
         className={cn(
           'rounded-full p-1.5 transition-colors',
           lightIcon
-            ? 'text-white/80 hover:bg-white/10 hover:text-white'
+            ? 'text-white hover:bg-white/10'
             : 'text-text-muted hover:bg-slate-100 dark:text-text-muted-dark dark:hover:bg-slate-800'
         )}
         aria-label="Post options"
       >
-        <MoreHorizontal className="h-5 w-5" />
+        <MoreHorizontal className={cn(lightIcon ? 'h-7 w-7' : 'h-5 w-5')} />
       </button>
 
       {isOpen && (
-        <div
-          className={cn(
-            'absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-xl border py-1 shadow-lg',
-            'border-border bg-surface dark:border-border-dark dark:bg-surface-dark'
-          )}
-        >
+        <div className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-xl border border-white/20 bg-white/10 py-1 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl">
           {visibleItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -157,8 +141,8 @@ export function PostContextMenu({
                 className={cn(
                   'flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors',
                   item.danger
-                    ? 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30'
-                    : 'text-text hover:bg-slate-50 dark:text-text-dark dark:hover:bg-slate-800/50'
+                    ? 'text-red-400 hover:bg-white/10'
+                    : 'text-white/90 hover:bg-white/10'
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />

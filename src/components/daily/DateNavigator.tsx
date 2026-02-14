@@ -24,13 +24,23 @@ function formatDisplayDate(dateStr: string): string {
 }
 
 /**
+ * Format a Date object as YYYY-MM-DD using local date parts (avoids UTC conversion).
+ */
+function formatLocalDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * Get the previous day as YYYY-MM-DD.
  */
 function getPreviousDay(dateStr: string): string {
   const [year, month, day] = dateStr.split('-').map(Number);
   const date = new Date(year, month - 1, day);
   date.setDate(date.getDate() - 1);
-  return date.toISOString().split('T')[0];
+  return formatLocalDate(date);
 }
 
 /**
@@ -40,7 +50,7 @@ function getNextDay(dateStr: string): string {
   const [year, month, day] = dateStr.split('-').map(Number);
   const date = new Date(year, month - 1, day);
   date.setDate(date.getDate() + 1);
-  return date.toISOString().split('T')[0];
+  return formatLocalDate(date);
 }
 
 /**
@@ -79,11 +89,12 @@ export function DateNavigator({ currentDate, className }: DateNavigatorProps) {
 
   return (
     <div className={cn('flex items-center gap-3', className)}>
-      {/* Previous day arrow */}
+      {/* Previous day arrow — glass */}
       <button
         type="button"
         onClick={handlePrevious}
-        className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+        className="rounded-full border border-white/20 bg-white/10 p-2 text-white shadow-lg transition-colors hover:bg-white/20"
+        style={{ backdropFilter: 'blur(40px) saturate(180%)' }}
         aria-label="Previous day"
       >
         <ChevronLeft className="h-5 w-5" />
@@ -94,12 +105,13 @@ export function DateNavigator({ currentDate, className }: DateNavigatorProps) {
         {isToday ? 'Today' : formatDisplayDate(currentDate)}
       </span>
 
-      {/* Next day arrow (hidden when at today) */}
+      {/* Next day arrow — glass (hidden when at today) */}
       {canGoForward ? (
         <button
           type="button"
           onClick={handleNext}
-          className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+          className="rounded-full border border-white/20 bg-white/10 p-2 text-white shadow-lg transition-colors hover:bg-white/20"
+          style={{ backdropFilter: 'blur(40px) saturate(180%)' }}
           aria-label="Next day"
         >
           <ChevronRight className="h-5 w-5" />

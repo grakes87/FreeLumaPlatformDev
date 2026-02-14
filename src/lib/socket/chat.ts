@@ -2,6 +2,21 @@ import type { Namespace, Socket } from 'socket.io';
 import { Op } from 'sequelize';
 import { presenceManager } from '@/lib/socket/presence';
 
+/** Simple per-socket sliding-window rate limiter. */
+function createRateLimiter(maxPerWindow: number, windowMs: number) {
+  const timestamps: number[] = [];
+  return (): boolean => {
+    const now = Date.now();
+    // Remove timestamps outside the window
+    while (timestamps.length > 0 && timestamps[0] <= now - windowMs) {
+      timestamps.shift();
+    }
+    if (timestamps.length >= maxPerWindow) return false;
+    timestamps.push(now);
+    return true;
+  };
+}
+
 /**
  * Register all /chat namespace event handlers on a connected socket.
  * Handles: conversation room management, typing indicators, read receipts,
@@ -10,10 +25,15 @@ import { presenceManager } from '@/lib/socket/presence';
 export function registerChatHandlers(nsp: Namespace, socket: Socket): void {
   const userId = socket.data.userId as number;
 
-  // --- On connect: auto-join all active conversation rooms + broadcast presence ---
-  handleConnect(nsp, socket, userId);
+  // Per-socket rate limiters
+  const typingLimiter = createRateLimiter(5, 3000);    // 5 events per 3s
+  const reactionLimiter = createRateLimiter(10, 5000);  // 10 events per 5s
+  const readLimiter = createRateLimiter(5, 3000);       // 5 events per 3s
 
-  // --- conversation:join ---
+  // Track which conversations this socket is viewing (for disconnect presence)
+  const activeConversations = new Set<number>();
+
+  // --- conversation:join (lazy — only when user opens a chat view) ---
   socket.on('conversation:join', async ({ conversationId }: { conversationId: number }) => {
     try {
       const { ConversationParticipant } = await import('@/lib/db/models');
@@ -29,6 +49,8 @@ export function registerChatHandlers(nsp: Namespace, socket: Socket): void {
       if (!participant) return;
 
       socket.join(`conv:${conversationId}`);
+      activeConversations.add(conversationId);
+      console.log('[Chat] user', userId, 'joined conv:', conversationId, 'rooms:', Array.from(socket.rooms));
 
       // Broadcast presence to conversation room
       socket.to(`conv:${conversationId}`).emit('presence:online', { userId });
@@ -40,20 +62,26 @@ export function registerChatHandlers(nsp: Namespace, socket: Socket): void {
   // --- conversation:leave ---
   socket.on('conversation:leave', ({ conversationId }: { conversationId: number }) => {
     socket.leave(`conv:${conversationId}`);
+    activeConversations.delete(conversationId);
   });
 
   // --- typing:start (volatile - droppable) ---
   socket.on('typing:start', ({ conversationId }: { conversationId: number }) => {
-    socket.to(`conv:${conversationId}`).volatile.emit('typing:start', { userId });
+    if (!socket.rooms.has(`conv:${conversationId}`)) return;
+    if (!typingLimiter()) return;
+    socket.to(`conv:${conversationId}`).volatile.emit('typing:start', { userId, conversationId });
   });
 
   // --- typing:stop (volatile - droppable) ---
   socket.on('typing:stop', ({ conversationId }: { conversationId: number }) => {
-    socket.to(`conv:${conversationId}`).volatile.emit('typing:stop', { userId });
+    if (!socket.rooms.has(`conv:${conversationId}`)) return;
+    if (!typingLimiter()) return;
+    socket.to(`conv:${conversationId}`).volatile.emit('typing:stop', { userId, conversationId });
   });
 
   // --- conversation:read (batch read receipts) ---
   socket.on('conversation:read', async ({ conversationId }: { conversationId: number }) => {
+    if (!readLimiter()) return;
     try {
       const { ConversationParticipant, Conversation, MessageStatus, Message } =
         await import('@/lib/db/models');
@@ -128,6 +156,8 @@ export function registerChatHandlers(nsp: Namespace, socket: Socket): void {
   socket.on(
     'message:react',
     ({ messageId, conversationId, reactionType }: { messageId: number; conversationId: number; reactionType: string }) => {
+      if (!socket.rooms.has(`conv:${conversationId}`)) return;
+      if (!reactionLimiter()) return;
       // Reaction persistence happens via API route (03-04);
       // this socket event just broadcasts the real-time update
       socket.to(`conv:${conversationId}`).emit('message:reaction', {
@@ -138,59 +168,18 @@ export function registerChatHandlers(nsp: Namespace, socket: Socket): void {
     }
   );
 
-  // --- disconnect: remove presence + broadcast offline ---
-  socket.on('disconnect', async () => {
+  // --- disconnect: remove presence + broadcast offline to active rooms ---
+  socket.on('disconnect', () => {
     const wentOffline = presenceManager.removeSocket(userId, socket.id);
 
     if (wentOffline) {
-      try {
-        const { ConversationParticipant } = await import('@/lib/db/models');
-        const participations = await ConversationParticipant.findAll({
-          attributes: ['conversation_id'],
-          where: {
-            user_id: userId,
-            deleted_at: null,
-          },
-        });
-
-        for (const p of participations) {
-          nsp.to(`conv:${p.conversation_id}`).emit('presence:offline', { userId });
-        }
-      } catch (err) {
-        console.error('[Chat] disconnect presence broadcast error:', err);
+      // Only broadcast offline to conversations this socket was actively viewing.
+      // No DB query needed — we tracked joins in activeConversations.
+      for (const convId of activeConversations) {
+        nsp.to(`conv:${convId}`).emit('presence:offline', { userId });
       }
     }
+
+    activeConversations.clear();
   });
-}
-
-/**
- * Handle initial connection: auto-join all active conversation rooms
- * and broadcast online presence to participants.
- */
-async function handleConnect(nsp: Namespace, socket: Socket, userId: number): Promise<void> {
-  try {
-    const { ConversationParticipant } = await import('@/lib/db/models');
-
-    // Find all conversations the user is a participant in
-    const participations = await ConversationParticipant.findAll({
-      attributes: ['conversation_id'],
-      where: {
-        user_id: userId,
-        deleted_at: null,
-      },
-    });
-
-    // Auto-join all conversation rooms
-    for (const p of participations) {
-      const room = `conv:${p.conversation_id}`;
-      socket.join(room);
-    }
-
-    // Broadcast online presence to all conversation rooms
-    for (const p of participations) {
-      socket.to(`conv:${p.conversation_id}`).emit('presence:online', { userId });
-    }
-  } catch (err) {
-    console.error('[Chat] handleConnect error:', err);
-  }
 }

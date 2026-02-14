@@ -48,7 +48,7 @@ export function AvatarUpload({
       const file = e.target.files?.[0];
       if (!file) return;
 
-      // Read file as data URL to pass to crop modal
+      // Use data URL — self-contained and avoids blob URL lifecycle issues
       const reader = new FileReader();
       reader.onload = () => {
         setCropImage(reader.result as string);

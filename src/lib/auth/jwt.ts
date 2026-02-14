@@ -40,3 +40,12 @@ export function setAuthCookie(token: string): string {
 export function clearAuthCookie(): string {
   return 'auth_token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0';
 }
+
+/** Cookie options for use with NextResponse.cookies.set() */
+export const AUTH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: THIRTY_DAYS,
+  secure: process.env.NODE_ENV === 'production',
+};

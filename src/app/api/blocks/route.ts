@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Op } from 'sequelize';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import {
+  sequelize,
   Block,
   Follow,
   User,
@@ -25,7 +26,7 @@ export const GET = withAuth(
           {
             model: User,
             as: 'blockedUser',
-            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
           },
         ],
         order: [['created_at', 'DESC']],
@@ -78,20 +79,22 @@ export const POST = withAuth(
         return successResponse({ action: 'unblocked' });
       }
 
-      // Create block
-      await Block.create({
-        blocker_id: userId,
-        blocked_id: targetId,
-      });
+      // Create block + auto-unfollow in a transaction
+      await sequelize.transaction(async (t) => {
+        await Block.create(
+          { blocker_id: userId, blocked_id: targetId },
+          { transaction: t }
+        );
 
-      // Auto-unfollow both directions
-      await Follow.destroy({
-        where: {
-          [Op.or]: [
-            { follower_id: userId, following_id: targetId },
-            { follower_id: targetId, following_id: userId },
-          ],
-        },
+        await Follow.destroy({
+          where: {
+            [Op.or]: [
+              { follower_id: userId, following_id: targetId },
+              { follower_id: targetId, following_id: userId },
+            ],
+          },
+          transaction: t,
+        });
       });
 
       return successResponse({ action: 'blocked' });

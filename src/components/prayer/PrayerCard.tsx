@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   MoreHorizontal,
   MessageCircle,
@@ -12,16 +12,15 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import { PrayButton } from './PrayButton';
 import { AnsweredBadge } from './AnsweredBadge';
-import { SupportersList } from './SupportersList';
 import { PostReactionBar } from '@/components/social/PostReactionBar';
-import { PostReactionPicker } from '@/components/social/PostReactionPicker';
+import { QuickReactionPicker } from '@/components/daily/QuickReactionPicker';
 import { PostCommentSheet } from '@/components/social/PostCommentSheet';
 import { RepostButton } from '@/components/social/RepostButton';
 import { ReportModal } from '@/components/social/ReportModal';
 import { usePostReactions } from '@/hooks/usePostReactions';
 import type { PrayerItem } from '@/hooks/usePrayerWall';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 interface PrayerCardProps {
   prayer: PrayerItem;
@@ -81,7 +80,7 @@ export function PrayerCard({
 }: PrayerCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerAnchor, setPickerAnchor] = useState<DOMRect | null>(null);
   const [commentSheetOpen, setCommentSheetOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [markingAnswered, setMarkingAnswered] = useState(false);
@@ -165,7 +164,7 @@ export function PrayerCard({
   const avatarColor = isAnonymous ? '#9CA3AF' : author.avatar_color;
 
   return (
-    <div className="rounded-2xl border border-white/20 bg-white/10 p-4 shadow-lg backdrop-blur-2xl">
+    <div className="rounded-2xl border border-border bg-surface p-4 shadow-lg dark:border-white/20 dark:bg-white/10 dark:backdrop-blur-2xl">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
@@ -179,22 +178,23 @@ export function PrayerCard({
           ) : (
             <div
               className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white"
-              style={{ backgroundColor: avatarColor || '#6366F1' }}
+              style={{ backgroundColor: avatarColor || '#62BEBA' }}
             >
               {displayName.charAt(0).toUpperCase()}
             </div>
           )}
 
           <div>
-            <p className="text-sm font-semibold text-white">
+            <p className="flex items-center gap-1 text-sm font-semibold text-text dark:text-white">
               {displayName}
+              {!isAnonymous && author.is_verified && <VerifiedBadge />}
               {isAuthor && post.is_anonymous && (
-                <span className="ml-1.5 text-xs font-normal text-white/40">(you, anonymous)</span>
+                <span className="ml-0.5 text-xs font-normal text-text-muted/60 dark:text-white/40">(you, anonymous)</span>
               )}
             </p>
-            <p className="text-xs text-white/50">
+            <p className="text-xs text-text-muted dark:text-white/50">
               {getRelativeTime(prayer.created_at)}
-              {post.edited && <span className="ml-1 text-white/30">(edited)</span>}
+              {post.edited && <span className="ml-1 text-text-muted/50 dark:text-white/30">(edited)</span>}
             </p>
           </div>
         </div>
@@ -204,14 +204,14 @@ export function PrayerCard({
           <button
             type="button"
             onClick={() => setMenuOpen((prev) => !prev)}
-            className="rounded-lg p-1.5 text-white/40 transition-colors hover:bg-white/10 hover:text-white/70"
+            className="rounded-lg p-1.5 text-text-muted/60 transition-colors hover:bg-black/5 hover:text-text-muted dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70"
             aria-label="More options"
           >
             <MoreHorizontal className="h-5 w-5" />
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-xl border border-white/20 bg-white/10 py-1 shadow-lg backdrop-blur-2xl">
+            <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-xl border border-border bg-surface py-1 shadow-lg dark:border-white/20 dark:bg-white/10 dark:backdrop-blur-2xl">
               {isAuthor && prayer.status !== 'answered' && (
                 <button
                   type="button"
@@ -219,7 +219,7 @@ export function PrayerCard({
                     setShowTestimonyForm(true);
                     setMenuOpen(false);
                   }}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-text-muted transition-colors hover:bg-black/5 hover:text-text dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <CheckCircle className="h-4 w-4" />
                   Mark as Answered
@@ -244,7 +244,7 @@ export function PrayerCard({
                       setReportOpen(true);
                       setMenuOpen(false);
                     }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-text-muted transition-colors hover:bg-black/5 hover:text-text dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                   >
                     <Flag className="h-4 w-4" />
                     Report
@@ -252,7 +252,7 @@ export function PrayerCard({
                   <button
                     type="button"
                     onClick={() => setMenuOpen(false)}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-text-muted transition-colors hover:bg-black/5 hover:text-text dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                   >
                     <Ban className="h-4 w-4" />
                     Block User
@@ -269,7 +269,7 @@ export function PrayerCard({
         <div className="mt-3">
           <AnsweredBadge answeredAt={prayer.answered_at} />
           {prayer.answered_testimony && (
-            <p className="mt-2 rounded-lg border border-green-500/20 bg-green-500/10 px-3 py-2 text-sm italic text-white/80">
+            <p className="mt-2 rounded-lg border border-green-500/20 bg-green-500/10 px-3 py-2 text-sm italic text-green-800 dark:text-white/80">
               &ldquo;{prayer.answered_testimony}&rdquo;
             </p>
           )}
@@ -278,15 +278,15 @@ export function PrayerCard({
 
       {/* Mark as answered form */}
       {showTestimonyForm && isAuthor && (
-        <div className="mt-3 rounded-xl border border-white/15 bg-white/5 p-3">
-          <p className="mb-2 text-sm font-medium text-white/80">Mark as Answered</p>
+        <div className="mt-3 rounded-xl border border-border bg-surface-dark/5 p-3 dark:border-white/15 dark:bg-white/5">
+          <p className="mb-2 text-sm font-medium text-text dark:text-white/80">Mark as Answered</p>
           <textarea
             value={testimonyInput}
             onChange={(e) => setTestimonyInput(e.target.value)}
             placeholder="Share your testimony (optional)..."
             maxLength={2000}
             rows={3}
-            className="w-full resize-none rounded-lg border border-white/15 bg-white/5 p-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-full resize-none rounded-lg border border-border bg-white p-2 text-sm text-text placeholder:text-text-muted/50 focus:outline-none focus:ring-1 focus:ring-primary/50 dark:border-white/15 dark:bg-white/5 dark:text-white dark:placeholder:text-white/30"
           />
           <div className="mt-2 flex justify-end gap-2">
             <button
@@ -295,7 +295,7 @@ export function PrayerCard({
                 setShowTestimonyForm(false);
                 setTestimonyInput('');
               }}
-              className="rounded-lg px-3 py-1.5 text-xs text-white/50 hover:text-white/70"
+              className="rounded-lg px-3 py-1.5 text-xs text-text-muted hover:text-text dark:text-white/50 dark:hover:text-white/70"
             >
               Cancel
             </button>
@@ -317,7 +317,7 @@ export function PrayerCard({
 
       {/* Body */}
       <div className="mt-3">
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-white/90">
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-text dark:text-white/90">
           {parseBody(truncatedBody)}
           {needsTruncation && !expanded && '...'}
         </p>
@@ -360,64 +360,53 @@ export function PrayerCard({
         </div>
       )}
 
-      {/* Supporters list (author only) */}
-      <SupportersList
-        prayerRequestId={prayer.id}
-        isAuthor={isAuthor}
-        prayCount={prayer.pray_count}
-      />
-
       {/* Action bar */}
-      <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
+      <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-3 dark:border-white/10">
         <div className="flex items-center gap-2">
-          {/* Pray button */}
-          <PrayButton
-            prayerRequestId={prayer.id}
-            initialPraying={prayer.is_praying}
-            initialCount={prayer.pray_count}
-          />
-
-          {/* Reaction bar / picker trigger */}
+          {/* Reaction bar / picker trigger — pray emoji prioritized */}
           {reactionTotal > 0 ? (
             <PostReactionBar
               counts={reactionCounts}
               total={reactionTotal}
               userReaction={userReaction}
-              onOpenPicker={() => setPickerOpen(true)}
+              onOpenPicker={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
+              prioritizeType="pray"
             />
           ) : (
             <button
               type="button"
-              onClick={() => setPickerOpen(true)}
-              className="rounded-full p-2 text-white/40 transition-colors hover:bg-white/10 hover:text-white/70"
+              onClick={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
+              className="rounded-full p-2 text-text-muted/60 transition-colors hover:bg-black/5 hover:text-text-muted dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70"
               aria-label="React"
             >
-              <span className="text-base">&#x1F44D;</span>
+              <span className="text-base">&#x1F64F;</span>
             </button>
           )}
 
-          {/* Comment button */}
+          {/* Comment button with count */}
           <button
             type="button"
             onClick={() => setCommentSheetOpen(true)}
-            className="flex items-center gap-1 rounded-full p-2 text-white/40 transition-colors hover:bg-white/10 hover:text-white/70"
+            className="flex items-center gap-1 rounded-full p-2 text-text-muted/60 transition-colors hover:bg-black/5 hover:text-text-muted dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70"
             aria-label="Comment"
           >
             <MessageCircle className="h-5 w-5" />
+            {(post.comment_count ?? 0) > 0 && (
+              <span className="text-xs font-medium">{post.comment_count}</span>
+            )}
           </button>
         </div>
 
         {/* Repost (quote to social feed) */}
-        <RepostButton postId={post.id} />
+        <RepostButton postId={post.id} initialReposted={post.user_reposted} isOwnPost={isAuthor} />
       </div>
 
-      {/* Reaction picker overlay */}
-      <PostReactionPicker
-        isOpen={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        counts={reactionCounts}
-        userReaction={userReaction}
+      {/* Reaction picker — floating bar like daily post */}
+      <QuickReactionPicker
+        isOpen={pickerAnchor !== null}
+        onClose={() => setPickerAnchor(null)}
         onSelect={toggleReaction}
+        anchorRect={pickerAnchor}
       />
 
       {/* Comment bottom sheet */}

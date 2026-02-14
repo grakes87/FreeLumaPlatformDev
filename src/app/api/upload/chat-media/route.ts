@@ -11,15 +11,17 @@ export const maxDuration = 60;
  * Allowed MIME types for chat media: images, videos, and voice messages.
  */
 function isAllowedChatMediaType(mimeType: string): boolean {
+  // Strip codec params (e.g. "audio/webm;codecs=opus" → "audio/webm")
+  const base = mimeType.split(';')[0].trim();
   return (
-    mimeType.startsWith('image/') ||
-    mimeType.startsWith('video/') ||
-    mimeType === 'audio/mpeg' ||
-    mimeType === 'audio/wav' ||
-    mimeType === 'audio/ogg' ||
-    mimeType === 'audio/webm' ||
-    mimeType === 'audio/mp4' ||
-    mimeType === 'audio/aac'
+    base.startsWith('image/') ||
+    base.startsWith('video/') ||
+    base === 'audio/mpeg' ||
+    base === 'audio/wav' ||
+    base === 'audio/ogg' ||
+    base === 'audio/webm' ||
+    base === 'audio/mp4' ||
+    base === 'audio/aac'
   );
 }
 

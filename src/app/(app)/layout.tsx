@@ -10,6 +10,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { AppShell } from '@/components/layout/AppShell';
 
+// Suppress React 19 pointer capture error on unmounting elements during navigation
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (e) => {
+    if (e.message?.includes('releasePointerCapture')) {
+      e.preventDefault();
+    }
+  });
+}
+
 function AuthenticatedLayout({ children }: { children: ReactNode }) {
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();

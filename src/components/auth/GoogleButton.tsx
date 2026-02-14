@@ -62,7 +62,7 @@ function GoogleButtonInner({
         return;
       }
 
-      login(result.user);
+      login(result.user, result.token);
 
       if (result.isNewUser) {
         toast.success('Account created with Google!');

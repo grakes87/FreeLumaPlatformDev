@@ -82,7 +82,7 @@ export const GET = withAuth(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
           },
         ],
         order: [['created_at', 'DESC'], ['id', 'DESC']],
@@ -99,9 +99,13 @@ export const GET = withAuth(
 
       const supporters = results.map((s) => {
         const plain = s.toJSON() as unknown as Record<string, unknown>;
+        const user = plain.user as Record<string, unknown> | null;
         return {
-          id: plain.id,
-          user: plain.user,
+          id: user?.id ?? plain.id,
+          username: user?.username ?? 'unknown',
+          display_name: user?.display_name ?? 'Unknown',
+          avatar_url: (user?.avatar_url as string) ?? null,
+          avatar_color: (user?.avatar_color as string) ?? '#62BEBA',
           created_at: plain.created_at,
         };
       });

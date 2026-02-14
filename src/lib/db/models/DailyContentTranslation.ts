@@ -7,6 +7,8 @@ export interface DailyContentTranslationAttributes {
   translation_code: string;
   translated_text: string;
   verse_reference: string | null;
+  audio_url: string | null;
+  audio_srt_url: string | null;
   source: 'database' | 'api';
   created_at: Date;
   updated_at: Date;
@@ -15,6 +17,8 @@ export interface DailyContentTranslationAttributes {
 export interface DailyContentTranslationCreationAttributes extends Optional<DailyContentTranslationAttributes,
   | 'id'
   | 'verse_reference'
+  | 'audio_url'
+  | 'audio_srt_url'
   | 'source'
   | 'created_at'
   | 'updated_at'
@@ -26,6 +30,8 @@ class DailyContentTranslation extends Model<DailyContentTranslationAttributes, D
   declare translation_code: string;
   declare translated_text: string;
   declare verse_reference: string | null;
+  declare audio_url: string | null;
+  declare audio_srt_url: string | null;
   declare source: 'database' | 'api';
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
@@ -56,6 +62,14 @@ DailyContentTranslation.init(
     },
     verse_reference: {
       type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    audio_url: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
+    audio_srt_url: {
+      type: DataTypes.STRING(500),
       allowNull: true,
     },
     source: {

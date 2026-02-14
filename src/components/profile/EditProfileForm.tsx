@@ -16,7 +16,6 @@ interface ProfileFormData {
   date_of_birth: string;
   location: string;
   website: string;
-  mode: 'bible' | 'positivity';
   denomination: string;
   church: string;
 }
@@ -33,7 +32,6 @@ interface EditProfileFormProps {
     date_of_birth: string | null;
     location: string | null;
     website: string | null;
-    mode: string;
     denomination: string | null;
     church: string | null;
   };
@@ -59,15 +57,12 @@ export function EditProfileForm({ initialData }: EditProfileFormProps) {
     date_of_birth: initialData.date_of_birth || '',
     location: initialData.location || '',
     website: initialData.website || '',
-    mode: initialData.mode as 'bible' | 'positivity',
     denomination: initialData.denomination || '',
     church: initialData.church || '',
   });
 
   const [saving, setSaving] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
-  const [modeConfirmOpen, setModeConfirmOpen] = useState(false);
-  const [pendingMode, setPendingMode] = useState<'bible' | 'positivity' | null>(null);
   const usernameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const originalUsername = useRef(initialData.username);
 
@@ -117,26 +112,6 @@ export function EditProfileForm({ initialData }: EditProfileFormProps) {
       }
     };
   }, [form.username]);
-
-  // Handle mode change with confirmation
-  const handleModeChange = (newMode: 'bible' | 'positivity') => {
-    if (newMode === form.mode) return;
-    setPendingMode(newMode);
-    setModeConfirmOpen(true);
-  };
-
-  const confirmModeChange = () => {
-    if (pendingMode) {
-      updateField('mode', pendingMode);
-    }
-    setModeConfirmOpen(false);
-    setPendingMode(null);
-  };
-
-  const cancelModeChange = () => {
-    setModeConfirmOpen(false);
-    setPendingMode(null);
-  };
 
   // Save profile
   const handleSave = useCallback(async () => {
@@ -205,16 +180,6 @@ export function EditProfileForm({ initialData }: EditProfileFormProps) {
         throw new Error(err.error || 'Failed to update profile');
       }
 
-      // Update mode separately via settings endpoint if changed
-      if (form.mode !== initialData.mode) {
-        await fetch('/api/settings', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ mode: form.mode }),
-        });
-      }
-
       toast.success('Profile updated');
       await refreshUser();
       router.push('/profile');
@@ -223,7 +188,7 @@ export function EditProfileForm({ initialData }: EditProfileFormProps) {
     } finally {
       setSaving(false);
     }
-  }, [form, saving, usernameStatus, initialData.mode, toast, refreshUser, router]);
+  }, [form, saving, usernameStatus, toast, refreshUser, router]);
 
   const handleAvatarChange = () => {
     refreshUser();
@@ -458,42 +423,6 @@ export function EditProfileForm({ initialData }: EditProfileFormProps) {
           />
         </div>
 
-        {/* Account Mode */}
-        <div>
-          <label className="block text-sm font-medium text-text dark:text-text-dark mb-2">
-            Account Mode
-          </label>
-          <div className="flex rounded-xl border border-border dark:border-border-dark overflow-hidden">
-            <button
-              type="button"
-              onClick={() => handleModeChange('bible')}
-              className={cn(
-                'flex-1 py-2.5 text-sm font-medium transition-colors',
-                form.mode === 'bible'
-                  ? 'bg-primary text-white'
-                  : 'text-text-muted dark:text-text-muted-dark hover:bg-slate-50 dark:hover:bg-slate-800/50'
-              )}
-            >
-              Bible
-            </button>
-            <button
-              type="button"
-              onClick={() => handleModeChange('positivity')}
-              className={cn(
-                'flex-1 py-2.5 text-sm font-medium transition-colors border-l border-border dark:border-border-dark',
-                form.mode === 'positivity'
-                  ? 'bg-primary text-white'
-                  : 'text-text-muted dark:text-text-muted-dark hover:bg-slate-50 dark:hover:bg-slate-800/50'
-              )}
-            >
-              Positivity
-            </button>
-          </div>
-          <p className="mt-1 text-xs text-text-muted dark:text-text-muted-dark">
-            Affects your daily content and feed experience
-          </p>
-        </div>
-
         {/* Denomination (optional) */}
         <div>
           <label className="block text-sm font-medium text-text dark:text-text-dark mb-1">
@@ -537,41 +466,6 @@ export function EditProfileForm({ initialData }: EditProfileFormProps) {
         </div>
       </div>
 
-      {/* Mode change confirmation dialog */}
-      {modeConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={cancelModeChange} />
-          <div className="relative z-10 mx-4 w-full max-w-sm rounded-2xl bg-surface p-6 shadow-xl dark:bg-surface-dark">
-            <h3 className="text-lg font-semibold text-text dark:text-text-dark">
-              Change Account Mode?
-            </h3>
-            <p className="mt-2 text-sm text-text-muted dark:text-text-muted-dark">
-              Switching to <strong>{pendingMode}</strong> mode will change your daily content
-              and may affect your feed experience. Are you sure?
-            </p>
-            <div className="mt-4 flex gap-3">
-              <button
-                type="button"
-                onClick={cancelModeChange}
-                className={cn(
-                  'flex-1 rounded-xl border border-border px-4 py-2 text-sm font-medium',
-                  'text-text hover:bg-slate-50',
-                  'dark:border-border-dark dark:text-text-dark dark:hover:bg-slate-800/50'
-                )}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmModeChange}
-                className="flex-1 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark"
-              >
-                Switch Mode
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

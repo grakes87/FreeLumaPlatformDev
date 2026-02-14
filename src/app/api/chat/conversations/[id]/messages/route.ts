@@ -379,12 +379,16 @@ export const POST = withAuth(
         ],
       });
 
-      // Emit Socket.IO event for real-time delivery
+      // Emit Socket.IO event for real-time delivery to each participant's user room.
+      // Uses user:X rooms (not conv:X) so participants receive messages regardless of
+      // whether they are actively viewing the conversation (needed for conversation list updates).
       try {
         const { getIO } = await import('@/lib/socket/index');
-        const io = getIO();
-        const chatNsp = io.of('/chat');
-        chatNsp.to(`conv:${conversationId}`).emit('message:new', fullMessage?.toJSON());
+        const { emitToUsers } = await import('@/lib/socket/emit');
+        const chatNsp = getIO().of('/chat');
+        const recipientIds = otherParticipants.map((p) => p.user_id);
+        console.log('[Messages] broadcasting message:new to user rooms:', recipientIds);
+        emitToUsers(chatNsp, recipientIds, 'message:new', fullMessage?.toJSON());
       } catch {
         // Socket.IO not available (e.g., during build or test) — skip silently
       }
@@ -485,15 +489,25 @@ export const DELETE = withAuth(
 
       await message.update({ is_unsent: true });
 
-      // Emit Socket.IO event
+      // Emit Socket.IO event to participant user rooms
       try {
         const { getIO } = await import('@/lib/socket/index');
-        const io = getIO();
-        const chatNsp = io.of('/chat');
-        chatNsp.to(`conv:${conversationId}`).emit('message:unsent', {
-          message_id: message.id,
-          conversation_id: conversationId,
+        const { emitToUsers } = await import('@/lib/socket/emit');
+        const chatNsp = getIO().of('/chat');
+        const participants = await ConversationParticipant.findAll({
+          where: {
+            conversation_id: conversationId,
+            user_id: { [Op.ne]: userId },
+            deleted_at: null,
+          },
+          attributes: ['user_id'],
         });
+        emitToUsers(
+          chatNsp,
+          participants.map((p) => p.user_id),
+          'message:unsent',
+          { message_id: message.id, conversation_id: conversationId },
+        );
       } catch {
         // Socket.IO not available — skip silently
       }

@@ -1,40 +1,32 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { X, Send, Mic } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { X, Send, Mic, Square, Play, Pause, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import { useVoiceRecorder, MAX_VOICE_DURATION_S } from '@/hooks/useVoiceRecorder';
 
 interface VoiceRecorderProps {
-  /** Conversation ID to send voice message to */
-  conversationId: string;
-  /** Called after voice message is successfully sent */
-  onSent?: () => void;
+  /** Called with uploaded voice URL + duration to create the message via useChat */
+  onSendVoice: (media: { media_url: string; media_type: 'voice'; duration: number }) => void;
   /** Called when recording is cancelled or finished */
   onClose: () => void;
 }
 
 /** Number of waveform bars to display */
-const BAR_COUNT = 8;
+const BAR_COUNT = 20;
 
-/** Minimum bar height as fraction (bars never fully disappear) */
-const MIN_BAR_HEIGHT = 0.15;
+/** Minimum bar height as fraction */
+const MIN_BAR_HEIGHT = 0.1;
+
+type RecorderPhase = 'recording' | 'stopped' | 'uploading';
 
 /**
- * Voice message recording UI with live waveform visualization.
- *
- * Layout: [Cancel X] [Waveform bars] [MM:SS timer] [Send]
- *
- * - Waveform bars scale with audioLevel from AnalyserNode
- * - Cancel discards recording
- * - Send stops recording, uploads blob to B2 via presigned URL,
- *   then creates a voice message via the chat API
+ * Voice message recording UI with:
+ * - Recording phase: live waveform + timer + stop button
+ * - Stopped phase: playback preview + re-record + send
+ * - Upload phase: uploading spinner
  */
-export function VoiceRecorder({
-  conversationId,
-  onSent,
-  onClose,
-}: VoiceRecorderProps) {
+export function VoiceRecorder({ onSendVoice, onClose }: VoiceRecorderProps) {
   const {
     isRecording,
     duration,
@@ -46,57 +38,168 @@ export function VoiceRecorder({
     cancelRecording,
   } = useVoiceRecorder();
 
-  const [isSending, setIsSending] = useState(false);
+  const [phase, setPhase] = useState<RecorderPhase>('recording');
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [recordedDuration, setRecordedDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-start recording on mount
-  const handleStart = useCallback(async () => {
-    try {
-      setError(null);
-      await startRecording();
-    } catch (err) {
-      const msg =
-        err instanceof DOMException && err.name === 'NotAllowedError'
-          ? 'Microphone access denied. Please allow microphone access.'
-          : 'Could not start recording.';
-      setError(msg);
+  // Playback preview state
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackTime, setPlaybackTime] = useState(0);
+  const playbackTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  // Waveform history for stopped preview
+  const [waveformSnapshot, setWaveformSnapshot] = useState<number[]>([]);
+  const waveformHistory = useRef<number[]>([]);
+
+  // Record audio levels for waveform snapshot
+  useEffect(() => {
+    if (isRecording) {
+      waveformHistory.current.push(audioLevel);
+      // Keep last 200 samples
+      if (waveformHistory.current.length > 200) {
+        waveformHistory.current.shift();
+      }
     }
+  }, [audioLevel, isRecording]);
+
+  // Auto-start recording on mount
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+
+    (async () => {
+      try {
+        setError(null);
+        await startRecording();
+      } catch (err) {
+        const msg =
+          err instanceof DOMException && err.name === 'NotAllowedError'
+            ? 'Microphone access denied. Please allow microphone access.'
+            : 'Could not start recording.';
+        setError(msg);
+      }
+    })();
   }, [startRecording]);
 
-  // Start recording when component mounts (user tapped mic)
-  // We use a ref check to only start once
-  const startedRef = useState(() => {
-    // Trigger start after first render
-    if (typeof window !== 'undefined') {
-      setTimeout(() => handleStart(), 0);
-    }
-    return true;
-  });
-  // Suppress unused warning
-  void startedRef;
+  // Stop recording and go to preview
+  const handleStop = useCallback(async () => {
+    const finalDuration = duration;
+    const blob = await stopRecording();
+    if (blob) {
+      setRecordedBlob(blob);
+      setRecordedDuration(finalDuration);
+      setPhase('stopped');
 
+      // Create snapshot of waveform for display
+      const history = waveformHistory.current;
+      const snapshot: number[] = [];
+      const step = Math.max(1, Math.floor(history.length / BAR_COUNT));
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const idx = Math.min(i * step, history.length - 1);
+        snapshot.push(history[idx] ?? MIN_BAR_HEIGHT);
+      }
+      setWaveformSnapshot(snapshot);
+
+      // Prepare audio element for preview
+      // Use a data URL to avoid blob range-request errors on some browsers
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        audioUrlRef.current = dataUrl;
+        const audio = new Audio(dataUrl);
+        audio.preload = 'auto';
+        audio.onended = () => {
+          setIsPlaying(false);
+          setPlaybackTime(0);
+          clearInterval(playbackTimerRef.current);
+        };
+        audioRef.current = audio;
+      };
+      reader.readAsDataURL(blob);
+    }
+  }, [duration, stopRecording]);
+
+  // Auto-stop at max duration → transition to preview phase
+  const handleStopRef = useRef(handleStop);
+  handleStopRef.current = handleStop;
+  useEffect(() => {
+    if (phase === 'recording' && isRecording && duration >= MAX_VOICE_DURATION_S) {
+      handleStopRef.current();
+    }
+  }, [duration, isRecording, phase]);
+
+  // Cancel and close
   const handleCancel = useCallback(() => {
     cancelRecording();
+    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    if (audioRef.current) audioRef.current.pause();
+    clearInterval(playbackTimerRef.current);
     onClose();
   }, [cancelRecording, onClose]);
 
-  const handleSend = useCallback(async () => {
-    if (isSending) return;
-    setIsSending(true);
-    setError(null);
+  // Toggle playback preview
+  const togglePlayback = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.pause();
+      clearInterval(playbackTimerRef.current);
+      setIsPlaying(false);
+    } else {
+      audio.play().catch(() => {});
+      setIsPlaying(true);
+      playbackTimerRef.current = setInterval(() => {
+        setPlaybackTime(Math.floor(audio.currentTime));
+      }, 250);
+    }
+  }, [isPlaying]);
+
+  // Re-record: discard current and start fresh
+  const handleReRecord = useCallback(async () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    clearInterval(playbackTimerRef.current);
+    setRecordedBlob(null);
+    setRecordedDuration(0);
+    setIsPlaying(false);
+    setPlaybackTime(0);
+    waveformHistory.current = [];
+    setWaveformSnapshot([]);
 
     try {
-      const blob = await stopRecording();
-      if (!blob) {
-        setError('No audio recorded.');
-        setIsSending(false);
-        return;
-      }
+      setError(null);
+      await startRecording();
+      setPhase('recording');
+    } catch (err) {
+      setError(
+        err instanceof DOMException && err.name === 'NotAllowedError'
+          ? 'Microphone access denied.'
+          : 'Could not start recording.'
+      );
+    }
+  }, [startRecording]);
 
-      // Determine content type for upload
+  // Upload and send
+  const handleSend = useCallback(async () => {
+    if (!recordedBlob) return;
+    setPhase('uploading');
+    setError(null);
+
+    // Stop playback
+    if (audioRef.current) audioRef.current.pause();
+    clearInterval(playbackTimerRef.current);
+
+    try {
       const contentType = mimeType || 'audio/webm';
 
-      // 1. Get presigned URL from chat-media API
       const presignRes = await fetch(
         `/api/upload/chat-media?contentType=${encodeURIComponent(contentType)}`
       );
@@ -106,49 +209,38 @@ export function VoiceRecorder({
       }
       const { upload_url, public_url } = await presignRes.json();
 
-      // 2. PUT blob to presigned URL
       const uploadRes = await fetch(upload_url, {
         method: 'PUT',
         headers: { 'Content-Type': contentType },
-        body: blob,
+        body: recordedBlob,
       });
       if (!uploadRes.ok) {
         throw new Error('Failed to upload voice message');
       }
 
-      // 3. Send message via chat API
-      const msgRes = await fetch(
-        `/api/chat/conversations/${conversationId}/messages`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'voice',
-            media: [
-              {
-                url: public_url,
-                type: 'voice',
-                mime_type: contentType,
-                duration,
-              },
-            ],
-          }),
-        }
-      );
-      if (!msgRes.ok) {
-        const data = await msgRes.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to send voice message');
-      }
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
 
-      onSent?.();
+      onSendVoice({
+        media_url: public_url,
+        media_type: 'voice',
+        duration: recordedDuration,
+      });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send voice message');
-      setIsSending(false);
+      setPhase('stopped');
     }
-  }, [isSending, stopRecording, mimeType, conversationId, duration, onSent, onClose]);
+  }, [recordedBlob, mimeType, recordedDuration, onSendVoice, onClose]);
 
-  // Format seconds to MM:SS
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      if (audioRef.current) audioRef.current.pause();
+      clearInterval(playbackTimerRef.current);
+    };
+  }, []);
+
   const formatTime = (seconds: number): string => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -157,7 +249,7 @@ export function VoiceRecorder({
 
   if (!isSupported) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-400">
+      <div className="flex items-center gap-2 px-4 py-3 text-sm text-red-400">
         <Mic className="h-4 w-4 shrink-0" />
         <span>Voice recording is not supported in this browser.</span>
         <button
@@ -172,93 +264,152 @@ export function VoiceRecorder({
     );
   }
 
-  return (
-    <div
-      className={cn(
-        'flex items-center gap-3 rounded-2xl px-4 py-3',
-        'bg-red-500/10 dark:bg-red-500/15',
-        'animate-in slide-in-from-bottom-2 duration-200'
-      )}
-      role="region"
-      aria-label="Voice recorder"
-    >
-      {/* Recording indicator dot */}
-      {isRecording && (
-        <span className="absolute -top-1 -left-1 h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
-      )}
+  // --- Recording phase ---
+  if (phase === 'recording') {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2" role="region" aria-label="Recording voice message">
+        {/* Cancel */}
+        <button
+          type="button"
+          onClick={handleCancel}
+          className="shrink-0 rounded-full p-2 text-red-400 transition-colors hover:bg-red-500/10"
+          aria-label="Cancel recording"
+        >
+          <X className="h-5 w-5" />
+        </button>
 
-      {/* Cancel button */}
-      <button
-        type="button"
-        onClick={handleCancel}
-        disabled={isSending}
-        className={cn(
-          'flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
-          'bg-red-500/20 text-red-400 transition-colors',
-          'hover:bg-red-500/30 active:scale-95',
-          'disabled:opacity-50'
-        )}
-        aria-label="Cancel recording"
-      >
-        <X className="h-4 w-4" />
-      </button>
+        {/* Live waveform */}
+        <div className="flex flex-1 items-center justify-center gap-[2px] h-10" aria-hidden="true">
+          {Array.from({ length: BAR_COUNT }).map((_, i) => {
+            const centerWeight = 1 - Math.abs(i - (BAR_COUNT - 1) / 2) / ((BAR_COUNT - 1) / 2);
+            const barLevel = isRecording
+              ? MIN_BAR_HEIGHT + audioLevel * (0.5 + 0.5 * centerWeight)
+              : MIN_BAR_HEIGHT;
+            const height = Math.min(1, barLevel) * 32 + 3;
 
-      {/* Waveform visualization */}
-      <div className="flex flex-1 items-center justify-center gap-[3px]" aria-hidden="true">
-        {Array.from({ length: BAR_COUNT }).map((_, i) => {
-          // Create natural-looking waveform: center bars taller, edges shorter
-          const centerWeight = 1 - Math.abs(i - (BAR_COUNT - 1) / 2) / ((BAR_COUNT - 1) / 2);
-          const barLevel = isRecording
-            ? MIN_BAR_HEIGHT + audioLevel * (0.6 + 0.4 * centerWeight)
-            : MIN_BAR_HEIGHT;
-          const height = Math.min(1, barLevel) * 28 + 4; // 4px min, 32px max
-
-          return (
-            <div
-              key={i}
-              className="w-[3px] rounded-full bg-red-400 transition-all duration-75"
-              style={{ height: `${height}px` }}
-            />
-          );
-        })}
-      </div>
-
-      {/* Timer */}
-      <span
-        className={cn(
-          'min-w-[3rem] text-center font-mono text-sm tabular-nums',
-          'text-red-400 dark:text-red-300'
-        )}
-      >
-        {formatTime(duration)}
-      </span>
-
-      {/* Send button */}
-      <button
-        type="button"
-        onClick={handleSend}
-        disabled={isSending || !isRecording}
-        className={cn(
-          'flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
-          'bg-blue-500 text-white transition-colors',
-          'hover:bg-blue-600 active:scale-95',
-          'disabled:opacity-50'
-        )}
-        aria-label={isSending ? 'Sending voice message' : 'Send voice message'}
-      >
-        {isSending ? (
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-        ) : (
-          <Send className="h-4 w-4" />
-        )}
-      </button>
-
-      {/* Error message */}
-      {error && (
-        <div className="absolute -bottom-8 left-0 right-0 text-center text-xs text-red-400">
-          {error}
+            return (
+              <div
+                key={i}
+                className="w-[2.5px] rounded-full bg-red-400 transition-all duration-100"
+                style={{ height: `${height}px` }}
+              />
+            );
+          })}
         </div>
-      )}
+
+        {/* Recording dot + timer */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+          <span
+            className={cn(
+              'min-w-[2.5rem] font-mono text-xs tabular-nums',
+              duration >= MAX_VOICE_DURATION_S - 10 ? 'text-red-500 font-semibold' : 'text-red-400'
+            )}
+          >
+            {formatTime(duration)}
+          </span>
+        </div>
+
+        {/* Stop button */}
+        <button
+          type="button"
+          onClick={handleStop}
+          className={cn(
+            'shrink-0 flex h-9 w-9 items-center justify-center rounded-full',
+            'bg-red-500 text-white transition-all active:scale-90'
+          )}
+          aria-label="Stop recording"
+        >
+          <Square className="h-4 w-4" fill="currentColor" />
+        </button>
+
+        {error && (
+          <div className="absolute -bottom-7 left-0 right-0 text-center text-xs text-red-400">
+            {error}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- Stopped / Preview phase ---
+  if (phase === 'stopped') {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2" role="region" aria-label="Voice message preview">
+        {/* Re-record */}
+        <button
+          type="button"
+          onClick={handleReRecord}
+          className="shrink-0 rounded-full p-2 text-gray-500 dark:text-gray-400 transition-colors hover:text-red-400"
+          aria-label="Re-record"
+        >
+          <RotateCcw className="h-5 w-5" />
+        </button>
+
+        {/* Play/Pause */}
+        <button
+          type="button"
+          onClick={togglePlayback}
+          className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/20"
+          aria-label={isPlaying ? 'Pause preview' : 'Play preview'}
+        >
+          {isPlaying ? (
+            <Pause className="h-4 w-4" fill="currentColor" />
+          ) : (
+            <Play className="h-4 w-4 translate-x-[1px]" fill="currentColor" />
+          )}
+        </button>
+
+        {/* Static waveform + time */}
+        <div className="flex flex-1 items-center gap-2">
+          <div className="flex flex-1 items-center justify-center gap-[2px] h-8" aria-hidden="true">
+            {waveformSnapshot.map((level, i) => {
+              const height = Math.min(1, Math.max(MIN_BAR_HEIGHT, level)) * 28 + 3;
+              const played = recordedDuration > 0 && (i / BAR_COUNT) <= (playbackTime / recordedDuration);
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    'w-[2.5px] rounded-full transition-colors duration-150',
+                    played ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'
+                  )}
+                  style={{ height: `${height}px` }}
+                />
+              );
+            })}
+          </div>
+          <span className="min-w-[2.5rem] font-mono text-xs tabular-nums text-gray-500 dark:text-gray-400">
+            {isPlaying ? formatTime(playbackTime) : formatTime(recordedDuration)}
+          </span>
+        </div>
+
+        {/* Send */}
+        <button
+          type="button"
+          onClick={handleSend}
+          className={cn(
+            'shrink-0 rounded-full bg-primary p-2 text-white transition-all',
+            'active:scale-90 hover:bg-primary/90'
+          )}
+          aria-label="Send voice message"
+        >
+          <Send className="h-5 w-5" />
+        </button>
+
+        {error && (
+          <div className="absolute -bottom-7 left-0 right-0 text-center text-xs text-red-400">
+            {error}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- Uploading phase ---
+  return (
+    <div className="flex items-center justify-center gap-2 px-3 py-3" role="region" aria-label="Sending voice message">
+      <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+      <span className="text-sm text-gray-500 dark:text-gray-400">Sending...</span>
     </div>
   );
 }

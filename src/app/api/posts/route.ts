@@ -15,7 +15,7 @@ const POST_BODY_MAX = 5000;
 const createPostSchema = z.object({
   body: z.string().min(1, 'Post body is required').max(POST_BODY_MAX, `Post body must be ${POST_BODY_MAX} characters or less`),
   post_type: z.enum(['text', 'prayer_request']).default('text'),
-  visibility: z.enum(['public', 'followers']).default('public'),
+  visibility: z.enum(['public', 'followers']).optional(),
   is_anonymous: z.boolean().default(false),
   prayer_privacy: z.enum(['public', 'followers', 'private']).optional(),
   media: z.array(z.object({
@@ -42,14 +42,18 @@ export const POST = withAuth(
         return errorResponse(parsed.error.issues[0]?.message || 'Invalid input');
       }
 
-      const { body, post_type, visibility, is_anonymous, prayer_privacy, media } = parsed.data;
+      const { body, post_type, visibility: explicitVisibility, is_anonymous, prayer_privacy, media } = parsed.data;
       const userId = context.user.id;
 
-      // Get user's mode for the post
-      const user = await User.findByPk(userId, { attributes: ['id', 'mode'] });
+      // Get user's mode and profile privacy for the post
+      const user = await User.findByPk(userId, { attributes: ['id', 'mode', 'profile_privacy'] });
       if (!user) {
         return errorResponse('User not found', 404);
       }
+
+      // Derive visibility: explicit > profile_privacy mapping > default public
+      const visibility = explicitVisibility
+        ?? (user.profile_privacy === 'private' ? 'followers' : 'public');
 
       // Profanity check
       const profanityResult = checkAndFlag(body);
@@ -95,7 +99,7 @@ export const POST = withAuth(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
           },
           {
             model: PostMedia,

@@ -3,9 +3,10 @@
 import { cn } from '@/lib/utils/cn';
 
 interface ProfileStatsProps {
-  postCount: number;
-  followerCount: number;
   followingCount: number;
+  followerCount: number;
+  likeCount: number;
+  viewCount: number;
   onFollowersTap?: () => void;
   onFollowingTap?: () => void;
   className?: string;
@@ -25,56 +26,73 @@ function formatCount(count: number): string {
 }
 
 /**
- * Profile stats row showing Posts / Followers / Following counts.
- * Followers and Following columns are tappable (open FollowList modal).
+ * TikTok-style stats row: Following | Followers | Likes
+ * Following and Followers are tappable.
  */
 export function ProfileStats({
-  postCount,
-  followerCount,
   followingCount,
+  followerCount,
+  likeCount,
+  viewCount,
   onFollowersTap,
   onFollowingTap,
   className,
 }: ProfileStatsProps) {
   return (
-    <div className={cn('flex items-center justify-center gap-8', className)}>
-      {/* Posts */}
-      <div className="flex flex-col items-center">
-        <span className="text-lg font-bold text-text dark:text-text-dark">
-          {formatCount(postCount)}
+    <div className={cn('flex items-center gap-4', className)}>
+      {/* Following */}
+      <button
+        type="button"
+        onClick={onFollowingTap}
+        className="flex items-baseline gap-1 hover:opacity-70 transition-opacity"
+      >
+        <span className="text-base font-bold text-text dark:text-text-dark">
+          {formatCount(followingCount)}
         </span>
-        <span className="text-xs text-text-muted dark:text-text-muted-dark">
-          Posts
+        <span className="text-sm text-text-muted dark:text-text-muted-dark">
+          Following
         </span>
-      </div>
+      </button>
+
+      <span className="text-text-muted/40 dark:text-text-muted-dark/40">|</span>
 
       {/* Followers */}
       <button
         type="button"
         onClick={onFollowersTap}
-        className="flex flex-col items-center hover:opacity-70 transition-opacity"
+        className="flex items-baseline gap-1 hover:opacity-70 transition-opacity"
       >
-        <span className="text-lg font-bold text-text dark:text-text-dark">
+        <span className="text-base font-bold text-text dark:text-text-dark">
           {formatCount(followerCount)}
         </span>
-        <span className="text-xs text-text-muted dark:text-text-muted-dark">
+        <span className="text-sm text-text-muted dark:text-text-muted-dark">
           Followers
         </span>
       </button>
 
-      {/* Following */}
-      <button
-        type="button"
-        onClick={onFollowingTap}
-        className="flex flex-col items-center hover:opacity-70 transition-opacity"
-      >
-        <span className="text-lg font-bold text-text dark:text-text-dark">
-          {formatCount(followingCount)}
+      <span className="text-text-muted/40 dark:text-text-muted-dark/40">|</span>
+
+      {/* Likes */}
+      <div className="flex items-baseline gap-1">
+        <span className="text-base font-bold text-text dark:text-text-dark">
+          {formatCount(likeCount)}
         </span>
-        <span className="text-xs text-text-muted dark:text-text-muted-dark">
-          Following
+        <span className="text-sm text-text-muted dark:text-text-muted-dark">
+          Likes
         </span>
-      </button>
+      </div>
+
+      <span className="text-text-muted/40 dark:text-text-muted-dark/40">|</span>
+
+      {/* Views */}
+      <div className="flex items-baseline gap-1">
+        <span className="text-base font-bold text-text dark:text-text-dark">
+          {formatCount(viewCount)}
+        </span>
+        <span className="text-sm text-text-muted dark:text-text-muted-dark">
+          Views
+        </span>
+      </div>
     </div>
   );
 }

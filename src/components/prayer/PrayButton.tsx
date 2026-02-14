@@ -31,7 +31,7 @@ export function PrayButton({
         'disabled:opacity-50 disabled:cursor-not-allowed',
         isPraying
           ? 'bg-primary/20 text-primary dark:bg-primary/30 dark:text-primary'
-          : 'bg-white/10 text-white/70 hover:bg-white/15 hover:text-white dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/15'
+          : 'bg-black/5 text-text-muted hover:bg-black/10 hover:text-text dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/15'
       )}
     >
       <span className="text-base leading-none">&#x1F64F;</span>

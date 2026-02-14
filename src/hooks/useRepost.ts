@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 interface RepostResult {
   post: Record<string, unknown>;
@@ -10,9 +10,11 @@ interface RepostResult {
 
 export function useRepost() {
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const createRepost = useCallback(async (originalPostId: number, body: string): Promise<RepostResult | null> => {
-    if (submitting) return null;
+    if (submittingRef.current) return null;
+    submittingRef.current = true;
     setSubmitting(true);
 
     try {
@@ -33,9 +35,10 @@ export function useRepost() {
       console.error('[useRepost] error:', error);
       throw error;
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [submitting]);
+  }, []);
 
   return { submitting, createRepost };
 }

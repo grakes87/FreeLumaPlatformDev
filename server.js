@@ -25,6 +25,12 @@ app.prepare().then(() => {
       rawSocket.request = null;
     });
 
+    // Register namespaces so client connections are accepted immediately.
+    // Full auth middleware + handlers are added lazily by setupNamespaces()
+    // when the first API route calls getIO().
+    io.of('/chat');
+    io.of('/notifications');
+
     globalThis.__io = io;
     console.log("> Socket.IO server initialized");
   }

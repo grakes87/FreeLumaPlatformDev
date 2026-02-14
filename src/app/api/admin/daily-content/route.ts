@@ -21,6 +21,8 @@ const postSchema = z.object({
   translations: z.array(z.object({
     code: z.string().min(1).max(10),
     text: z.string().min(1),
+    audio_url: z.string().max(500).nullable().optional(),
+    audio_srt_url: z.string().max(500).nullable().optional(),
   })).optional(),
 });
 
@@ -64,6 +66,8 @@ export const POST = withAdmin(async (req: NextRequest) => {
         daily_content_id: dailyContent.id,
         translation_code: t.code,
         translated_text: t.text,
+        audio_url: t.audio_url ?? null,
+        audio_srt_url: t.audio_srt_url ?? null,
       }));
       await DailyContentTranslation.bulkCreate(translationRecords, { transaction });
     }
@@ -116,6 +120,8 @@ const putSchema = z.object({
   translations: z.array(z.object({
     code: z.string().min(1).max(10),
     text: z.string().min(1),
+    audio_url: z.string().max(500).nullable().optional(),
+    audio_srt_url: z.string().max(500).nullable().optional(),
   })).optional(),
 });
 
@@ -160,6 +166,8 @@ export const PUT = withAdmin(async (req: NextRequest) => {
           daily_content_id: id,
           translation_code: t.code,
           translated_text: t.text,
+          audio_url: t.audio_url ?? null,
+          audio_srt_url: t.audio_srt_url ?? null,
         }));
         await DailyContentTranslation.bulkCreate(translationRecords, { transaction });
       }

@@ -65,7 +65,7 @@ export const GET = withAuth(
               {
                 model: User,
                 as: 'user',
-                attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+                attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
               },
               {
                 model: PostMedia,
@@ -148,11 +148,19 @@ export const POST = withAuth(
         return successResponse({ action: 'removed' });
       }
 
-      await Bookmark.create({
-        user_id: userId,
-        post_id: post_id ?? null,
-        daily_content_id: daily_content_id ?? null,
-      });
+      try {
+        await Bookmark.create({
+          user_id: userId,
+          post_id: post_id ?? null,
+          daily_content_id: daily_content_id ?? null,
+        });
+      } catch (err: unknown) {
+        // Handle race condition: concurrent request already created bookmark
+        if (err && typeof err === 'object' && 'name' in err && err.name === 'SequelizeUniqueConstraintError') {
+          return successResponse({ action: 'added' }, 200);
+        }
+        throw err;
+      }
 
       return successResponse({ action: 'added' }, 201);
     } catch (error) {

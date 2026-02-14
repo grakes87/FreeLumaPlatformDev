@@ -67,7 +67,7 @@ export const GET = withAuth(
               {
                 model: User,
                 as: 'user',
-                attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+                attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
               },
               {
                 model: PostMedia,
@@ -237,7 +237,7 @@ export const PUT = withAuth(
               {
                 model: User,
                 as: 'user',
-                attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+                attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
               },
               {
                 model: PostMedia,

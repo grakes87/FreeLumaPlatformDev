@@ -121,15 +121,21 @@ export const PUT = withAuth(
 
       await Conversation.update(updates, { where: { id: conversationId } });
 
-      // Emit Socket.IO event
+      // Emit Socket.IO event to participant user rooms
       try {
         const { getIO } = await import('@/lib/socket/index');
-        const io = getIO();
-        const chatNsp = io.of('/chat');
-        chatNsp.to(`conv:${conversationId}`).emit('conversation:updated', {
-          conversation_id: conversationId,
-          ...updates,
+        const { emitToUsers } = await import('@/lib/socket/emit');
+        const chatNsp = getIO().of('/chat');
+        const participants = await ConversationParticipant.findAll({
+          where: { conversation_id: conversationId, deleted_at: null },
+          attributes: ['user_id'],
         });
+        emitToUsers(
+          chatNsp,
+          participants.map((p) => p.user_id),
+          'conversation:updated',
+          { conversation_id: conversationId, ...updates },
+        );
       } catch {
         // Socket.IO not available
       }

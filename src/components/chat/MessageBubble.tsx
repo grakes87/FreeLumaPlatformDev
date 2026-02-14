@@ -1,14 +1,16 @@
 'use client';
 
-import { useRef, useCallback } from 'react';
-import Image from 'next/image';
-import { Check, CheckCheck } from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
+import NextImage from 'next/image';
+import { Check, CheckCheck, X, Play, MessageCircle } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils/cn';
 import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
 import { SharedPostCard } from './SharedPostCard';
+import { VoiceMessagePlayer } from './VoiceMessagePlayer';
 import { useMessageStatus } from '@/hooks/useMessageStatus';
 import { REACTION_EMOJI_MAP } from '@/lib/utils/constants';
-import type { ChatMessage, MessageSender } from '@/hooks/useChat';
+import type { ChatMessage, MessageSender, MessageMedia as MessageMediaType } from '@/hooks/useChat';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -18,7 +20,7 @@ interface MessageBubbleProps {
   showAvatar: boolean;
   /** Show timestamp (last message in a same-sender group) */
   showTime: boolean;
-  onLongPress: (message: ChatMessage) => void;
+  onLongPress: (message: ChatMessage, bubbleRect: DOMRect) => void;
   onSwipeRight?: (message: ChatMessage) => void;
 }
 
@@ -36,48 +38,14 @@ export function MessageBubble({
   onLongPress,
 }: MessageBubbleProps) {
   const status = useMessageStatus(message, isOwnMessage, conversationType);
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [viewerMedia, setViewerMedia] = useState<MessageMediaType | null>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
 
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
-      touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      longPressTimerRef.current = setTimeout(() => {
-        onLongPress(message);
-      }, 500);
-    },
-    [message, onLongPress]
-  );
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-    const dx = Math.abs(e.touches[0].clientX - touchStartRef.current.x);
-    const dy = Math.abs(e.touches[0].clientY - touchStartRef.current.y);
-    if (dx > 10 || dy > 10) {
-      // Cancel long press if user scrolls/swipes
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
-    }
-  }, []);
-
-  const handleTouchEnd = useCallback(() => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-    touchStartRef.current = null;
-  }, []);
-
-  // Context menu on desktop (right click)
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      onLongPress(message);
-    },
-    [message, onLongPress]
-  );
+  // Single tap on bubble to open context menu, passing bubble rect for positioning
+  const handleBubbleTap = useCallback(() => {
+    const rect = bubbleRef.current?.getBoundingClientRect();
+    onLongPress(message, rect ?? new DOMRect(0, 0, 0, 0));
+  }, [message, onLongPress]);
 
   const sender: MessageSender = message.sender;
   const timeStr = formatTime(message.created_at);
@@ -127,10 +95,6 @@ export function MessageBubble({
         'flex w-full px-4 py-0.5',
         isOwnMessage ? 'justify-end' : 'justify-start'
       )}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onContextMenu={handleContextMenu}
     >
       {/* Other's avatar */}
       {!isOwnMessage && showAvatar && <AvatarSlot sender={sender} />}
@@ -149,10 +113,12 @@ export function MessageBubble({
           <ReplyPreview replyTo={message.replyTo} isOwn={isOwnMessage} />
         )}
 
-        {/* Bubble */}
+        {/* Bubble — tap here for context menu (react / reply) */}
         <div
+          ref={bubbleRef}
+          onClick={handleBubbleTap}
           className={cn(
-            'rounded-2xl text-sm leading-relaxed',
+            'rounded-2xl text-sm leading-relaxed cursor-pointer',
             isOwnMessage
               ? 'bg-primary text-white'
               : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
@@ -170,22 +136,47 @@ export function MessageBubble({
             <div className="overflow-hidden rounded-2xl">
               {message.media.map((m) =>
                 m.media_type === 'video' ? (
-                  <video
+                  <button
                     key={m.id}
-                    src={m.media_url}
-                    controls
-                    className="max-h-64 w-full rounded-2xl"
-                    preload="metadata"
-                  />
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewerMedia(m);
+                    }}
+                    className="relative block w-full"
+                  >
+                    <video
+                      src={`${m.media_url}#t=0.001`}
+                      className="max-h-64 w-full rounded-2xl object-cover"
+                      preload="metadata"
+                      playsInline
+                      muted
+                    />
+                    {/* Play button overlay */}
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
+                        <Play className="h-5 w-5 translate-x-0.5 text-white" fill="currentColor" />
+                      </div>
+                    </div>
+                  </button>
                 ) : (
-                  <Image
+                  <button
                     key={m.id}
-                    src={m.media_url}
-                    alt="Message media"
-                    width={280}
-                    height={280}
-                    className="max-h-64 w-full rounded-2xl object-cover"
-                  />
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewerMedia(m);
+                    }}
+                    className="block w-full"
+                  >
+                    <NextImage
+                      src={m.media_url}
+                      alt="Message media"
+                      width={280}
+                      height={280}
+                      className="max-h-64 w-full rounded-2xl object-cover"
+                    />
+                  </button>
                 )
               )}
               {message.content && (
@@ -196,21 +187,13 @@ export function MessageBubble({
             </div>
           )}
 
-          {/* Voice message */}
+          {/* Voice message — Apple iMessage style */}
           {message.type === 'voice' && message.media.length > 0 && (
-            <div className="flex items-center gap-2 px-3.5 py-2">
-              <audio
-                src={message.media[0].media_url}
-                controls
-                className="h-8 w-full max-w-[200px]"
-                preload="metadata"
-              />
-              {message.media[0].duration && (
-                <span className="text-xs opacity-70">
-                  {formatDuration(message.media[0].duration)}
-                </span>
-              )}
-            </div>
+            <VoiceMessagePlayer
+              src={message.media[0].media_url}
+              duration={message.media[0].duration}
+              isOwnMessage={isOwnMessage}
+            />
           )}
 
           {/* Shared post */}
@@ -219,8 +202,28 @@ export function MessageBubble({
           )}
         </div>
 
+        {/* React · Reply link for media/voice (since tapping media opens viewer, not context menu) */}
+        {(message.type === 'media' || message.type === 'voice') && (
+          <button
+            type="button"
+            onClick={handleBubbleTap}
+            className={cn(
+              'mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 transition-colors hover:text-primary',
+              isOwnMessage ? 'ml-auto' : ''
+            )}
+          >
+            <MessageCircle className="h-3 w-3" />
+            <span>React · Reply</span>
+          </button>
+        )}
+
+        {/* Media viewer portal */}
+        {viewerMedia && (
+          <MediaViewer media={viewerMedia} onClose={() => setViewerMedia(null)} />
+        )}
+
         {/* Reactions below bubble */}
-        {Object.keys(message.reactions).length > 0 && (
+        {message.reactions && Object.keys(message.reactions).length > 0 && (
           <div
             className={cn(
               'flex flex-wrap gap-1 mt-0.5',
@@ -273,7 +276,7 @@ function AvatarSlot({ sender }: { sender: MessageSender }) {
   return (
     <div className="mr-2 shrink-0 self-end">
       {sender.avatar_url ? (
-        <Image
+        <NextImage
           src={sender.avatar_url}
           alt={sender.display_name}
           width={28}
@@ -384,6 +387,56 @@ function MentionText({ text, isOwn }: { text: string; isOwn: boolean }) {
   );
 }
 
+/** Fullscreen media viewer overlay */
+function MediaViewer({
+  media,
+  onClose,
+}: {
+  media: MessageMediaType;
+  onClose: () => void;
+}) {
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      onClick={onClose}
+    >
+      {/* Close button */}
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
+        aria-label="Close"
+      >
+        <X className="h-6 w-6" />
+      </button>
+
+      {/* Media */}
+      {media.media_type === 'video' ? (
+        <video
+          src={media.media_url}
+          controls
+          autoPlay
+          playsInline
+          className="max-h-[90vh] max-w-[95vw] rounded-lg"
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={media.media_url}
+          alt="Media"
+          className="max-h-[90vh] max-w-[95vw] rounded-lg object-contain"
+          onClick={(e) => e.stopPropagation()}
+        />
+      )}
+    </div>,
+    document.body
+  );
+}
+
 // ---- Helpers ----
 
 function formatTime(dateStr: string): string {
@@ -391,8 +444,3 @@ function formatTime(dateStr: string): string {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
-}

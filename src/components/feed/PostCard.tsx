@@ -1,12 +1,15 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { FeedPost } from '@/hooks/useFeed';
 import type { ReactionType } from '@/lib/utils/constants';
 import { usePostReactions } from '@/hooks/usePostReactions';
 import { useBookmark } from '@/hooks/useBookmark';
+import { useImpression } from '@/hooks/useImpression';
 import { PostCardInstagram } from './PostCardInstagram';
 import { PostCardTikTok } from './PostCardTikTok';
+import { PostComposer } from './PostComposer';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface PostCardProps {
   post: FeedPost;
@@ -35,7 +38,8 @@ export function PostCard({
     toggleReaction,
   } = usePostReactions(post.id);
 
-  const { toggle: toggleBookmark } = useBookmark(post.id, post.bookmarked);
+  const { isBookmarked, toggle: toggleBookmark } = useBookmark(post.id, post.bookmarked);
+  const impressionRef = useImpression(post.id);
 
   const handleToggleReaction = useCallback(
     (type: ReactionType) => {
@@ -69,8 +73,33 @@ export function PostCard({
     }
   }, [post.id, post.user_id, onRemovePost]);
 
-  const handleDelete = useCallback(async () => {
-    if (!confirm('Delete this post?')) return;
+  const [showEditor, setShowEditor] = useState(false);
+
+  const handleEdit = useCallback(() => {
+    setShowEditor(true);
+  }, []);
+
+  const handleEditSuccess = useCallback(
+    (updatedPost: Record<string, unknown>) => {
+      const updates: Partial<FeedPost> = {
+        body: updatedPost.body as string,
+        edited: true,
+      };
+      if (Array.isArray(updatedPost.media)) {
+        updates.media = updatedPost.media as FeedPost['media'];
+      }
+      onUpdatePost?.(post.id, updates);
+    },
+    [post.id, onUpdatePost]
+  );
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleDeleteRequest = useCallback(() => {
+    setShowDeleteConfirm(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
     try {
       const res = await fetch(`/api/posts/${post.id}`, {
         method: 'DELETE',
@@ -96,6 +125,7 @@ export function PostCard({
   const commonProps = {
     post,
     currentUserId,
+    isBookmarked,
     reactionCounts,
     reactionTotal,
     userReaction,
@@ -104,12 +134,49 @@ export function PostCard({
     onBookmark: handleBookmark,
     onReport: handleReport,
     onBlock: handleBlock,
-    onDelete: handleDelete,
+    onEdit: handleEdit,
+    onDelete: handleDeleteRequest,
   };
 
-  if (feedStyle === 'tiktok') {
-    return <PostCardTikTok {...commonProps} />;
-  }
+  const editPostData = showEditor
+    ? {
+        id: post.id,
+        body: post.body,
+        media: post.media.map((m) => ({
+          id: String(m.id),
+          url: m.url,
+          media_type: m.media_type as 'image' | 'video',
+          thumbnail_url: m.thumbnail_url,
+          width: m.width,
+          height: m.height,
+          duration: m.duration,
+        })),
+      }
+    : undefined;
 
-  return <PostCardInstagram {...commonProps} />;
+  return (
+    <div ref={impressionRef} className="h-full">
+      {feedStyle === 'tiktok' ? (
+        <PostCardTikTok {...commonProps} />
+      ) : (
+        <PostCardInstagram {...commonProps} />
+      )}
+      <PostComposer
+        isOpen={showEditor}
+        onClose={() => setShowEditor(false)}
+        onPostCreated={handleEditSuccess}
+        onDelete={handleDeleteRequest}
+        editPost={editPostData}
+      />
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Post"
+        message="Are you sure you want to delete this post? This action cannot be undone."
+        confirmLabel="Delete"
+        danger
+      />
+    </div>
+  );
 }

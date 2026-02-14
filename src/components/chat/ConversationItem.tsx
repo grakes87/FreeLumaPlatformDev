@@ -33,9 +33,19 @@ export function ConversationItem({
     ? otherParticipant?.display_name ?? 'Unknown'
     : conversation.name ?? 'Group Chat';
 
-  const avatarUrl = conversation.type === 'direct'
-    ? otherParticipant?.avatar_url ?? null
-    : conversation.avatar_url;
+  const isGroup = conversation.type === 'group';
+
+  // Group: show up to 3 member avatars in an overlapping stack
+  const groupAvatars = isGroup
+    ? conversation.participants.filter((p) => p.id !== currentUserId).slice(0, 3)
+    : [];
+  const groupExtraCount = isGroup
+    ? Math.max(0, conversation.participants.filter((p) => p.id !== currentUserId).length - 3)
+    : 0;
+
+  const avatarUrl = isGroup
+    ? conversation.avatar_url
+    : otherParticipant?.avatar_url ?? null;
 
   const avatarColor = otherParticipant?.avatar_color ?? '#3B82F6';
 
@@ -68,7 +78,57 @@ export function ConversationItem({
     >
       {/* Avatar with online dot */}
       <div className="relative shrink-0">
-        {avatarUrl ? (
+        {isGroup && !avatarUrl ? (
+          /* Group without custom avatar: overlapping member stack */
+          <div className="flex items-center" style={{ width: 56, height: 56 }}>
+            {groupAvatars.length === 0 ? (
+              <InitialsAvatar name={displayName} color="#3B82F6" size={56} />
+            ) : (
+              <div className="relative" style={{ width: 56, height: 56 }}>
+                {groupAvatars.map((p, i) => {
+                  const size = groupAvatars.length === 1 ? 56 : 36;
+                  const positions = groupAvatars.length === 1
+                    ? [{ top: 0, left: 0 }]
+                    : groupAvatars.length === 2
+                      ? [{ top: 0, left: 0 }, { top: 16, left: 18 }]
+                      : [{ top: 0, left: 10 }, { top: 0, left: 26 }, { top: 20, left: 2 }];
+                  const pos = positions[i] || { top: 0, left: 0 };
+                  return (
+                    <div
+                      key={p.id}
+                      className="absolute rounded-full ring-2 ring-white dark:ring-gray-900"
+                      style={{ top: pos.top, left: pos.left, zIndex: 3 - i }}
+                    >
+                      {p.avatar_url ? (
+                        <img
+                          src={p.avatar_url}
+                          alt={p.display_name}
+                          className="rounded-full object-cover"
+                          style={{ width: size, height: size }}
+                        />
+                      ) : (
+                        <InitialsAvatar
+                          name={p.display_name}
+                          color={p.avatar_color}
+                          size={size}
+                          className="text-xs"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+                {groupExtraCount > 0 && (
+                  <div
+                    className="absolute flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 ring-2 ring-white dark:ring-gray-900 text-[10px] font-semibold text-gray-600 dark:text-gray-300"
+                    style={{ width: 24, height: 24, bottom: 0, right: 0, zIndex: 0 }}
+                  >
+                    +{groupExtraCount}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : avatarUrl ? (
           <img
             src={avatarUrl}
             alt={displayName}
@@ -98,6 +158,11 @@ export function ConversationItem({
             )}
           >
             {displayName}
+            {isGroup && (
+              <span className="ml-1 text-xs font-normal text-gray-400 dark:text-gray-500">
+                ({conversation.participants.length})
+              </span>
+            )}
           </span>
           {timestamp && (
             <span

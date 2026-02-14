@@ -27,10 +27,12 @@ function setupNamespaces(io: SocketIOServer): void {
   chatNs.use(authMiddleware);
   chatNs.on('connection', (socket) => {
     const userId = socket.data.userId as number;
+    console.log('[Socket/chat] connection — userId:', userId, 'socketId:', socket.id);
     presenceManager.addUser(userId, socket.id);
 
     // Join user-specific room for targeted messages
     socket.join(`user:${userId}`);
+    console.log('[Socket/chat] joined room user:' + userId);
 
     // Register all chat event handlers (typing, read receipts, presence, rooms)
     registerChatHandlers(chatNs, socket);

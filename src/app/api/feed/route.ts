@@ -3,6 +3,7 @@ import { Op, literal } from 'sequelize';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import { decodeCursor, encodeCursor } from '@/lib/utils/cursor';
 import { getBlockedUserIds } from '@/lib/utils/blocks';
+import { serverError } from '@/lib/utils/api';
 
 /**
  * GET /api/feed — Following feed
@@ -13,6 +14,7 @@ import { getBlockedUserIds } from '@/lib/utils/blocks';
  * Cursor-based pagination on (created_at DESC, id DESC).
  */
 export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
+  try {
   const {
     Post, PostMedia, PostReaction, Bookmark,
     Follow, User, Repost, PlatformSetting,
@@ -88,7 +90,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
       {
         model: User,
         as: 'user',
-        attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+        attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
       },
       {
         model: PostMedia,
@@ -126,8 +128,8 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
 
   const postIds = resultPosts.map((p) => p.id);
 
-  // 7. Batch lookup: user reactions + bookmarks
-  const [userReactions, userBookmarks] = await Promise.all([
+  // 7. Batch lookup: user reactions + bookmarks + user reposts
+  const [userReactions, userBookmarks, userReposts] = await Promise.all([
     PostReaction.findAll({
       where: { user_id: userId, post_id: { [Op.in]: postIds } },
       attributes: ['post_id', 'reaction_type'],
@@ -138,10 +140,16 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
       attributes: ['post_id'],
       raw: true,
     }),
+    Repost.findAll({
+      where: { user_id: userId, post_id: { [Op.in]: postIds } },
+      attributes: ['post_id'],
+      raw: true,
+    }),
   ]);
 
   const reactionMap = new Map(userReactions.map((r) => [r.post_id, r.reaction_type]));
   const bookmarkSet = new Set(userBookmarks.map((b) => b.post_id));
+  const userRepostedSet = new Set(userReposts.map((r) => r.post_id));
 
   // 8. Batch lookup: repost info (quote reposts where quote_post_id = post.id)
   const repostRows = await Repost.findAll({
@@ -161,7 +169,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+          attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
         },
         {
           model: PostMedia,
@@ -219,6 +227,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
       repost_count: Number(json.repost_count) || 0,
       user_reaction: reactionMap.get(post.id) || null,
       bookmarked: bookmarkSet.has(post.id),
+      user_reposted: userRepostedSet.has(post.id),
       original_post: quoteToOriginalMap.get(post.id) || null,
     };
   });
@@ -234,4 +243,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
     next_cursor: nextCursor,
     has_more: hasMore,
   });
+  } catch (error) {
+    return serverError(error, 'Failed to fetch feed');
+  }
 });

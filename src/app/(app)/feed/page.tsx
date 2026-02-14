@@ -1,14 +1,18 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useFeed } from '@/hooks/useFeed';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { useUserSearch } from '@/hooks/useUserSearch';
 import { useAuth } from '@/hooks/useAuth';
+import { useImmersive } from '@/context/ImmersiveContext';
+import { FeedMuteProvider } from '@/context/FeedMuteContext';
 import { FeedTabs } from '@/components/feed/FeedTabs';
 import { PostFeed } from '@/components/feed/PostFeed';
+import { PostComposer } from '@/components/feed/PostComposer';
 import { UserSearchResult } from '@/components/social/UserSearchResult';
 
 /**
@@ -17,7 +21,26 @@ import { UserSearchResult } from '@/components/social/UserSearchResult';
  */
 export default function FeedPage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { feedStyle, loading: settingsLoading } = usePlatformSettings();
+  const { setImmersive } = useImmersive();
+  const [composerOpen, setComposerOpen] = useState(false);
+
+  // Handle ?compose=post query param
+  useEffect(() => {
+    if (searchParams.get('compose') === 'post') {
+      setComposerOpen(true);
+      router.replace('/feed', { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  // TikTok mode: enable immersive layout (transparent TopBar/BottomNav)
+  const isTikTok = feedStyle === 'tiktok';
+  useEffect(() => {
+    setImmersive(isTikTok);
+    return () => setImmersive(false);
+  }, [isTikTok, setImmersive]);
   const {
     posts,
     loading,
@@ -56,8 +79,6 @@ export default function FeedPage() {
   const showSearchResults =
     searchFocused && query.trim().length >= 2;
 
-  const isTikTok = feedStyle === 'tiktok';
-
   const handleClearSearch = useCallback(() => {
     setQuery('');
     setSearchFocused(false);
@@ -74,6 +95,7 @@ export default function FeedPage() {
   }
 
   return (
+    <FeedMuteProvider>
     <div className={cn(isTikTok && 'bg-black')}>
       {/* Search bar -- hidden in TikTok mode for immersive experience */}
       {!isTikTok && (
@@ -138,7 +160,7 @@ export default function FeedPage() {
       )}
 
       {/* Feed tabs */}
-      <FeedTabs activeTab={activeTab} onTabChange={setActiveTab} />
+      <FeedTabs activeTab={activeTab} onTabChange={setActiveTab} overlay={isTikTok} />
 
       {/* Post feed */}
       <PostFeed
@@ -153,6 +175,17 @@ export default function FeedPage() {
         onRemovePost={removePost}
         onUpdatePost={updatePost}
       />
+
+      {/* Post composer */}
+      <PostComposer
+        isOpen={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        onPostCreated={() => {
+          setComposerOpen(false);
+          refresh();
+        }}
+      />
     </div>
+    </FeedMuteProvider>
   );
 }

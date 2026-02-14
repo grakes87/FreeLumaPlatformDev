@@ -4,11 +4,14 @@ import { Op } from 'sequelize';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import {
   Post,
+  PostComment,
   PostMedia,
   PrayerRequest,
   PrayerSupport,
+  Repost,
   User,
 } from '@/lib/db/models';
+import { sequelize } from '@/lib/db';
 import { checkAndFlag } from '@/lib/moderation/profanity';
 import { encodeCursor, decodeCursor } from '@/lib/utils/cursor';
 import { getBlockedUserIds } from '@/lib/utils/blocks';
@@ -21,7 +24,7 @@ const createPrayerSchema = z.object({
     .string()
     .min(1, 'Prayer request body is required')
     .max(PRAYER_BODY_MAX, `Prayer request must be ${PRAYER_BODY_MAX} characters or less`),
-  privacy: z.enum(['public', 'followers', 'private']).default('public'),
+  privacy: z.enum(['public', 'followers']).default('public'),
   is_anonymous: z.boolean().default(false),
   media: z
     .array(
@@ -158,7 +161,7 @@ export const GET = withAuth(
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+          attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
         },
         {
           model: PostMedia,
@@ -221,6 +224,35 @@ export const GET = withAuth(
 
       const supportedIds = new Set(userSupports.map((s) => s.prayer_request_id));
 
+      // Get comment counts for all posts in one query
+      const postIds = results.map((p) => p.id);
+      const commentCountRows = postIds.length > 0
+        ? await PostComment.findAll({
+            attributes: [
+              'post_id',
+              [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+            ],
+            where: { post_id: { [Op.in]: postIds } },
+            group: ['post_id'],
+            raw: true,
+          })
+        : [];
+      const commentCountMap = new Map(
+        (commentCountRows as unknown as Array<{ post_id: number; count: string }>).map(
+          (r) => [r.post_id, parseInt(r.count, 10)]
+        )
+      );
+
+      // Check which posts the user has reposted
+      const userReposts = postIds.length > 0
+        ? await Repost.findAll({
+            where: { user_id: userId, post_id: { [Op.in]: postIds } },
+            attributes: ['post_id'],
+            raw: true,
+          })
+        : [];
+      const repostedSet = new Set(userReposts.map((r) => r.post_id));
+
       // For "others" tab with followers privacy, we need to check follow status
       // But for simplicity in the initial implementation, we only show 'public' in others tab
       // The my_requests tab shows all own prayers regardless of privacy
@@ -231,10 +263,12 @@ export const GET = withAuth(
         const prayerRequest = plain.prayerRequest as Record<string, unknown>;
         const prId = prayerRequest?.id as number;
 
+        const postId = plain.id as number;
+
         const formatted = {
           ...prayerRequest,
           post: {
-            id: plain.id,
+            id: postId,
             body: plain.body,
             user_id: plain.user_id,
             is_anonymous: plain.is_anonymous,
@@ -244,6 +278,8 @@ export const GET = withAuth(
             updated_at: plain.updated_at,
             user: plain.user,
             media: plain.media,
+            comment_count: commentCountMap.get(postId) || 0,
+            user_reposted: repostedSet.has(postId),
           },
           is_praying: supportedIds.has(prId),
         };
@@ -300,7 +336,7 @@ export const POST = withAuth(
         user_id: userId,
         body,
         post_type: 'prayer_request',
-        visibility: privacy === 'private' ? 'public' : (privacy as 'public' | 'followers'),
+        visibility: privacy,
         mode: 'bible',
         is_anonymous,
         flagged: profanityResult.flagged,
@@ -334,7 +370,7 @@ export const POST = withAuth(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
           },
           {
             model: PostMedia,

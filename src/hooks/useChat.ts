@@ -242,7 +242,7 @@ export function useChat(conversationId: number) {
 
         // Replace optimistic with server response
         setMessages((prev) =>
-          prev.map((m) => (m.id === tempId ? { ...serverMsg, delivery_status: 'sent' } : m))
+          prev.map((m) => (m.id === tempId ? { ...serverMsg, delivery_status: serverMsg.delivery_status ?? 'delivered' } : m))
         );
       } catch {
         // Remove optimistic on network failure
@@ -256,10 +256,16 @@ export function useChat(conversationId: number) {
   useEffect(() => {
     if (!chatSocket || !user) return;
 
-    // Join conversation room
+    // Join conversation room (and re-join on reconnect)
     chatSocket.emit('conversation:join', { conversationId });
 
+    const handleReconnect = () => {
+      chatSocket.emit('conversation:join', { conversationId });
+    };
+    chatSocket.on('connect', handleReconnect);
+
     const handleNewMessage = (msg: ChatMessage) => {
+      console.log('[useChat] message:new received:', { id: msg.id, conversation_id: msg.conversation_id, sender_id: msg.sender_id });
       if (msg.conversation_id !== conversationId) return;
       // Skip if it's our own message (we already have the optimistic/server version)
       if (msg.sender_id === user.id) return;
@@ -268,6 +274,17 @@ export function useChat(conversationId: number) {
         // Avoid duplicates
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
+      });
+
+      // Clear sender's typing indicator — their message arrived
+      const existingTimeout = typingTimeoutsRef.current.get(msg.sender_id);
+      if (existingTimeout) clearTimeout(existingTimeout);
+      typingTimeoutsRef.current.delete(msg.sender_id);
+      setTypingUsers((prev) => {
+        if (!prev.has(msg.sender_id)) return prev;
+        const next = new Map(prev);
+        next.delete(msg.sender_id);
+        return next;
       });
 
       // Mark as read since we're viewing the conversation
@@ -330,8 +347,10 @@ export function useChat(conversationId: number) {
       );
     };
 
-    // Typing indicators
-    const handleTypingStart = ({ userId: typingUserId }: { userId: number }) => {
+    // Typing indicators (filter by conversationId to prevent cross-conversation leaks)
+    const handleTypingStart = ({ userId: typingUserId, conversationId: typingConvId }: { userId: number; conversationId: number }) => {
+      console.log('[useChat] typing:start received:', { typingUserId, typingConvId, expectedConvId: conversationId });
+      if (typingConvId !== conversationId) return;
       if (typingUserId === user.id) return;
 
       // Clear existing timeout for this user
@@ -358,12 +377,15 @@ export function useChat(conversationId: number) {
       typingTimeoutsRef.current.set(typingUserId, timeout);
     };
 
-    const handleTypingStop = ({ userId: typingUserId }: { userId: number }) => {
+    const handleTypingStop = ({ userId: typingUserId, conversationId: typingConvId }: { userId: number; conversationId: number }) => {
+      if (typingConvId !== conversationId) return;
+
       const existing = typingTimeoutsRef.current.get(typingUserId);
       if (existing) clearTimeout(existing);
       typingTimeoutsRef.current.delete(typingUserId);
 
       setTypingUsers((prev) => {
+        if (!prev.has(typingUserId)) return prev;
         const next = new Map(prev);
         next.delete(typingUserId);
         return next;
@@ -378,6 +400,7 @@ export function useChat(conversationId: number) {
     chatSocket.on('typing:stop', handleTypingStop);
 
     return () => {
+      chatSocket.off('connect', handleReconnect);
       chatSocket.off('message:new', handleNewMessage);
       chatSocket.off('message:unsent', handleUnsent);
       chatSocket.off('message:reaction', handleReaction);

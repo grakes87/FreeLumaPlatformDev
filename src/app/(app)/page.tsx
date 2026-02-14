@@ -1,7 +1,7 @@
 'use client';
 
-import { DailyPostCarousel } from '@/components/daily/DailyPostCarousel';
+import { DailyFeed } from '@/components/daily/DailyFeed';
 
 export default function DailyPostPage() {
-  return <DailyPostCarousel />;
+  return <DailyFeed />;
 }

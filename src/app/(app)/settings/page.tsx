@@ -12,6 +12,7 @@ import {
   Monitor,
   ChevronLeft,
   ChevronDown,
+  ChevronRight,
   Check,
   Lock,
   Eye,
@@ -27,6 +28,7 @@ import {
   UserPlus,
   Heart,
   Send,
+  ShieldBan,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils/cn';
@@ -545,6 +547,12 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      {/* ---- Blocked Users Section ---- */}
+      <SectionHeader title="Privacy" />
+      <Card padding="sm" className="mb-6 !p-0 overflow-hidden">
+        <BlockedUsersList />
+      </Card>
+
       {/* ---- Notifications Section ---- */}
       <SectionHeader title="Notifications" />
       <Card padding="sm" className="mb-6 !p-0 overflow-hidden">
@@ -791,6 +799,135 @@ function ToggleRow({
         />
       </button>
     </div>
+  );
+}
+
+interface BlockedUser {
+  id: number;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  avatar_color: string;
+  is_verified: boolean;
+}
+
+function BlockedUsersList() {
+  const [expanded, setExpanded] = useState(false);
+  const [users, setUsers] = useState<BlockedUser[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+  const toast = useToast();
+
+  const fetchBlocked = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/blocks', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data.blocked_users || []);
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setLoading(false);
+      setFetched(true);
+    }
+  }, []);
+
+  const handleToggle = () => {
+    if (!expanded && !fetched) {
+      fetchBlocked();
+    }
+    setExpanded((v) => !v);
+  };
+
+  const handleUnblock = async (userId: number) => {
+    try {
+      const res = await fetch('/api/blocks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ user_id: userId }),
+      });
+      if (res.ok) {
+        setUsers((prev) => prev.filter((u) => u.id !== userId));
+        toast.success('User unblocked');
+      }
+    } catch {
+      toast.error('Failed to unblock');
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleToggle}
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+      >
+        <ShieldBan className="h-4 w-4 shrink-0 text-text-muted dark:text-text-muted-dark" />
+        <span className="flex-1 text-sm font-medium text-text dark:text-text-dark">
+          Blocked Users
+        </span>
+        <ChevronRight
+          className={cn(
+            'h-4 w-4 text-text-muted dark:text-text-muted-dark transition-transform',
+            expanded && 'rotate-90'
+          )}
+        />
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border dark:border-border-dark">
+          {loading ? (
+            <div className="flex justify-center py-4">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          ) : users.length === 0 ? (
+            <p className="px-4 py-4 text-center text-sm text-text-muted dark:text-text-muted-dark">
+              No blocked users
+            </p>
+          ) : (
+            users.map((u) => (
+              <div
+                key={u.id}
+                className="flex items-center gap-3 px-4 py-3 border-b border-border/50 dark:border-border-dark/50 last:border-b-0"
+              >
+                {u.avatar_url ? (
+                  <img
+                    src={u.avatar_url}
+                    alt={u.display_name}
+                    className="h-9 w-9 rounded-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white"
+                    style={{ backgroundColor: u.avatar_color }}
+                  >
+                    {u.display_name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-text dark:text-text-dark truncate">
+                    {u.display_name}
+                  </p>
+                  <p className="text-xs text-text-muted dark:text-text-muted-dark">
+                    @{u.username}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleUnblock(u.id)}
+                  className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-red-500 transition-colors hover:bg-red-50 dark:border-border-dark dark:hover:bg-red-900/20"
+                >
+                  Unblock
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
