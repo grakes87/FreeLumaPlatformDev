@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { passwordResetTemplate, verificationTemplate, emailChangeVerificationTemplate, passwordChangeAlertTemplate } from './templates';
+import { passwordResetTemplate, verificationTemplate, emailChangeVerificationTemplate, passwordChangeAlertTemplate, accountDeletionTemplate } from './templates';
 
 const FROM_ADDRESS = process.env.SMTP_FROM || 'noreply@freeluma.com';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -55,7 +55,8 @@ export async function sendEmail(
           url.includes('/chat/') ||
           url.includes('/profile/') ||
           url.includes('/prayer-wall') ||
-          url.includes('/daily')
+          url.includes('/daily') ||
+          url.includes('/login')
         ) {
           console.log(`  => ${url}`);
         }
@@ -106,4 +107,19 @@ export async function sendPasswordChangeAlert(
 ): Promise<void> {
   const html = passwordChangeAlertTemplate(email);
   await sendEmail(email, 'Your password was changed - Free Luma', html);
+}
+
+export async function sendAccountDeletionEmail(
+  email: string,
+  displayName: string,
+  deletionDate: Date
+): Promise<void> {
+  const loginUrl = `${APP_URL}/login`;
+  const formattedDate = deletionDate.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const html = accountDeletionTemplate(displayName, formattedDate, loginUrl);
+  await sendEmail(email, 'Your account is scheduled for deletion - Free Luma', html);
 }

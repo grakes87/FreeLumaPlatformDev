@@ -274,6 +274,33 @@ export function prayerResponseEmail(params: PrayerResponseEmailParams): { html: 
   return { html: baseTemplate(content, footer), subject, headers };
 }
 
+// ---- Account lifecycle templates ----
+
+export function accountDeletionTemplate(displayName: string, deletionDate: string, loginUrl: string): string {
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Account Deletion Scheduled</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${displayName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Your ${BRAND_NAME} account is scheduled for permanent deletion on <strong>${deletionDate}</strong>.
+    </p>
+    <div style="padding:16px;background:#fef2f2;border-radius:8px;border-left:3px solid #ef4444;margin:0 0 16px;">
+      <p style="margin:0;font-size:14px;color:#991b1b;line-height:1.5;">
+        After this date, your account and all associated data will be permanently removed. This action cannot be undone.
+      </p>
+    </div>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Changed your mind? Simply <strong>log in</strong> before the deletion date to cancel and restore your account.
+    </p>
+    ${actionButton(loginUrl, 'Log In to Cancel')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;">
+      If you intended to delete your account, no further action is needed. Your account will be removed automatically.
+    </p>
+  `;
+  return baseTemplate(content);
+}
+
 // ---- Account security templates ----
 
 export function emailChangeVerificationTemplate(newEmail: string, verifyUrl: string): string {
