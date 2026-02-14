@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 4 of 6 (Enhanced Content)
-Plan: 9 of 14 complete
+Plan: 12 of 14 complete
 Status: In progress
-Last activity: 2026-02-14 — Completed 04-11-PLAN.md (Video Detail Page + Immersive Player)
+Last activity: 2026-02-14 — Completed 04-12-PLAN.md (Account Lifecycle Settings UI)
 
-Progress: [█████████████████████████████████████████████░░░░░░░] 48/53 plans (91%)
+Progress: [████████████████████████████████████████████████░░░░] 51/53 plans (96%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 48
+- Total plans completed: 51
 - Average duration: 4 min
-- Total execution time: 214 min
+- Total execution time: 228 min
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [███████████████████████
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
-| 04-enhanced-content | 9/14 | 30 min | 3 min |
+| 04-enhanced-content | 12/14 | 44 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-05 (3 min), 04-07 (2 min), 04-08 (4 min), 04-10 (3 min), 04-11 (6 min)
+- Last 5 plans: 04-08 (4 min), 04-10 (3 min), 04-11 (6 min), 04-09 (7 min), 04-12 (7 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -233,6 +233,16 @@ Recent decisions affecting current work:
 - **Video progress keepalive save:** keepalive fetch on unmount for reliable progress save (preserves cookies/auth)
 - **Video player dynamic import:** VideoPlayer loaded via next/dynamic for code splitting from detail page
 - **useVideoReactions separate hook:** Separate from usePostReactions due to different API endpoint (video-reactions)
+- **Settings API provider flags:** has_google/has_apple booleans in GET /api/settings for client-side OAuth status display
+- **Settings section extraction:** ChangePasswordForm extracted from monolithic settings page into SecuritySection component
+- **Danger Zone collapsible accordion:** Destructive account actions hidden behind collapsible section to prevent accidental access
+- **Provider link info toast:** Link button shows info toast directing to login page rather than implementing inline OAuth flow
+- **FFmpeg piped frame extraction:** Thumbnail extraction uses piped writable stream instead of temp files on disk
+- **Whisper audio 64kbps mono:** Audio extraction at 64kbps mono MP3 minimizes upload size for transcription API
+- **Non-fatal video processing:** Thumbnail and caption failures logged but don't fail the processing request
+- **Video presigned URL 4-hour expiry:** Videos get 4-hour presigned URL expiry (vs 1-hour default) for large file uploads
+- **Upload type extension maps:** ALLOWED_CONTENT_TYPES + ADMIN_ONLY_TYPES + EXPIRY_OVERRIDES in presigned route for easy type addition
+- **Category reorder swap pattern:** Adjacent categories swap sort_order values via parallel PUT requests
 
 ### Pending Todos
 
@@ -297,6 +307,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-14T07:05:47Z
-Stopped at: Completed 04-11-PLAN.md (Video Detail Page + Immersive Player)
+Last session: 2026-02-14T07:07:00Z
+Stopped at: Completed 04-12-PLAN.md (Account Lifecycle Settings UI)
 Resume file: None
