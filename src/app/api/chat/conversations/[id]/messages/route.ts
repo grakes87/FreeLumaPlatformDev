@@ -12,6 +12,7 @@ import {
   User,
   Post,
   PostMedia,
+  Video,
 } from '@/lib/db/models';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 import { getBlockedUserIds } from '@/lib/utils/blocks';
@@ -22,9 +23,10 @@ const PAGE_SIZE = 30;
 
 const createMessageSchema = z.object({
   content: z.string().max(5000).optional(),
-  type: z.enum(['text', 'media', 'voice', 'shared_post']).default('text'),
+  type: z.enum(['text', 'media', 'voice', 'shared_post', 'shared_video']).default('text'),
   reply_to_id: z.number().int().positive().nullable().optional(),
   shared_post_id: z.number().int().positive().nullable().optional(),
+  shared_video_id: z.number().int().positive().nullable().optional(),
   mentioned_user_ids: z.array(z.number().int().positive()).max(50).optional(),
   media: z
     .array(
@@ -138,6 +140,11 @@ export const GET = withAuth(
                 limit: 1,
               },
             ],
+          },
+          {
+            model: Video,
+            as: 'sharedVideo',
+            attributes: ['id', 'title', 'thumbnail_url', 'duration_seconds'],
           },
           {
             model: MessageReaction,
@@ -254,7 +261,7 @@ export const POST = withAuth(
         return errorResponse(parsed.error.issues[0]?.message || 'Invalid input');
       }
 
-      const { content, type, reply_to_id, shared_post_id, media, mentioned_user_ids } = parsed.data;
+      const { content, type, reply_to_id, shared_post_id, shared_video_id, media, mentioned_user_ids } = parsed.data;
 
       // Validate content requirement
       if (type === 'text' && !content) {
@@ -280,6 +287,17 @@ export const POST = withAuth(
         }
       }
 
+      // Validate shared video exists and is published
+      if (shared_video_id) {
+        const video = await Video.findByPk(shared_video_id, { attributes: ['id', 'published'] });
+        if (!video) {
+          return errorResponse('Shared video not found', 404);
+        }
+        if (!video.published) {
+          return errorResponse('Video is not published', 400);
+        }
+      }
+
       // Profanity check on content
       let flagged = false;
       if (content) {
@@ -295,6 +313,7 @@ export const POST = withAuth(
         content: content || null,
         reply_to_id: reply_to_id || null,
         shared_post_id: shared_post_id || null,
+        shared_video_id: shared_video_id || null,
         flagged,
       });
 
@@ -375,6 +394,11 @@ export const POST = withAuth(
                 attributes: ['id', 'display_name'],
               },
             ],
+          },
+          {
+            model: Video,
+            as: 'sharedVideo',
+            attributes: ['id', 'title', 'thumbnail_url', 'duration_seconds'],
           },
         ],
       });
