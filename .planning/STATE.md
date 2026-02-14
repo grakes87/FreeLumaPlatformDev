@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 4 of 6 (Enhanced Content)
-Plan: 6 of 14 complete
+Plan: 7 of 14 complete
 Status: In progress
-Last activity: 2026-02-14 — Completed 04-07-PLAN.md (Activity Streak Tracking & Account Stats)
+Last activity: 2026-02-14 — Completed 04-08-PLAN.md (Enhanced Admin Moderation)
 
-Progress: [██████████████████████████████████████████░░░░░░░░░░] 45/53 plans (85%)
+Progress: [███████████████████████████████████████████░░░░░░░░░] 46/53 plans (87%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 45
-- Average duration: 5 min
-- Total execution time: 201 min
+- Total plans completed: 46
+- Average duration: 4 min
+- Total execution time: 205 min
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [███████████████████████
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
-| 04-enhanced-content | 6/14 | 17 min | 3 min |
+| 04-enhanced-content | 7/14 | 21 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-02 (4 min), 04-03 (3 min), 04-04 (3 min), 04-05 (3 min), 04-07 (2 min)
+- Last 5 plans: 04-03 (3 min), 04-04 (3 min), 04-05 (3 min), 04-07 (2 min), 04-08 (4 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -218,6 +218,12 @@ Recent decisions affecting current work:
 - **VideoProgress cumulative upsert:** watched_seconds takes max (cumulative), last_position always updates (resume), completed is one-way true
 - **VideoReaction aggregate counts:** POST toggle returns full reaction_counts object for immediate client-side UI update
 - **Shared video published validation:** Chat shared_video messages validate video exists AND is published before creation
+- **Grouped moderation queue:** Reports grouped by (content_type, content_id) via raw SQL GROUP BY; compound cursor (count:id) for pagination
+- **Transaction-wrapped moderation actions:** All 4 actions (remove_content, warn_user, ban_user, dismiss_report) use sequelize.transaction()
+- **Moderation notifications after commit:** createNotification() called after transaction.commit() in try/catch (non-fatal)
+- **Active ban check pattern:** lifted_at IS NULL AND (expires_at IS NULL OR expires_at > NOW()) for active ban queries
+- **Repeat offenders raw SQL:** COALESCE across post/comment author joins for cross-content-type report aggregation
+- **Moderation stats 7-day fill:** Missing days in moderation_activity_7d filled with zero counts for consistent chart data
 
 ### Pending Todos
 
@@ -282,6 +288,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-14T06:49:56Z
-Stopped at: Completed 04-07-PLAN.md (Activity Streak Tracking & Account Stats)
+Last session: 2026-02-14T06:52:08Z
+Stopped at: Completed 04-08-PLAN.md (Enhanced Admin Moderation)
 Resume file: None
