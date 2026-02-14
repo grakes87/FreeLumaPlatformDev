@@ -94,6 +94,11 @@ export const POST = withAuth(
       // No existing reaction -- create
       await PostReaction.create({ user_id, post_id, reaction_type });
 
+      // Fire-and-forget: track social activity
+      import('@/lib/streaks/tracker').then(({ trackActivity }) => {
+        trackActivity(user_id, 'social_activity').catch(() => {});
+      }).catch(() => {});
+
       // Create notification for post owner
       try {
         const post = await Post.findByPk(post_id, { attributes: ['id', 'user_id'] });

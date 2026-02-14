@@ -107,6 +107,13 @@ export const POST = withAuth(
         }
       });
 
+      // Fire-and-forget: track social activity for pray action
+      if (result.action === 'added') {
+        import('@/lib/streaks/tracker').then(({ trackActivity }) => {
+          trackActivity(userId, 'social_activity').catch(() => {});
+        }).catch(() => {});
+      }
+
       // Create notification for prayer request author when someone prays
       if (result.action === 'added' && result.post_user_id !== userId) {
         try {

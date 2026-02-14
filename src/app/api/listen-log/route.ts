@@ -44,6 +44,13 @@ export const POST = withAuth(
           await existing.update(updates);
         }
 
+        // Fire-and-forget: track audio listen when completed
+        if (completed && !existing.completed) {
+          import('@/lib/streaks/tracker').then(({ trackActivity }) => {
+            trackActivity(user_id, 'audio_listen').catch(() => {});
+          }).catch(() => {});
+        }
+
         return successResponse({
           listen_seconds: existing.listen_seconds,
           completed: existing.completed,
@@ -56,6 +63,13 @@ export const POST = withAuth(
         listen_seconds,
         completed: completed ?? false,
       });
+
+      // Fire-and-forget: track audio listen when completed
+      if (completed) {
+        import('@/lib/streaks/tracker').then(({ trackActivity }) => {
+          trackActivity(user_id, 'audio_listen').catch(() => {});
+        }).catch(() => {});
+      }
 
       return successResponse({
         listen_seconds: log.listen_seconds,

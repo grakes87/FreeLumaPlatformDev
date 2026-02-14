@@ -112,6 +112,13 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
       translation_names: translationNames,
     };
 
+    // Fire-and-forget: track daily view for authenticated users
+    if (context.user) {
+      import('@/lib/streaks/tracker').then(({ trackActivity }) => {
+        trackActivity(context.user!.id, 'daily_view', timezone).catch(() => {});
+      }).catch(() => {});
+    }
+
     return successResponse(response);
   } catch (error) {
     return serverError(error, 'Failed to fetch daily content');

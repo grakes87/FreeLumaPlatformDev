@@ -204,6 +204,11 @@ export const POST = withAuth(
         flagged,
       });
 
+      // Fire-and-forget: track social activity
+      import('@/lib/streaks/tracker').then(({ trackActivity }) => {
+        trackActivity(userId, 'social_activity').catch(() => {});
+      }).catch(() => {});
+
       // Re-fetch with user data
       const full = await PostComment.findByPk(comment.id, {
         include: [

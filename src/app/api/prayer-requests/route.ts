@@ -364,6 +364,11 @@ export const POST = withAuth(
         privacy,
       });
 
+      // Fire-and-forget: track social activity
+      import('@/lib/streaks/tracker').then(({ trackActivity }) => {
+        trackActivity(userId, 'social_activity').catch(() => {});
+      }).catch(() => {});
+
       // Reload with associations
       const created = await Post.findByPk(post.id, {
         include: [
