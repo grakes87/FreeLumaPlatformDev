@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 4 of 6 (Enhanced Content)
-Plan: 7 of 14 complete
+Plan: 8 of 14 complete
 Status: In progress
-Last activity: 2026-02-14 — Completed 04-08-PLAN.md (Enhanced Admin Moderation)
+Last activity: 2026-02-14 — Completed 04-10-PLAN.md (Video Library Home Page)
 
-Progress: [███████████████████████████████████████████░░░░░░░░░] 46/53 plans (87%)
+Progress: [████████████████████████████████████████████░░░░░░░░] 47/53 plans (89%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 46
+- Total plans completed: 47
 - Average duration: 4 min
-- Total execution time: 205 min
+- Total execution time: 208 min
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [███████████████████████
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
-| 04-enhanced-content | 7/14 | 21 min | 3 min |
+| 04-enhanced-content | 8/14 | 24 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-03 (3 min), 04-04 (3 min), 04-05 (3 min), 04-07 (2 min), 04-08 (4 min)
+- Last 5 plans: 04-04 (3 min), 04-05 (3 min), 04-07 (2 min), 04-08 (4 min), 04-10 (3 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -61,7 +61,7 @@ Recent decisions affecting current work:
 - **ToastProvider placement:** Added to root layout in 01-04 (available app-wide)
 - **Auth context pattern:** AuthProvider wraps (app) and onboarding layouts; useAuth() hook for all authenticated components
 - **Route group separation:** (public) for unauthenticated, (app) for authenticated with AppShell, onboarding for post-signup flow
-- **BottomNav mode filtering:** Animations tab hidden for positivity mode users; 6 tabs (bible) / 5 tabs (positivity)
+- **BottomNav mode filtering:** Prayer wall tab hidden for positivity mode users; Watch tab visible for all modes; 6 tabs (bible) / 5 tabs (positivity)
 - **Transparent nav overlay:** TopBar and BottomNav accept transparent prop for daily post video backgrounds
 - **Lazy JWT secret loading:** getSecret() function reads JWT_SECRET at call time, not module init, preventing zero-length key errors
 - **SameSite=Lax auth cookie:** Lax (not Strict) to allow cookie on navigations from external NFC bracelet URLs
@@ -128,7 +128,7 @@ Recent decisions affecting current work:
 - **Prayer card always liquid glass:** Prayer cards use bg-white/10 backdrop-blur-2xl regardless of admin feed style toggle (always card-based per CONTEXT)
 - **My Prayers dropdown sub-tabs:** My Prayers tab uses dropdown for sub-tabs (My Requests / Prayers I've Joined) instead of nested tab bar
 - **Prayer wall FAB:** Floating action button at bottom-right opens prayer composer in addition to center '+' nav CreatePicker
-- **Split BottomNav tabs:** LEFT_TABS (Daily, Prayer, Feed) and RIGHT_TABS (Studies, Animations, Profile) with center '+' button between
+- **Split BottomNav tabs:** LEFT_TABS (Daily, Prayer, Feed) and RIGHT_TABS (Studies, Watch, Profile) with center '+' button between
 - **Prayer wall tab bibleOnly:** Hidden for positivity mode users (prayer wall is bible-mode only)
 - **CreatePicker route-based default:** Auto-selects Prayer Request on /prayer-wall, Feed Post elsewhere
 - **Create via query param:** '+' button navigates to /feed?compose=post or /prayer-wall?compose=prayer_request
@@ -224,6 +224,11 @@ Recent decisions affecting current work:
 - **Active ban check pattern:** lifted_at IS NULL AND (expires_at IS NULL OR expires_at > NOW()) for active ban queries
 - **Repeat offenders raw SQL:** COALESCE across post/comment author joins for cross-content-type report aggregation
 - **Moderation stats 7-day fill:** Missing days in moderation_activity_7d filled with zero counts for consistent chart data
+- **Watch tab Play icon:** lucide-react Play icon replaces Film for Watch tab clearer semantics
+- **Watch tab all-modes:** Video library visible for both bible and positivity users (removed bibleOnly)
+- **Old animations redirect:** /animations page redirects to /watch for backwards compatibility
+- **VideoData shared type:** VideoCard exports VideoData interface reused by HeroBanner and watch page
+- **Video component directory:** src/components/video/ for all video-related UI components
 
 ### Pending Todos
 
@@ -288,6 +293,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-14T06:52:08Z
-Stopped at: Completed 04-08-PLAN.md (Enhanced Admin Moderation)
+Last session: 2026-02-14T07:01:59Z
+Stopped at: Completed 04-10-PLAN.md (Video Library Home Page)
 Resume file: None
