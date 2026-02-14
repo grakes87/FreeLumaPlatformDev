@@ -29,6 +29,7 @@ import {
   Heart,
   Send,
   ShieldBan,
+  BarChart3,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils/cn';
@@ -37,6 +38,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { LANGUAGES, MODES } from '@/lib/utils/constants';
+import { StatsPage } from '@/components/settings/StatsPage';
 
 // ---- Types ----
 
@@ -128,6 +130,7 @@ export default function SettingsPage() {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showModeConfirm, setShowModeConfirm] = useState<'bible' | 'positivity' | null>(null);
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   // Debounce timer ref
@@ -282,6 +285,32 @@ export default function SettingsPage() {
 
         {showChangePassword && (
           <ChangePasswordForm onClose={() => setShowChangePassword(false)} />
+        )}
+
+        <Divider />
+
+        {/* Account Stats */}
+        <button
+          type="button"
+          onClick={() => setShowStats(!showStats)}
+          className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+        >
+          <BarChart3 className="h-4 w-4 shrink-0 text-text-muted dark:text-text-muted-dark" />
+          <span className="flex-1 text-sm font-medium text-text dark:text-text-dark">
+            Account Stats
+          </span>
+          <ChevronRight
+            className={cn(
+              'h-4 w-4 text-text-muted dark:text-text-muted-dark transition-transform',
+              showStats && 'rotate-90'
+            )}
+          />
+        </button>
+
+        {showStats && (
+          <div className="border-t border-border bg-slate-50/50 px-4 py-4 dark:border-border-dark dark:bg-slate-800/30">
+            <StatsPage />
+          </div>
         )}
       </Card>
 
