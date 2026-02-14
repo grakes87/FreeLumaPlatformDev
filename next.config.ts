@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactCompiler: true,
+  // reactCompiler disabled — causes infinite Fast Refresh rebuild loop with Turbopack HMR
+  // reactCompiler: true,
   serverExternalPackages: ['sequelize', 'mysql2', 'sharp', 'bcryptjs'],
   images: {
     remotePatterns: [

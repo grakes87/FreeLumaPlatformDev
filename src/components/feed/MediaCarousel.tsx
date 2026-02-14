@@ -9,6 +9,8 @@ interface MediaCarouselProps {
   media: FeedMedia[];
   /** Rounded corners on container (default true) */
   rounded?: boolean;
+  /** Override aspect ratio for all items (e.g. '4 / 5') */
+  aspectRatio?: string;
 }
 
 /** Format duration seconds to m:ss */
@@ -120,7 +122,7 @@ function VideoItem({
  * - Images: lazy loaded, object-fit cover
  * - Videos: poster thumbnail, autoplay muted when visible (IntersectionObserver), loop
  */
-export function MediaCarousel({ media, rounded = true }: MediaCarouselProps) {
+export function MediaCarousel({ media, rounded = true, aspectRatio: aspectRatioOverride }: MediaCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<Map<number, HTMLVideoElement>>(new Map());
@@ -184,10 +186,10 @@ export function MediaCarousel({ media, rounded = true }: MediaCarouselProps) {
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {sorted.map((item, i) => {
-          const aspectRatio =
-            item.width && item.height
+          const aspectRatio = aspectRatioOverride
+            ?? (item.width && item.height
               ? `${item.width} / ${item.height}`
-              : '1 / 1';
+              : '1 / 1');
 
           return (
             <div

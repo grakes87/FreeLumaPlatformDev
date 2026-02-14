@@ -39,7 +39,7 @@ export const GET = withAuth(async (_req: NextRequest, context: AuthContext) => {
     const query = `
       SELECT id, display_name, username, avatar_url, avatar_color, is_verified, bio, mode, score
       FROM (
-        -- Popular: users with most active followers
+        (-- Popular: users with most active followers
         SELECT u.id, u.display_name, u.username, u.avatar_url, u.avatar_color, u.is_verified, u.bio, u.mode,
                COUNT(f.id) AS score
         FROM users u
@@ -58,11 +58,11 @@ export const GET = withAuth(async (_req: NextRequest, context: AuthContext) => {
           ${modeFilter}
         GROUP BY u.id
         ORDER BY score DESC
-        LIMIT 10
+        LIMIT 10)
 
         UNION ALL
 
-        -- Interest-based: users sharing the most categories with current user
+        (-- Interest-based: users sharing the most categories with current user
         SELECT u.id, u.display_name, u.username, u.avatar_url, u.avatar_color, u.is_verified, u.bio, u.mode,
                COUNT(uc2.category_id) AS score
         FROM users u
@@ -82,11 +82,11 @@ export const GET = withAuth(async (_req: NextRequest, context: AuthContext) => {
           ${modeFilter}
         GROUP BY u.id
         ORDER BY score DESC
-        LIMIT 10
+        LIMIT 10)
 
         UNION ALL
 
-        -- New users: registered in the last 30 days
+        (-- New users: registered in the last 30 days
         SELECT u.id, u.display_name, u.username, u.avatar_url, u.avatar_color, u.is_verified, u.bio, u.mode,
                0 AS score
         FROM users u
@@ -104,7 +104,7 @@ export const GET = withAuth(async (_req: NextRequest, context: AuthContext) => {
           )
           ${modeFilter}
         ORDER BY u.created_at DESC
-        LIMIT 10
+        LIMIT 10)
       ) AS combined
       GROUP BY id
       ORDER BY score DESC

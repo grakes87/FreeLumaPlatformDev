@@ -31,8 +31,11 @@ export function PostCommentSheet({
     [onClose]
   );
 
+  const savedScrollY = useRef(0);
+
   useEffect(() => {
     if (!isOpen) return;
+    savedScrollY.current = window.scrollY;
     document.addEventListener('keydown', handleEscape);
     document.body.style.overflow = 'hidden';
     setTranslateY(0);
@@ -43,9 +46,10 @@ export function PostCommentSheet({
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
-      window.scrollTo(0, 0);
+      // Restore scroll position instead of resetting to top
+      const y = savedScrollY.current;
       requestAnimationFrame(() => {
-        window.scrollTo(0, 0);
+        window.scrollTo(0, y);
       });
     };
   }, [isOpen, handleEscape]);

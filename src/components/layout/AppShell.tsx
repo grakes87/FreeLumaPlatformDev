@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils/cn';
 import { TopBar } from './TopBar';
 import { BottomNav } from './BottomNav';
 import { VerifyEmailBanner } from '@/components/common/VerifyEmailBanner';
@@ -17,35 +18,36 @@ function AppShellInner({ children }: { children: ReactNode }) {
   const isDailyPost = pathname === '/' || pathname.startsWith('/daily/');
   const isTransparent = isDailyPost || immersive;
 
-  // Transparent mode: fixed viewport container prevents document scroll,
-  // locking Safari toolbar in place. Content scrolls within <main>.
-  if (isTransparent) {
-    return (
-      <div className="fixed inset-0 overflow-hidden bg-black">
-        <TopBar transparent />
-        <main
-          id="immersive-scroll"
-          className="h-full overflow-y-auto"
-          style={{ scrollSnapType: 'y mandatory', overscrollBehaviorY: 'contain' }}
-        >
-          {children}
-        </main>
-        <BottomNav transparent />
-        <NotificationToastManager />
-      </div>
-    );
-  }
-
+  // Single DOM tree with conditional styles — avoids child remount when toggling immersive.
+  // Two separate returns would cause React to unmount/remount children on every toggle.
   return (
-    <div className="flex min-h-screen flex-col bg-background dark:bg-background-dark">
-      <TopBar transparent={false} />
-      <div className="shrink-0" style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
-        <VerifyEmailBanner />
-      </div>
-      <main className="flex-1 overflow-y-auto" style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}>
+    <div
+      className={cn(
+        isTransparent
+          ? 'fixed inset-0 overflow-hidden bg-black'
+          : 'flex min-h-screen flex-col bg-background dark:bg-background-dark'
+      )}
+    >
+      <TopBar transparent={isTransparent} />
+      {!isTransparent && (
+        <div className="shrink-0" style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
+          <VerifyEmailBanner />
+        </div>
+      )}
+      <main
+        id={isTransparent ? 'immersive-scroll' : undefined}
+        className={cn(
+          isTransparent ? 'h-full overflow-y-auto' : 'flex-1 overflow-y-auto'
+        )}
+        style={
+          isTransparent
+            ? { scrollSnapType: 'y mandatory', overscrollBehaviorY: 'contain' }
+            : { paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }
+        }
+      >
         {children}
       </main>
-      <BottomNav transparent={false} />
+      <BottomNav transparent={isTransparent} />
       <NotificationToastManager />
     </div>
   );

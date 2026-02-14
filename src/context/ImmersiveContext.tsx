@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, type ReactNode } from 'react';
 
 interface ImmersiveContextValue {
   immersive: boolean;
@@ -14,9 +14,10 @@ const ImmersiveContext = createContext<ImmersiveContextValue>({
 
 export function ImmersiveProvider({ children }: { children: ReactNode }) {
   const [immersive, setImmersive] = useState(false);
+  const value = useMemo(() => ({ immersive, setImmersive }), [immersive]);
 
   return (
-    <ImmersiveContext.Provider value={{ immersive, setImmersive }}>
+    <ImmersiveContext.Provider value={value}>
       {children}
     </ImmersiveContext.Provider>
   );

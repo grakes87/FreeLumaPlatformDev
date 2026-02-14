@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, Fragment } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import Link from 'next/link';
 import { Heart, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import { REACTION_EMOJI_MAP } from '@/lib/utils/constants';
+import { REACTION_EMOJI_MAP, REACTION_TYPES } from '@/lib/utils/constants';
 import type { ReactionType } from '@/lib/utils/constants';
 import type { FeedPost } from '@/hooks/useFeed';
 import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
 import { PostReactionBar } from '@/components/social/PostReactionBar';
-import { PostReactionPicker } from '@/components/social/PostReactionPicker';
 import { BookmarkButton } from '@/components/social/BookmarkButton';
 import { RepostButton } from '@/components/social/RepostButton';
 import { PostCommentSheet } from '@/components/social/PostCommentSheet';
@@ -33,13 +32,8 @@ function relativeTime(dateStr: string): string {
   return `${w}w`;
 }
 
-/**
- * Render text with @mentions (bold, linked) and #hashtags (blue).
- */
-function RichText({ text }: { text: string }) {
-  // Regex matches @username and #hashtag tokens
+function RichText({ text, white }: { text: string; white?: boolean }) {
   const parts = text.split(/(@[a-zA-Z0-9_]{3,30}|#[a-zA-Z0-9_]{1,50})/g);
-
   return (
     <>
       {parts.map((part, i) => {
@@ -49,7 +43,10 @@ function RichText({ text }: { text: string }) {
             <Link
               key={i}
               href={`/profile/${username}`}
-              className="font-semibold text-primary hover:underline"
+              className={cn(
+                'font-semibold hover:underline',
+                white ? 'text-white/90' : 'font-medium text-primary'
+              )}
               onClick={(e) => e.stopPropagation()}
             >
               {part}
@@ -58,7 +55,13 @@ function RichText({ text }: { text: string }) {
         }
         if (part.startsWith('#')) {
           return (
-            <span key={i} className="text-blue-500 dark:text-blue-400">
+            <span
+              key={i}
+              className={cn(
+                'font-medium',
+                white ? 'text-blue-200' : 'text-primary'
+              )}
+            >
               {part}
             </span>
           );
@@ -68,6 +71,18 @@ function RichText({ text }: { text: string }) {
     </>
   );
 }
+
+// Gradient palette for text-only posts — deterministic from post ID
+const TEXT_GRADIENTS = [
+  'from-violet-600 to-indigo-700',
+  'from-rose-500 to-pink-700',
+  'from-emerald-500 to-teal-700',
+  'from-amber-500 to-orange-700',
+  'from-sky-500 to-blue-700',
+  'from-fuchsia-500 to-purple-700',
+  'from-cyan-500 to-emerald-700',
+  'from-red-500 to-rose-700',
+] as const;
 
 // ---- Types ----
 
@@ -88,7 +103,9 @@ interface PostCardInstagramProps {
 }
 
 /**
- * Instagram-style post card: rounded card with shadow, header, text, media, action bar.
+ * Instagram-style post card matching PrayerCard design:
+ * rounded-2xl, shadow-lg, glassmorphism dark mode.
+ * Text-only posts display on a gradient square background.
  */
 export function PostCardInstagram({
   post,
@@ -108,53 +125,66 @@ export function PostCardInstagram({
   const [expanded, setExpanded] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const actionBarRef = useRef<HTMLDivElement>(null);
+
+  // Close inline picker on outside click
+  useEffect(() => {
+    if (!showReactionPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (actionBarRef.current && !actionBarRef.current.contains(e.target as Node)) {
+        setShowReactionPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showReactionPicker]);
   const displayCommentCount = post.comment_count;
 
   const author = post.author;
-  const isTextLong = post.body.length > 300;
-
+  const isTextOnly = post.body && post.media.length === 0 && !post.original_post;
+  const needsTruncation = post.body.length > 400;
+  const gradient = TEXT_GRADIENTS[post.id % TEXT_GRADIENTS.length];
 
   return (
-    <article className="rounded-2xl border border-border/50 bg-surface p-4 shadow-sm dark:border-border-dark/50 dark:bg-surface-dark">
-      {/* Header: avatar + name + time + context menu */}
-      <div className="mb-3 flex items-center gap-3">
-        {author && (
-          <Link
-            href={`/profile/${author.username}`}
-            className="shrink-0"
-          >
-            {author.avatar_url ? (
-              <img
-                src={author.avatar_url}
-                alt={author.display_name}
-                className="h-10 w-10 rounded-full object-cover"
-              />
-            ) : (
-              <InitialsAvatar
-                name={author.display_name}
-                color={author.avatar_color}
-                size={40}
-              />
-            )}
-          </Link>
-        )}
-
-        <div className="min-w-0 flex-1">
+    <div className="rounded-2xl border border-border bg-surface p-4 shadow-lg dark:border-white/20 dark:bg-white/10 dark:backdrop-blur-2xl">
+      {/* Header — matches PrayerCard exactly */}
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
           {author && (
-            <div className="flex items-center gap-1 truncate">
-              <Link
-                href={`/profile/${author.username}`}
-                className="truncate text-sm font-semibold text-text hover:underline dark:text-text-dark"
-              >
-                {author.display_name}
-              </Link>
-              {author.is_verified && <VerifiedBadge />}
-            </div>
+            <Link href={`/profile/${author.username}`} className="shrink-0">
+              {author.avatar_url ? (
+                <img
+                  src={author.avatar_url}
+                  alt={author.display_name}
+                  className="h-10 w-10 rounded-full object-cover"
+                />
+              ) : (
+                <InitialsAvatar
+                  name={author.display_name}
+                  color={author.avatar_color}
+                  size={40}
+                />
+              )}
+            </Link>
           )}
-          <p className="text-xs text-text-muted dark:text-text-muted-dark">
-            {relativeTime(post.created_at)}
-            {post.edited && ' (edited)'}
-          </p>
+
+          <div>
+            {author && (
+              <p className="flex items-center gap-1 text-sm font-semibold text-text dark:text-white">
+                <Link
+                  href={`/profile/${author.username}`}
+                  className="hover:underline"
+                >
+                  {author.display_name}
+                </Link>
+                {author.is_verified && <VerifiedBadge />}
+              </p>
+            )}
+            <p className="text-xs text-text-muted dark:text-white/50">
+              {relativeTime(post.created_at)}
+              {post.edited && <span className="ml-1 text-text-muted/50 dark:text-white/30">(edited)</span>}
+            </p>
+          </div>
         </div>
 
         <PostContextMenu
@@ -168,33 +198,58 @@ export function PostCardInstagram({
         />
       </div>
 
-      {/* Body text */}
-      {post.body && (
-        <div className="mb-3">
+      {/* Text-only post: gradient square background */}
+      {isTextOnly && (
+        <div
+          className={cn(
+            'mt-3 flex aspect-square items-center justify-center rounded-xl bg-gradient-to-br p-6',
+            gradient
+          )}
+        >
           <p
             className={cn(
-              'text-sm leading-relaxed text-text dark:text-text-dark whitespace-pre-wrap break-words',
-              !expanded && isTextLong && 'line-clamp-5'
+              'text-center text-base font-medium leading-relaxed text-white whitespace-pre-wrap break-words',
+              !expanded && needsTruncation && 'line-clamp-[12]'
+            )}
+          >
+            <RichText text={expanded ? post.body : post.body.slice(0, 500)} white />
+          </p>
+        </div>
+      )}
+
+      {/* Non-text-only: regular body text — matches PrayerCard body */}
+      {!isTextOnly && post.body && (
+        <div className="mt-3">
+          <p
+            className={cn(
+              'whitespace-pre-wrap text-sm leading-relaxed text-text dark:text-white/90 break-words',
+              !expanded && needsTruncation && 'line-clamp-5'
             )}
           >
             <RichText text={post.body} />
           </p>
-          {isTextLong && !expanded && (
-            <button
-              type="button"
-              onClick={() => setExpanded(true)}
-              className="mt-0.5 text-sm font-medium text-text-muted hover:text-text dark:text-text-muted-dark dark:hover:text-text-dark"
-            >
-              Read more
-            </button>
-          )}
         </div>
+      )}
+
+      {/* Read more */}
+      {needsTruncation && (
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="mt-1 text-xs font-medium text-primary hover:underline"
+        >
+          {expanded ? 'Show less' : 'Read more'}
+        </button>
       )}
 
       {/* Media carousel */}
       {post.media.length > 0 && (
-        <div className="mb-3 -mx-4">
-          <MediaCarousel media={post.media} rounded={false} />
+        <div className="mt-3 -mx-4">
+          <MediaCarousel
+            media={post.media}
+            rounded={false}
+            aspectRatio={post.media.some((m) => m.media_type === 'video') ? '4 / 5' : undefined}
+          />
         </div>
       )}
 
@@ -202,10 +257,10 @@ export function PostCardInstagram({
       {post.original_post && (
         <Link
           href={`/post/${post.original_post.id}`}
-          className="mb-3 block rounded-xl border border-border/50 bg-slate-50 p-3 transition-colors hover:bg-slate-100 dark:border-border-dark/50 dark:bg-slate-800/50 dark:hover:bg-slate-800/70"
+          className="mt-3 block rounded-xl border border-border/50 bg-surface-dark/5 p-3 transition-colors hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
         >
           {post.original_post.deleted ? (
-            <p className="text-sm italic text-text-muted dark:text-text-muted-dark">
+            <p className="text-sm italic text-text-muted dark:text-white/50">
               This post has been deleted
             </p>
           ) : (
@@ -225,13 +280,13 @@ export function PostCardInstagram({
                       size={24}
                     />
                   )}
-                  <span className="text-xs font-semibold text-text dark:text-text-dark">
+                  <span className="text-xs font-semibold text-text dark:text-white">
                     {post.original_post.author.display_name}
                   </span>
                   {post.original_post.author.is_verified && <VerifiedBadge className="h-3 w-3 shrink-0 text-blue-500" />}
                 </div>
               )}
-              <p className="line-clamp-3 text-sm text-text dark:text-text-dark">
+              <p className="line-clamp-3 text-sm text-text dark:text-white/90">
                 <RichText text={post.original_post.body} />
               </p>
               {post.original_post.media.length > 0 && (
@@ -244,9 +299,9 @@ export function PostCardInstagram({
         </Link>
       )}
 
-      {/* Action bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1">
+      {/* Action bar — matches PrayerCard separator */}
+      <div ref={actionBarRef} className="relative mt-3 flex items-center justify-between border-t border-border/50 pt-3 dark:border-white/10">
+        <div className="flex items-center gap-2">
           {/* Reaction button */}
           <button
             type="button"
@@ -254,19 +309,19 @@ export function PostCardInstagram({
               if (userReaction) {
                 onToggleReaction(userReaction);
               } else {
-                setShowReactionPicker(true);
+                setShowReactionPicker((v) => !v);
               }
             }}
             onContextMenu={(e) => {
               e.preventDefault();
-              setShowReactionPicker(true);
+              setShowReactionPicker((v) => !v);
             }}
             className={cn(
-              'flex items-center justify-center rounded-full p-2 transition-colors',
-              'hover:bg-slate-100 dark:hover:bg-slate-800',
+              'rounded-full p-2 transition-colors',
+              'hover:bg-black/5 dark:hover:bg-white/10',
               userReaction
                 ? 'text-primary'
-                : 'text-text-muted dark:text-text-muted-dark'
+                : 'text-text-muted/60 dark:text-white/40'
             )}
             aria-label="React"
           >
@@ -284,7 +339,7 @@ export function PostCardInstagram({
             counts={reactionCounts}
             total={reactionTotal}
             userReaction={userReaction}
-            onOpenPicker={() => setShowReactionPicker(true)}
+            onOpenPicker={() => setShowReactionPicker((v) => !v)}
           />
 
           {/* Comment button */}
@@ -293,8 +348,8 @@ export function PostCardInstagram({
             onClick={() => setShowComments(true)}
             className={cn(
               'flex items-center gap-1 rounded-full p-2 transition-colors',
-              'hover:bg-slate-100 dark:hover:bg-slate-800',
-              'text-text-muted dark:text-text-muted-dark'
+              'hover:bg-black/5 dark:hover:bg-white/10',
+              'text-text-muted/60 dark:text-white/40'
             )}
             aria-label="Comment"
           >
@@ -318,19 +373,29 @@ export function PostCardInstagram({
           postId={post.id}
           initialBookmarked={isBookmarked}
         />
-      </div>
 
-      {/* Reaction picker portal */}
-      <PostReactionPicker
-        isOpen={showReactionPicker}
-        onClose={() => setShowReactionPicker(false)}
-        counts={reactionCounts}
-        userReaction={userReaction}
-        onSelect={(type) => {
-          onToggleReaction(type);
-          setShowReactionPicker(false);
-        }}
-      />
+        {/* Inline reaction picker — iMessage style pill */}
+        {showReactionPicker && (
+          <div className="absolute -top-12 left-0 z-10 flex items-center gap-1 rounded-full border border-white/20 bg-gray-800/90 px-3 py-1.5 shadow-lg backdrop-blur-xl">
+            {REACTION_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => {
+                  onToggleReaction(type);
+                  setShowReactionPicker(false);
+                }}
+                className={cn(
+                  'rounded-full p-1 text-2xl transition-transform hover:scale-125 active:scale-90',
+                  userReaction === type && 'bg-white/20'
+                )}
+              >
+                {REACTION_EMOJI_MAP[type]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Comment sheet */}
       <PostCommentSheet
@@ -340,6 +405,6 @@ export function PostCardInstagram({
         commentCount={displayCommentCount}
         onCommentCountChange={onCommentCountChange}
       />
-    </article>
+    </div>
   );
 }
