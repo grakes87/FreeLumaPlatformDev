@@ -5,10 +5,11 @@ export interface MessageAttributes {
   id: number;
   conversation_id: number;
   sender_id: number;
-  type: 'text' | 'media' | 'voice' | 'shared_post' | 'system';
+  type: 'text' | 'media' | 'voice' | 'shared_post' | 'shared_video' | 'system';
   content: string | null;
   reply_to_id: number | null;
   shared_post_id: number | null;
+  shared_video_id: number | null;
   is_unsent: boolean;
   flagged: boolean;
   created_at: Date;
@@ -21,6 +22,7 @@ export interface MessageCreationAttributes extends Optional<MessageAttributes,
   | 'content'
   | 'reply_to_id'
   | 'shared_post_id'
+  | 'shared_video_id'
   | 'is_unsent'
   | 'flagged'
   | 'created_at'
@@ -31,10 +33,11 @@ class Message extends Model<MessageAttributes, MessageCreationAttributes> implem
   declare id: number;
   declare conversation_id: number;
   declare sender_id: number;
-  declare type: 'text' | 'media' | 'voice' | 'shared_post' | 'system';
+  declare type: 'text' | 'media' | 'voice' | 'shared_post' | 'shared_video' | 'system';
   declare content: string | null;
   declare reply_to_id: number | null;
   declare shared_post_id: number | null;
+  declare shared_video_id: number | null;
   declare is_unsent: boolean;
   declare flagged: boolean;
   declare readonly created_at: Date;
@@ -65,7 +68,7 @@ Message.init(
       },
     },
     type: {
-      type: DataTypes.ENUM('text', 'media', 'voice', 'shared_post', 'system'),
+      type: DataTypes.ENUM('text', 'media', 'voice', 'shared_post', 'shared_video', 'system'),
       allowNull: false,
       defaultValue: 'text',
     },
@@ -86,6 +89,14 @@ Message.init(
       allowNull: true,
       references: {
         model: 'posts',
+        key: 'id',
+      },
+    },
+    shared_video_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'videos',
         key: 'id',
       },
     },
