@@ -194,12 +194,12 @@ Plans:
 - [ ] 04-13-PLAN.md — Admin moderation UI (queue, user browser, bans, audit log, stats dashboard)
 - [ ] 04-14-PLAN.md — Integration (ban screen, deactivated profiles, shared video messages, new video notifications)
 
-### Phase 5: Workshops (v2 - DEFERRED)
-**Goal**: Live video workshop infrastructure complete — hosts can schedule and broadcast live workshops, attendees can join with video/audio participation, and workshops support real-time chat and presence tracking.
+### Phase 5: Workshops
+**Goal**: Live video workshop infrastructure complete — hosts can schedule and broadcast live workshops, attendees can join with video/audio participation, and workshops support real-time chat, presence tracking, automatic recording to video library, recurring series, and host analytics.
 
-**Depends on**: Phase 3 (requires Socket.IO), Phase 2 (requires categories)
+**Depends on**: Phase 3 (requires Socket.IO), Phase 2 (requires categories), Phase 4 (requires video library)
 
-**Requirements**: WORK-01 through WORK-15, CRTR-01 through CRTR-06 (from v2 requirements)
+**Requirements**: WORK-01 through WORK-15, CRTR-02 through CRTR-06 (from v2 requirements; CRTR-01 replaced by open hosting + admin revocation)
 
 **Success Criteria** (what must be TRUE):
   1. User can view upcoming workshop schedule with category and host info
@@ -216,11 +216,23 @@ Plans:
   12. Host can invite specific users to private workshops
   13. Host can view creator dashboard with upcoming workshops and analytics
 
-**Plans**: TBD (deferred to v2)
+**Plans**: 14 plans in 6 waves
 
 Plans:
-- [ ] 05-01: TBD when workshop features planned
-- [ ] 05-02: TBD when workshop features planned
+- [ ] 05-01-PLAN.md — Database foundation (7 models, 8 migrations, npm deps)
+- [ ] 05-02-PLAN.md — Server-side utilities (Agora token, cloud recording, recurrence, cron)
+- [ ] 05-03-PLAN.md — Workshop CRUD + categories API
+- [ ] 05-04-PLAN.md — RSVP, invites, notes, series, chat history API
+- [ ] 05-05-PLAN.md — Socket.IO /workshop namespace + client hooks
+- [ ] 05-06-PLAN.md — Workshop lifecycle (start/end/token) + cloud recording
+- [ ] 05-07-PLAN.md — Attendee management API + notification ENUM extension
+- [ ] 05-08-PLAN.md — Workshop browse page + WorkshopCard + filters
+- [ ] 05-09-PLAN.md — Create/edit workshop form + recurring series UI
+- [ ] 05-10-PLAN.md — Workshop detail page + RSVP button + invite modal
+- [ ] 05-11-PLAN.md — Live workshop room + lobby + Agora video integration
+- [ ] 05-12-PLAN.md — In-room chat, participants, host controls, notes panel
+- [ ] 05-13-PLAN.md — Summary screen + chat replay + series overview
+- [ ] 05-14-PLAN.md — Host dashboard + nav integration + admin management
 
 ### Phase 6: Migration & Launch
 **Goal**: Production deployment with complete data migration — all existing users, content, and relationships transferred to new platform with zero data loss, secure password migration, and seamless user transition.
@@ -266,7 +278,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 2. Core Social | 14/14 | Complete | 2026-02-14 |
 | 3. Real-Time | 13/13 | Complete | 2026-02-13 |
 | 4. Enhanced Content | 14/14 | Complete | 2026-02-14 |
-| 5. Workshops (v2) | 0/TBD | Deferred | - |
+| 5. Workshops | 0/14 | Planned | - |
 | 6. Migration & Launch | 0/TBD | Not started | - |
 
 ---
@@ -275,4 +287,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 *Phase 2 planned: 2026-02-12 (14 plans in 4 waves)*
 *Phase 3 planned: 2026-02-13 (13 plans in 4 waves)*
 *Phase 4 planned: 2026-02-13 (14 plans in 4 waves)*
-*Depth: Comprehensive (6 phases covering 165 v1 requirements)*
+*Phase 5 planned: 2026-02-14 (14 plans in 6 waves)*
+*Depth: Comprehensive (6 phases covering 165 v1 requirements + v2 workshop requirements)*
