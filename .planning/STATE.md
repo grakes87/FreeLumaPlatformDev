@@ -6,23 +6,23 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Daily inspirational content delivery and faith-based community connection — users come back every day for their daily post and stay to engage with their community.
 
-**Current focus:** Phase 4 - Enhanced Content (In Progress)
+**Current focus:** Phase 4 - Enhanced Content (Complete)
 
 ## Current Position
 
 Phase: 4 of 6 (Enhanced Content)
-Plan: 13 of 14 complete
-Status: In progress
-Last activity: 2026-02-14 — Completed 04-13-PLAN.md (Admin Moderation UI)
+Plan: 14 of 14 complete
+Status: Phase complete
+Last activity: 2026-02-14 — Completed 04-14-PLAN.md (Integration & Polish)
 
-Progress: [█████████████████████████████████████████████████░░░] 52/53 plans (98%)
+Progress: [█████████████████████████████████████████████████████] 53/53 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 52
+- Total plans completed: 53
 - Average duration: 4 min
-- Total execution time: 235 min
+- Total execution time: 242 min
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [███████████████████████
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
-| 04-enhanced-content | 13/14 | 51 min | 4 min |
+| 04-enhanced-content | 14/14 | 58 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-10 (3 min), 04-11 (6 min), 04-09 (7 min), 04-12 (7 min), 04-13 (7 min)
+- Last 5 plans: 04-11 (6 min), 04-09 (7 min), 04-12 (7 min), 04-13 (7 min), 04-14 (7 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -247,6 +247,11 @@ Recent decisions affecting current work:
 - **Action modal confirm step:** Warn and Ban require confirmation step before submission; Remove and Dismiss do not
 - **Ban color-coded left border:** Red=active, amber=expiring <24h, green=lifted for quick visual scan
 - **CSS bar chart for activity:** 7-day activity timeline uses inline CSS heights; no chart library dependency
+- **Auth context ban redirect:** fetchUser detects 403 'Account suspended' and redirects to /banned via window.location.href
+- **Server-side ban content filtering:** Feed APIs use required User include with status='active' WHERE clause
+- **New video notification dedup:** Checks existing new_video notification for video before bulk send
+- **SharedVideoMessage card component:** Card preview with thumbnail, play overlay, duration badge, links to /watch/[id]
+- **FollowList status badges:** Deactivated (gray) and Suspended (red) tags with opacity reduction and grayscale
 
 ### Pending Todos
 
@@ -311,6 +316,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-14T07:07:46Z
-Stopped at: Completed 04-13-PLAN.md (Admin Moderation UI)
+Last session: 2026-02-14T07:18:32Z
+Stopped at: Completed 04-14-PLAN.md (Integration & Polish) — Phase 4 COMPLETE
 Resume file: None
