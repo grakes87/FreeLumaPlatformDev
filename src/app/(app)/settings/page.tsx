@@ -3,9 +3,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Sun,
   Moon,
@@ -14,13 +11,9 @@ import {
   ChevronDown,
   ChevronRight,
   Check,
-  Lock,
-  Eye,
-  EyeOff,
   BookOpen,
   Sparkles,
   Globe,
-  Bell,
   Clock,
   Info,
   LogOut,
@@ -35,10 +28,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils/cn';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { LANGUAGES, MODES } from '@/lib/utils/constants';
 import { StatsPage } from '@/components/settings/StatsPage';
+import { SecuritySection } from '@/components/settings/SecuritySection';
+import { ConnectedAccountsSection } from '@/components/settings/ConnectedAccountsSection';
 
 // ---- Types ----
 
@@ -60,6 +54,8 @@ interface Settings {
   timezone: string;
   email: string;
   email_verified: boolean;
+  has_google: boolean;
+  has_apple: boolean;
   // Notification preferences (from UserSetting)
   messaging_access: 'everyone' | 'followers' | 'mutual' | 'nobody';
   email_dm_notifications: boolean;
@@ -74,26 +70,6 @@ const MESSAGING_ACCESS_OPTIONS = [
   { value: 'mutual', label: 'Mutual Follows' },
   { value: 'nobody', label: 'Nobody' },
 ] as const;
-
-// ---- Change Password Schema ----
-
-const changePasswordSchema = z
-  .object({
-    current_password: z.string().min(1, 'Current password is required'),
-    new_password: z
-      .string()
-      .min(8, 'Password must be at least 8 characters')
-      .regex(/[A-Z]/, 'Must contain an uppercase letter')
-      .regex(/[a-z]/, 'Must contain a lowercase letter')
-      .regex(/[0-9]/, 'Must contain a number'),
-    confirm_password: z.string().min(1, 'Please confirm your password'),
-  })
-  .refine((data) => data.new_password === data.confirm_password, {
-    message: 'Passwords do not match',
-    path: ['confirm_password'],
-  });
-
-type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 // ---- Theme Options ----
 
@@ -127,7 +103,6 @@ export default function SettingsPage() {
   const [translations, setTranslations] = useState<TranslationOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [showChangePassword, setShowChangePassword] = useState(false);
   const [showModeConfirm, setShowModeConfirm] = useState<'bible' | 'positivity' | null>(null);
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -247,49 +222,9 @@ export default function SettingsPage() {
         </h1>
       </div>
 
-      {/* ---- Account Section ---- */}
-      <SectionHeader title="Account" />
+      {/* ---- Account Stats Section ---- */}
+      <SectionHeader title="Account Stats" />
       <Card padding="sm" className="mb-6 !p-0 overflow-hidden">
-        {/* Email */}
-        <div className="flex items-center gap-3 px-4 py-3.5">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-text-muted dark:text-text-muted-dark">Email</p>
-            <p className="text-sm font-medium text-text dark:text-text-dark truncate">
-              {settings?.email || user.email}
-            </p>
-          </div>
-          {settings?.email_verified ? (
-            <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-              Verified
-            </span>
-          ) : (
-            <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-              Unverified
-            </span>
-          )}
-        </div>
-
-        <Divider />
-
-        {/* Change Password */}
-        <button
-          type="button"
-          onClick={() => setShowChangePassword(!showChangePassword)}
-          className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-        >
-          <Lock className="h-4 w-4 shrink-0 text-text-muted dark:text-text-muted-dark" />
-          <span className="flex-1 text-sm font-medium text-text dark:text-text-dark">
-            Change Password
-          </span>
-        </button>
-
-        {showChangePassword && (
-          <ChangePasswordForm onClose={() => setShowChangePassword(false)} />
-        )}
-
-        <Divider />
-
-        {/* Account Stats */}
         <button
           type="button"
           onClick={() => setShowStats(!showStats)}
@@ -297,7 +232,7 @@ export default function SettingsPage() {
         >
           <BarChart3 className="h-4 w-4 shrink-0 text-text-muted dark:text-text-muted-dark" />
           <span className="flex-1 text-sm font-medium text-text dark:text-text-dark">
-            Account Stats
+            View Stats & Streaks
           </span>
           <ChevronRight
             className={cn(
@@ -313,6 +248,25 @@ export default function SettingsPage() {
           </div>
         )}
       </Card>
+
+      {/* ---- Security Section ---- */}
+      <SectionHeader title="Security" />
+      <div className="mb-6">
+        <SecuritySection
+          currentEmail={settings?.email || user.email}
+          emailVerified={settings?.email_verified ?? false}
+        />
+      </div>
+
+      {/* ---- Connected Accounts Section ---- */}
+      <SectionHeader title="Connected Accounts" />
+      <div className="mb-6">
+        <ConnectedAccountsSection
+          hasGoogleId={settings?.has_google ?? false}
+          hasAppleId={settings?.has_apple ?? false}
+          onProviderChange={() => refreshUser()}
+        />
+      </div>
 
       {/* ---- Appearance Section ---- */}
       <SectionHeader title="Appearance" />
@@ -960,126 +914,3 @@ function BlockedUsersList() {
   );
 }
 
-function ChangePasswordForm({ onClose }: { onClose: () => void }) {
-  const toast = useToast();
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [serverError, setServerError] = useState('');
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    reset,
-  } = useForm<ChangePasswordInput>({
-    resolver: zodResolver(changePasswordSchema),
-    defaultValues: {
-      current_password: '',
-      new_password: '',
-      confirm_password: '',
-    },
-  });
-
-  const onSubmit = async (data: ChangePasswordInput) => {
-    setServerError('');
-
-    try {
-      const res = await fetch('/api/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          current_password: data.current_password,
-          new_password: data.new_password,
-        }),
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        setServerError(result.error || 'Failed to change password.');
-        return;
-      }
-
-      toast.success('Password changed successfully.');
-      reset();
-      onClose();
-    } catch {
-      setServerError('Something went wrong. Please try again.');
-    }
-  };
-
-  return (
-    <div className="border-t border-border bg-slate-50/50 px-4 py-4 dark:border-border-dark dark:bg-slate-800/30">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-        <div className="relative">
-          <Input
-            {...register('current_password')}
-            type={showCurrent ? 'text' : 'password'}
-            label="Current Password"
-            placeholder="Enter current password"
-            error={errors.current_password?.message}
-            autoComplete="current-password"
-          />
-          <button
-            type="button"
-            onClick={() => setShowCurrent(!showCurrent)}
-            className="absolute right-3 top-8 text-text-muted dark:text-text-muted-dark"
-            tabIndex={-1}
-          >
-            {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-
-        <div className="relative">
-          <Input
-            {...register('new_password')}
-            type={showNew ? 'text' : 'password'}
-            label="New Password"
-            placeholder="Enter new password"
-            error={errors.new_password?.message}
-            autoComplete="new-password"
-          />
-          <button
-            type="button"
-            onClick={() => setShowNew(!showNew)}
-            className="absolute right-3 top-8 text-text-muted dark:text-text-muted-dark"
-            tabIndex={-1}
-          >
-            {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-
-        <Input
-          {...register('confirm_password')}
-          type="password"
-          label="Confirm New Password"
-          placeholder="Confirm new password"
-          error={errors.confirm_password?.message}
-          autoComplete="new-password"
-        />
-
-        {serverError && (
-          <p className="text-xs text-red-500">{serverError}</p>
-        )}
-
-        <div className="flex gap-2 pt-1">
-          <Button type="submit" size="sm" loading={isSubmitting}>
-            Update Password
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              reset();
-              onClose();
-            }}
-          >
-            Cancel
-          </Button>
-        </div>
-      </form>
-    </div>
-  );
-}
