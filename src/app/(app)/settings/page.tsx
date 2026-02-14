@@ -33,6 +33,7 @@ import { LANGUAGES, MODES } from '@/lib/utils/constants';
 import { StatsPage } from '@/components/settings/StatsPage';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { ConnectedAccountsSection } from '@/components/settings/ConnectedAccountsSection';
+import { DangerZone } from '@/components/settings/DangerZone';
 
 // ---- Types ----
 
@@ -670,6 +671,12 @@ export default function SettingsPage() {
           )}
         </div>
       </Card>
+
+      {/* ---- Danger Zone ---- */}
+      <SectionHeader title="Account Management" />
+      <div className="mb-6">
+        <DangerZone />
+      </div>
 
       {/* ---- About Section ---- */}
       <SectionHeader title="About" />
