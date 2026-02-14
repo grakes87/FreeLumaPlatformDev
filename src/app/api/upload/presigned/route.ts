@@ -18,12 +18,21 @@ const ALLOWED_CONTENT_TYPES: Record<string, string[]> = {
     'audio/wav',
     'audio/ogg',
   ],
+  video: ['video/mp4', 'video/webm', 'video/quicktime'],
 };
 
 /**
  * Upload types that require admin privileges.
  */
-const ADMIN_ONLY_TYPES = new Set(['daily-content']);
+const ADMIN_ONLY_TYPES = new Set(['daily-content', 'video']);
+
+/**
+ * Custom expiry per upload type (in seconds).
+ * Default is 3600 (1 hour). Videos get 4 hours for larger files.
+ */
+const EXPIRY_OVERRIDES: Record<string, number> = {
+  video: 14400, // 4 hours
+};
 
 /**
  * GET /api/upload/presigned
@@ -94,14 +103,13 @@ export const GET = withAuth(
     }
 
     // Generate unique key and presigned URL
-    const key = generateKey(
-      type === 'avatar' ? 'avatars' : type,
-      context.user.id,
-      contentType
-    );
+    const keyPrefix =
+      type === 'avatar' ? 'avatars' : type === 'video' ? 'videos' : type;
+    const key = generateKey(keyPrefix, context.user.id, contentType);
+    const expiresIn = EXPIRY_OVERRIDES[type] || 3600;
 
     try {
-      const uploadUrl = await getUploadUrl(key, contentType);
+      const uploadUrl = await getUploadUrl(key, contentType, expiresIn);
       const publicUrl = getPublicUrl(key);
 
       return NextResponse.json({ uploadUrl, key, publicUrl });
