@@ -1,59 +1,39 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Check, Trash2, X, AlertTriangle, MessageSquare, FileText, ChevronDown } from 'lucide-react';
+import { AlertTriangle, MessageSquare, FileText, ChevronRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useToast } from '@/components/ui/Toast';
-import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
+import { ModerationActionModal } from './ModerationActionModal';
 
-interface ModerationItem {
-  id: string | number;
-  item_type: 'report' | 'flagged_post' | 'flagged_comment';
-  content_type: 'post' | 'comment';
+interface Reporter {
+  id: number;
+  reporter_id: number;
+  reporter_username: string;
+  reporter_display_name: string;
   reason: string;
-  details?: string;
-  status?: string;
+  details: string | null;
   created_at: string;
-  reporter?: {
-    id: number;
-    display_name: string;
-    username: string;
-    avatar_url: string | null;
-    avatar_color: string;
-  };
-  post?: {
-    id: number;
-    body: string;
-    user_id: number;
-    post_type: string;
-    flagged: boolean;
-    deleted_at: string | null;
-    created_at: string;
-    user?: {
-      id: number;
-      display_name: string;
-      username: string;
-      avatar_url: string | null;
-      avatar_color: string;
-    };
-  };
-  comment?: {
-    id: number;
-    body: string;
-    user_id: number;
-    flagged: boolean;
-    user?: {
-      id: number;
-      display_name: string;
-      username: string;
-      avatar_url: string | null;
-      avatar_color: string;
-    };
-  };
 }
 
-type StatusFilter = 'pending' | 'reviewed' | 'actioned' | 'dismissed' | 'all';
-type TypeFilter = 'all' | 'report' | 'flagged';
+interface ReportGroup {
+  content_type: 'post' | 'comment';
+  content_id: number;
+  content_preview: string;
+  content_deleted: boolean;
+  author: {
+    id: number;
+    username: string;
+    display_name: string;
+  } | null;
+  report_count: number;
+  reports: Reporter[];
+  status: string;
+  first_reported_at: string;
+}
+
+type StatusFilter = 'pending' | 'reviewed' | 'dismissed';
+type ContentTypeFilter = 'all' | 'post' | 'comment';
 
 const REASON_LABELS: Record<string, string> = {
   spam: 'Spam',
@@ -62,113 +42,124 @@ const REASON_LABELS: Record<string, string> = {
   inappropriate: 'Inappropriate',
   self_harm: 'Self Harm',
   other: 'Other',
-  profanity_filter: 'Auto-flagged (profanity)',
+  profanity_filter: 'Auto-flagged',
 };
+
+function formatRelativeDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
 
 export function ModerationQueue() {
   const toast = useToast();
-  const [items, setItems] = useState<ModerationItem[]>([]);
+  const [items, setItems] = useState<ReportGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
-  const [counts, setCounts] = useState({ pending: 0, reviewed: 0, actioned: 0 });
-  const [actioningId, setActioningId] = useState<string | number | null>(null);
-  const [notesMap, setNotesMap] = useState<Record<string, string>>({});
-  const [showNotesFor, setShowNotesFor] = useState<string | number | null>(null);
+  const [contentTypeFilter, setContentTypeFilter] = useState<ContentTypeFilter>('all');
+  const [counts, setCounts] = useState({ pending: 0, reviewed: 0, dismissed: 0 });
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<ReportGroup | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const fetchQueue = useCallback(async () => {
-    setLoading(true);
+  const fetchQueue = useCallback(async (cursorVal?: string) => {
+    if (cursorVal) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
       const params = new URLSearchParams({
         status: statusFilter,
-        type: typeFilter,
         limit: '20',
       });
+      if (contentTypeFilter !== 'all') {
+        params.set('content_type', contentTypeFilter);
+      }
+      if (cursorVal) {
+        params.set('cursor', cursorVal);
+      }
+
       const res = await fetch(`/api/admin/moderation?${params}`, {
         credentials: 'include',
       });
+
       if (res.ok) {
         const data = await res.json();
-        setItems(data.items || []);
-        setCounts(data.counts || { pending: 0, reviewed: 0, actioned: 0 });
+        const responseData = data.data || data;
+        const newItems = responseData.items || [];
+
+        if (cursorVal) {
+          setItems((prev) => [...prev, ...newItems]);
+        } else {
+          setItems(newItems);
+        }
+
+        setCounts(responseData.counts || { pending: 0, reviewed: 0, dismissed: 0 });
+        setNextCursor(responseData.next_cursor || null);
+        setHasMore(responseData.has_more || false);
       }
     } catch {
       toast.error('Failed to load moderation queue');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [statusFilter, typeFilter, toast]);
+  }, [statusFilter, contentTypeFilter, toast]);
 
   useEffect(() => {
     fetchQueue();
   }, [fetchQueue]);
 
-  const handleAction = async (
-    item: ModerationItem,
-    action: 'approve' | 'remove' | 'dismiss'
-  ) => {
-    const itemKey = String(item.id);
-    setActioningId(item.id);
-
-    try {
-      // Determine the real DB ID for the API call
-      let apiId: number;
-      if (item.item_type === 'report') {
-        apiId = item.id as number;
-      } else if (item.item_type === 'flagged_post') {
-        apiId = item.post?.id || 0;
-      } else {
-        apiId = item.comment?.id || 0;
-      }
-
-      const res = await fetch(`/api/admin/moderation/${apiId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          action,
-          item_type: item.item_type,
-          admin_notes: notesMap[itemKey] || undefined,
-        }),
-      });
-
-      if (res.ok) {
-        toast.success(
-          action === 'approve'
-            ? 'Content approved'
-            : action === 'remove'
-            ? 'Content removed'
-            : 'Report dismissed'
-        );
-        // Remove item from local list
-        setItems((prev) => prev.filter((i) => i.id !== item.id));
-      } else {
-        const data = await res.json();
-        toast.error(data.error || 'Action failed');
-      }
-    } catch {
-      toast.error('Failed to process action');
-    } finally {
-      setActioningId(null);
-      setShowNotesFor(null);
+  const handleLoadMore = () => {
+    if (nextCursor && !loadingMore) {
+      fetchQueue(nextCursor);
     }
+  };
+
+  const handleTakeAction = (item: ReportGroup) => {
+    setSelectedItem(item);
+    setModalOpen(true);
+  };
+
+  const handleActionComplete = (contentId: number, contentType: string) => {
+    setItems((prev) =>
+      prev.filter(
+        (i) => !(i.content_id === contentId && i.content_type === contentType)
+      )
+    );
+    setCounts((prev) => ({
+      ...prev,
+      pending: Math.max(0, prev.pending - 1),
+    }));
   };
 
   const statusTabs: { key: StatusFilter; label: string; count?: number }[] = [
     { key: 'pending', label: 'Pending', count: counts.pending },
     { key: 'reviewed', label: 'Reviewed', count: counts.reviewed },
-    { key: 'actioned', label: 'Actioned', count: counts.actioned },
-    { key: 'all', label: 'All' },
+    { key: 'dismissed', label: 'Dismissed', count: counts.dismissed },
   ];
 
-  const typeTabs: { key: TypeFilter; label: string }[] = [
+  const contentTypeTabs: { key: ContentTypeFilter; label: string }[] = [
     { key: 'all', label: 'All' },
-    { key: 'report', label: 'Reports' },
-    { key: 'flagged', label: 'Flagged' },
+    { key: 'post', label: 'Posts' },
+    { key: 'comment', label: 'Comments' },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Status Tabs */}
       <div className="flex flex-wrap gap-2">
         {statusTabs.map((tab) => (
@@ -192,15 +183,15 @@ export function ModerationQueue() {
         ))}
       </div>
 
-      {/* Type Filter */}
+      {/* Content Type Filter */}
       <div className="flex gap-2">
-        {typeTabs.map((tab) => (
+        {contentTypeTabs.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setTypeFilter(tab.key)}
+            onClick={() => setContentTypeFilter(tab.key)}
             className={cn(
               'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-              typeFilter === tab.key
+              contentTypeFilter === tab.key
                 ? 'bg-text/10 text-text dark:bg-text-dark/10 dark:text-text-dark'
                 : 'text-text-muted hover:text-text dark:text-text-muted-dark dark:hover:text-text-dark'
             )}
@@ -219,29 +210,24 @@ export function ModerationQueue() {
         <div className="rounded-2xl border border-border bg-surface py-16 text-center dark:border-border-dark dark:bg-surface-dark">
           <AlertTriangle className="mx-auto h-10 w-10 text-text-muted dark:text-text-muted-dark" />
           <p className="mt-3 text-text-muted dark:text-text-muted-dark">
-            No items in this queue
+            No pending reports
           </p>
         </div>
       ) : (
         <div className="space-y-3">
           {items.map((item) => {
-            const isActioning = actioningId === item.id;
-            const itemKey = String(item.id);
-            const contentBody =
-              item.content_type === 'post'
-                ? item.post?.body
-                : item.comment?.body;
-            const contentAuthor =
-              item.content_type === 'post'
-                ? item.post?.user
-                : item.comment?.user;
+            // Aggregate unique reasons for display
+            const reasonCounts: Record<string, number> = {};
+            for (const r of item.reports) {
+              reasonCounts[r.reason] = (reasonCounts[r.reason] || 0) + 1;
+            }
 
             return (
               <div
-                key={itemKey}
-                className="rounded-2xl border border-border bg-surface p-4 dark:border-border-dark dark:bg-surface-dark"
+                key={`${item.content_type}-${item.content_id}`}
+                className="rounded-2xl border border-border bg-surface p-4 transition-shadow hover:shadow-sm dark:border-border-dark dark:bg-surface-dark"
               >
-                {/* Header */}
+                {/* Header Row */}
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2">
                     {item.content_type === 'post' ? (
@@ -250,139 +236,87 @@ export function ModerationQueue() {
                       <MessageSquare className="h-4 w-4 text-green-500" />
                     )}
                     <span className="text-xs font-medium uppercase tracking-wide text-text-muted dark:text-text-muted-dark">
-                      {item.item_type === 'report' ? 'Report' : 'Flagged'} -{' '}
                       {item.content_type}
                     </span>
-                    <span
-                      className={cn(
-                        'rounded-full px-2 py-0.5 text-xs font-medium',
-                        item.item_type === 'flagged_post' || item.item_type === 'flagged_comment'
-                          ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                      )}
-                    >
-                      {REASON_LABELS[item.reason] || item.reason}
+                    {/* Report count badge */}
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                      {item.report_count} {item.report_count === 1 ? 'report' : 'reports'}
                     </span>
+                    {item.content_deleted && (
+                      <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                        DELETED
+                      </span>
+                    )}
                   </div>
                   <time className="whitespace-nowrap text-xs text-text-muted dark:text-text-muted-dark">
-                    {new Date(item.created_at).toLocaleDateString()}
+                    {formatRelativeDate(item.first_reported_at)}
                   </time>
                 </div>
 
                 {/* Content Preview */}
                 <div className="mb-3 rounded-xl bg-background p-3 dark:bg-background-dark">
-                  {contentAuthor && (
-                    <div className="mb-2 flex items-center gap-2">
-                      {contentAuthor.avatar_url ? (
-                        <img
-                          src={contentAuthor.avatar_url}
-                          alt=""
-                          className="h-6 w-6 rounded-full object-cover"
-                        />
-                      ) : (
-                        <InitialsAvatar
-                          name={contentAuthor.display_name}
-                          color={contentAuthor.avatar_color}
-                          size={24}
-                        />
-                      )}
-                      <span className="text-sm font-medium text-text dark:text-text-dark">
-                        {contentAuthor.display_name}
-                      </span>
-                      <span className="text-xs text-text-muted dark:text-text-muted-dark">
-                        @{contentAuthor.username}
-                      </span>
-                    </div>
+                  {item.author && (
+                    <p className="mb-1 text-xs font-medium text-text dark:text-text-dark">
+                      @{item.author.username}
+                    </p>
                   )}
                   <p className="text-sm text-text dark:text-text-dark">
-                    {contentBody && contentBody.length > 200
-                      ? contentBody.substring(0, 200) + '...'
-                      : contentBody || 'Content unavailable'}
+                    {item.content_preview || 'Content unavailable'}
                   </p>
                 </div>
 
-                {/* Reporter info (for reports) */}
-                {item.item_type === 'report' && item.reporter && (
-                  <div className="mb-3 text-xs text-text-muted dark:text-text-muted-dark">
-                    Reported by{' '}
-                    <span className="font-medium">
-                      @{item.reporter.username}
+                {/* Reasons summary */}
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                  {Object.entries(reasonCounts).map(([reason, count]) => (
+                    <span
+                      key={reason}
+                      className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                    >
+                      {REASON_LABELS[reason] || reason}
+                      {count > 1 && ` (${count})`}
                     </span>
-                    {item.details && (
-                      <span className="ml-1">- &quot;{item.details}&quot;</span>
-                    )}
-                  </div>
-                )}
+                  ))}
+                </div>
 
-                {/* Admin Notes Toggle */}
-                {showNotesFor === item.id && (
-                  <div className="mb-3">
-                    <textarea
-                      placeholder="Admin notes (optional)"
-                      value={notesMap[itemKey] || ''}
-                      onChange={(e) =>
-                        setNotesMap((prev) => ({
-                          ...prev,
-                          [itemKey]: e.target.value,
-                        }))
-                      }
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-text placeholder:text-text-muted dark:border-border-dark dark:bg-background-dark dark:text-text-dark dark:placeholder:text-text-muted-dark"
-                      rows={2}
-                    />
-                  </div>
+                {/* Action Button */}
+                {statusFilter === 'pending' && (
+                  <button
+                    onClick={() => handleTakeAction(item)}
+                    className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                  >
+                    Take Action
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
                 )}
-
-                {/* Actions */}
-                {(statusFilter === 'pending' || statusFilter === 'all') &&
-                  (item.status === 'pending' || !item.status) && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleAction(item, 'approve')}
-                        disabled={isActioning}
-                        className="flex items-center gap-1.5 rounded-lg bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-600 transition-colors hover:bg-green-500/20 disabled:opacity-50 dark:text-green-400"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleAction(item, 'remove')}
-                        disabled={isActioning}
-                        className="flex items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-400"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Remove
-                      </button>
-                      <button
-                        onClick={() => handleAction(item, 'dismiss')}
-                        disabled={isActioning}
-                        className="flex items-center gap-1.5 rounded-lg bg-gray-500/10 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-500/20 disabled:opacity-50 dark:text-gray-400"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                        Dismiss
-                      </button>
-                      <button
-                        onClick={() =>
-                          setShowNotesFor((prev) =>
-                            prev === item.id ? null : item.id
-                          )
-                        }
-                        className="ml-auto flex items-center gap-1 text-xs text-text-muted hover:text-text dark:text-text-muted-dark dark:hover:text-text-dark"
-                      >
-                        <ChevronDown
-                          className={cn(
-                            'h-3.5 w-3.5 transition-transform',
-                            showNotesFor === item.id && 'rotate-180'
-                          )}
-                        />
-                        Notes
-                      </button>
-                    </div>
-                  )}
               </div>
             );
           })}
+
+          {/* Load More */}
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="flex items-center gap-2 rounded-xl bg-surface-hover px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:text-text disabled:opacity-50 dark:bg-surface-hover-dark dark:text-text-muted-dark dark:hover:text-text-dark"
+              >
+                {loadingMore ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
+                {loadingMore ? 'Loading...' : 'Load more'}
+              </button>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Action Modal */}
+      <ModerationActionModal
+        isOpen={modalOpen}
+        onClose={() => { setModalOpen(false); setSelectedItem(null); }}
+        item={selectedItem}
+        onActionComplete={handleActionComplete}
+      />
     </div>
   );
 }
