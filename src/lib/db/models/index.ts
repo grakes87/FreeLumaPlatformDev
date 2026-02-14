@@ -35,6 +35,10 @@ import { MessageReaction } from './MessageReaction';
 import { MessageRequest } from './MessageRequest';
 import { Notification } from './Notification';
 import { EmailLog } from './EmailLog';
+import { VideoCategory } from './VideoCategory';
+import { Video } from './Video';
+import { VideoProgress } from './VideoProgress';
+import { VideoReaction } from './VideoReaction';
 
 // ---- Associations ----
 
@@ -644,6 +648,68 @@ EmailLog.belongsTo(User, {
   as: 'recipient',
 });
 
+// ---- Phase 4: Video Library Associations ----
+
+// VideoCategory -> Video (one-to-many)
+VideoCategory.hasMany(Video, {
+  foreignKey: 'category_id',
+  as: 'videos',
+});
+Video.belongsTo(VideoCategory, {
+  foreignKey: 'category_id',
+  as: 'category',
+});
+
+// Video -> VideoProgress (one-to-many)
+Video.hasMany(VideoProgress, {
+  foreignKey: 'video_id',
+  as: 'progress',
+});
+VideoProgress.belongsTo(Video, {
+  foreignKey: 'video_id',
+  as: 'video',
+});
+
+// Video -> VideoReaction (one-to-many)
+Video.hasMany(VideoReaction, {
+  foreignKey: 'video_id',
+  as: 'reactions',
+});
+VideoReaction.belongsTo(Video, {
+  foreignKey: 'video_id',
+  as: 'video',
+});
+
+// Video -> User (uploader)
+Video.belongsTo(User, {
+  foreignKey: 'uploaded_by',
+  as: 'uploader',
+});
+User.hasMany(Video, {
+  foreignKey: 'uploaded_by',
+  as: 'uploadedVideos',
+});
+
+// User -> VideoProgress (one-to-many)
+User.hasMany(VideoProgress, {
+  foreignKey: 'user_id',
+  as: 'videoProgress',
+});
+VideoProgress.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// User -> VideoReaction (one-to-many)
+User.hasMany(VideoReaction, {
+  foreignKey: 'user_id',
+  as: 'videoReactions',
+});
+VideoReaction.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
 export {
   sequelize,
   User,
@@ -682,4 +748,8 @@ export {
   MessageRequest,
   Notification,
   EmailLog,
+  VideoCategory,
+  Video,
+  VideoProgress,
+  VideoReaction,
 };
