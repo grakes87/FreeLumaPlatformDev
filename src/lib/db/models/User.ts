@@ -28,6 +28,10 @@ export interface UserAttributes {
   onboarding_complete: boolean;
   is_admin: boolean;
   is_verified: boolean;
+  status: 'active' | 'deactivated' | 'pending_deletion' | 'banned';
+  role: 'user' | 'moderator' | 'admin';
+  deactivated_at: Date | null;
+  deletion_requested_at: Date | null;
   last_login_at: Date | null;
   failed_login_attempts: number;
   locked_until: Date | null;
@@ -59,6 +63,10 @@ export interface UserCreationAttributes extends Optional<UserAttributes,
   | 'onboarding_complete'
   | 'is_admin'
   | 'is_verified'
+  | 'status'
+  | 'role'
+  | 'deactivated_at'
+  | 'deletion_requested_at'
   | 'last_login_at'
   | 'failed_login_attempts'
   | 'locked_until'
@@ -94,6 +102,10 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   declare onboarding_complete: boolean;
   declare is_admin: boolean;
   declare is_verified: boolean;
+  declare status: 'active' | 'deactivated' | 'pending_deletion' | 'banned';
+  declare role: 'user' | 'moderator' | 'admin';
+  declare deactivated_at: Date | null;
+  declare deletion_requested_at: Date | null;
   declare last_login_at: Date | null;
   declare failed_login_attempts: number;
   declare locked_until: Date | null;
@@ -221,6 +233,24 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false,
+    },
+    status: {
+      type: DataTypes.ENUM('active', 'deactivated', 'pending_deletion', 'banned'),
+      defaultValue: 'active',
+      allowNull: false,
+    },
+    role: {
+      type: DataTypes.ENUM('user', 'moderator', 'admin'),
+      defaultValue: 'user',
+      allowNull: false,
+    },
+    deactivated_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    deletion_requested_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     last_login_at: {
       type: DataTypes.DATE,
