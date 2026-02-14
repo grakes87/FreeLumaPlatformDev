@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import { hashPassword, comparePassword } from '@/lib/auth/password';
 import { User } from '@/lib/db/models';
+import { sendPasswordChangeAlert } from '@/lib/email';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 
 const changePasswordSchema = z.object({
@@ -28,7 +29,7 @@ export const POST = withAuth(
       const { current_password, new_password } = parsed.data;
 
       const user = await User.findByPk(context.user.id, {
-        attributes: ['id', 'password_hash'],
+        attributes: ['id', 'email', 'password_hash'],
       });
 
       if (!user || !user.password_hash) {
@@ -47,6 +48,13 @@ export const POST = withAuth(
       // Hash and update new password
       const passwordHash = await hashPassword(new_password);
       await user.update({ password_hash: passwordHash });
+
+      // Send security alert email (non-fatal)
+      try {
+        await sendPasswordChangeAlert(user.email);
+      } catch (emailError) {
+        console.error('[Password Change] Failed to send security alert:', emailError);
+      }
 
       return successResponse({ message: 'Password changed successfully.' });
     } catch (error) {
