@@ -203,6 +203,11 @@ Recent decisions affecting current work:
 - **Email change verify-new-first:** Token sent to new email for verification; security alert sent to old email after confirmation
 - **Provider unlink requires password:** Prevents OAuth unlink if no password_hash set, avoiding account lockout
 - **Provider link bidirectional check:** Same OAuth ID cannot link to multiple users; same user cannot have two accounts from one provider
+- **ModerationLog updatedAt:false:** Audit logs are immutable; timestamps true with updatedAt false
+- **Ban composite index (user_id, lifted_at):** Efficient active ban lookup with WHERE lifted_at IS NULL
+- **ActivityStreak unique (user_id, activity_date):** One record per user per day enforced at DB level
+- **Message shared_video type:** shared_video added to messages type ENUM alongside shared_post
+- **Notification ENUM extension via raw SQL:** MySQL ALTER TABLE MODIFY COLUMN listing all values for ENUM changes
 
 ### Pending Todos
 
@@ -267,6 +272,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-14T06:41:00Z
-Stopped at: Completed 04-03-PLAN.md (Account Credential Management APIs)
+Last session: 2026-02-14T06:42:45Z
+Stopped at: Completed 04-02-PLAN.md (Account Lifecycle & Moderation DB) in parallel with 04-01, 04-03
 Resume file: None
