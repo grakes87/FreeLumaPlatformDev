@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import { Video, VideoProgress } from '@/lib/db/models';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
+import { trackActivity } from '@/lib/streaks/tracker';
 
 const progressSchema = z.object({
   watched_seconds: z.number().int().min(0),
@@ -74,6 +75,11 @@ export const PUT = withAuth(
 
         await existing.update(updates);
 
+        // Track video_watch activity for streaks (fire-and-forget)
+        if (existing.completed || (duration_seconds > 0 && watched_seconds > duration_seconds * 0.75)) {
+          try { trackActivity(user_id, 'video_watch'); } catch {}
+        }
+
         return successResponse({
           watched_seconds: existing.watched_seconds,
           last_position: existing.last_position,
@@ -91,6 +97,11 @@ export const PUT = withAuth(
         last_position,
         completed: completed ?? false,
       });
+
+      // Track video_watch activity for streaks (fire-and-forget)
+      if (completed || (duration_seconds > 0 && watched_seconds > duration_seconds * 0.75)) {
+        try { trackActivity(user_id, 'video_watch'); } catch {}
+      }
 
       return successResponse({
         watched_seconds: progress.watched_seconds,
