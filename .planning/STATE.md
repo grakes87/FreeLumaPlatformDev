@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 4 of 6 (Enhanced Content)
-Plan: 3 of 14 complete
+Plan: 4 of 14 complete
 Status: In progress
-Last activity: 2026-02-14 — Completed 04-03-PLAN.md (Account Credential Management APIs)
+Last activity: 2026-02-14 — Completed 04-04-PLAN.md (Video Library & Categories API)
 
-Progress: [████████████████████████████████████████░░░░░░░░░░░░] 42/53 plans (79%)
+Progress: [████████████████████████████████████████░░░░░░░░░░░░] 43/53 plans (81%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 42
+- Total plans completed: 43
 - Average duration: 5 min
-- Total execution time: 193 min
+- Total execution time: 196 min
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [███████████████████████
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
-| 04-enhanced-content | 3/14 | 9 min | 3 min |
+| 04-enhanced-content | 4/14 | 12 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-12 (5 min), 03-13 (8 min), 04-01 (2 min), 04-02 (4 min), 04-03 (3 min)
+- Last 5 plans: 03-13 (8 min), 04-01 (2 min), 04-02 (4 min), 04-03 (3 min), 04-04 (3 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -208,6 +208,10 @@ Recent decisions affecting current work:
 - **ActivityStreak unique (user_id, activity_date):** One record per user per day enforced at DB level
 - **Message shared_video type:** shared_video added to messages type ENUM alongside shared_post
 - **Notification ENUM extension via raw SQL:** MySQL ALTER TABLE MODIFY COLUMN listing all values for ENUM changes
+- **Video category count subquery literal:** SQL subquery in attributes for video count avoids N+1 on category listing
+- **Netflix-style grouped video response:** Categories array + continue_watching array in single endpoint response
+- **Hero video 204 pattern:** GET /api/videos/hero returns 204 No Content when no hero set (not 404 or empty object)
+- **Fire-and-forget view_count:** Video.increment called without await, .catch(() => {}) silences failures
 
 ### Pending Todos
 
@@ -272,6 +276,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-14T06:42:45Z
-Stopped at: Completed 04-02-PLAN.md (Account Lifecycle & Moderation DB) in parallel with 04-01, 04-03
+Last session: 2026-02-14T06:49:19Z
+Stopped at: Completed 04-04-PLAN.md (Video Library & Categories API)
 Resume file: None
