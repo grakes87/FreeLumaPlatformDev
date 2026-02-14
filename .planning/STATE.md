@@ -215,6 +215,9 @@ Recent decisions affecting current work:
 - **Fire-and-forget streak tracking:** trackActivity() called via dynamic import().then().catch() pattern; never blocks main request
 - **Streak current from yesterday:** If no activity today, current streak starts from yesterday to avoid mid-day zero display
 - **Date Set O(1) streak lookup:** Calculator builds Set of date strings for constant-time consecutive-day checking
+- **VideoProgress cumulative upsert:** watched_seconds takes max (cumulative), last_position always updates (resume), completed is one-way true
+- **VideoReaction aggregate counts:** POST toggle returns full reaction_counts object for immediate client-side UI update
+- **Shared video published validation:** Chat shared_video messages validate video exists AND is published before creation
 
 ### Pending Todos
 
