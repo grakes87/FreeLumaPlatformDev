@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { User } from '@/lib/db/models';
+import { User, Ban } from '@/lib/db/models';
 import { loginSchema } from '@/lib/utils/validation';
 import { comparePassword } from '@/lib/auth/password';
 import { signJWT, AUTH_COOKIE_OPTIONS } from '@/lib/auth/jwt';
@@ -68,6 +68,38 @@ export async function POST(req: NextRequest) {
       await user.update(updateData);
 
       return errorResponse('Invalid email or password', 401);
+    }
+
+    // --- Account status check (after password verified) ---
+    if (user.status === 'banned') {
+      // Check for an active ban
+      const activeBan = await Ban.findOne({
+        where: { user_id: user.id, lifted_at: null },
+        order: [['created_at', 'DESC']],
+      });
+
+      if (activeBan && (activeBan.expires_at === null || new Date(activeBan.expires_at) > new Date())) {
+        // Active ban still in effect
+        return errorResponse('Account suspended', 403);
+      }
+
+      // Ban expired or no active ban found — auto-unban
+      if (activeBan) {
+        await activeBan.update({ lifted_at: new Date() });
+      }
+      await user.update({ status: 'active' });
+    } else if (user.status === 'deactivated') {
+      // Auto-reactivate on login
+      await user.update({
+        status: 'active',
+        deactivated_at: null,
+      });
+    } else if (user.status === 'pending_deletion') {
+      // Cancel deletion on login
+      await user.update({
+        status: 'active',
+        deletion_requested_at: null,
+      });
     }
 
     // Successful login: reset failed attempts, update last login

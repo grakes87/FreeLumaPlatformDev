@@ -60,11 +60,17 @@ function setupNamespaces(io: SocketIOServer): void {
     globalThis.__ioNamespacesReady = true;
   }
 
-  // Initialize email scheduler cron jobs (idempotent — safe to call multiple times)
+  // Initialize cron job schedulers (idempotent — safe to call multiple times)
   import('@/lib/email/scheduler').then(({ initEmailScheduler }) => {
     initEmailScheduler();
   }).catch((err) => {
     console.error('[Socket] Failed to initialize email scheduler:', err);
+  });
+
+  import('@/lib/cron/accountCleanup').then(({ initAccountCleanup }) => {
+    initAccountCleanup();
+  }).catch((err) => {
+    console.error('[Socket] Failed to initialize account cleanup:', err);
   });
 }
 

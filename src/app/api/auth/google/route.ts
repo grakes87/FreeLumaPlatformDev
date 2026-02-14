@@ -1,10 +1,39 @@
 import { NextRequest } from 'next/server';
 import { Op } from 'sequelize';
-import { sequelize, User, ActivationCode, UserSetting } from '@/lib/db/models';
+import { sequelize, User, ActivationCode, UserSetting, Ban } from '@/lib/db/models';
 import { verifyGoogleCredential } from '@/lib/auth/google';
 import { signJWT, AUTH_COOKIE_OPTIONS } from '@/lib/auth/jwt';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 import { AVATAR_COLORS } from '@/lib/utils/constants';
+
+/**
+ * Check user account status and handle reactivation/ban for OAuth login.
+ * Returns an error response if login should be blocked, or null if OK to proceed.
+ */
+async function handleAccountStatus(user: InstanceType<typeof User>): Promise<import('next/server').NextResponse | null> {
+  if (user.status === 'banned') {
+    const activeBan = await Ban.findOne({
+      where: { user_id: user.id, lifted_at: null },
+      order: [['created_at', 'DESC']],
+    });
+
+    if (activeBan && (activeBan.expires_at === null || new Date(activeBan.expires_at) > new Date())) {
+      return errorResponse('Account suspended', 403);
+    }
+
+    // Ban expired or no active ban — auto-unban
+    if (activeBan) {
+      await activeBan.update({ lifted_at: new Date() });
+    }
+    await user.update({ status: 'active' });
+  } else if (user.status === 'deactivated') {
+    await user.update({ status: 'active', deactivated_at: null });
+  } else if (user.status === 'pending_deletion') {
+    await user.update({ status: 'active', deletion_requested_at: null });
+  }
+
+  return null; // OK to proceed
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,6 +68,10 @@ export async function POST(req: NextRequest) {
 
     if (user) {
       // Existing user with google_id linked -- login flow
+      // Check account status before allowing login
+      const statusBlock = await handleAccountStatus(user);
+      if (statusBlock) return statusBlock;
+
       await user.update({ last_login_at: new Date() });
 
       const token = await signJWT({ id: user.id, email: user.email });
@@ -58,6 +91,10 @@ export async function POST(req: NextRequest) {
 
     if (user) {
       // Found by email -- link google_id to existing user (account linking)
+      // Check account status before allowing login
+      const statusBlock = await handleAccountStatus(user);
+      if (statusBlock) return statusBlock;
+
       await user.update({
         google_id: googleId,
         avatar_url: user.avatar_url || picture,
