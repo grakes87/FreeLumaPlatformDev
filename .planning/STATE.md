@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 4 of 6 (Enhanced Content)
-Plan: 4 of 14 complete
+Plan: 6 of 14 complete
 Status: In progress
-Last activity: 2026-02-14 — Completed 04-04-PLAN.md (Video Library & Categories API)
+Last activity: 2026-02-14 — Completed 04-07-PLAN.md (Activity Streak Tracking & Account Stats)
 
-Progress: [████████████████████████████████████████░░░░░░░░░░░░] 43/53 plans (81%)
+Progress: [██████████████████████████████████████████░░░░░░░░░░] 45/53 plans (85%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 43
+- Total plans completed: 45
 - Average duration: 5 min
-- Total execution time: 196 min
+- Total execution time: 201 min
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [███████████████████████
 | 01-foundation | 12/12 | 63 min | 5 min |
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
-| 04-enhanced-content | 4/14 | 12 min | 3 min |
+| 04-enhanced-content | 6/14 | 17 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-13 (8 min), 04-01 (2 min), 04-02 (4 min), 04-03 (3 min), 04-04 (3 min)
+- Last 5 plans: 04-02 (4 min), 04-03 (3 min), 04-04 (3 min), 04-05 (3 min), 04-07 (2 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -212,6 +212,9 @@ Recent decisions affecting current work:
 - **Netflix-style grouped video response:** Categories array + continue_watching array in single endpoint response
 - **Hero video 204 pattern:** GET /api/videos/hero returns 204 No Content when no hero set (not 404 or empty object)
 - **Fire-and-forget view_count:** Video.increment called without await, .catch(() => {}) silences failures
+- **Fire-and-forget streak tracking:** trackActivity() called via dynamic import().then().catch() pattern; never blocks main request
+- **Streak current from yesterday:** If no activity today, current streak starts from yesterday to avoid mid-day zero display
+- **Date Set O(1) streak lookup:** Calculator builds Set of date strings for constant-time consecutive-day checking
 
 ### Pending Todos
 
@@ -276,6 +279,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-14T06:49:19Z
-Stopped at: Completed 04-04-PLAN.md (Video Library & Categories API)
+Last session: 2026-02-14T06:49:56Z
+Stopped at: Completed 04-07-PLAN.md (Activity Streak Tracking & Account Stats)
 Resume file: None
