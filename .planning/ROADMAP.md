@@ -152,7 +152,7 @@ Plans:
 - [ ] 03-13-PLAN.md — Integration: TopBar chat/bell badges, providers in layout, settings, profile message button, block behavior
 
 ### Phase 4: Enhanced Content
-**Goal**: Content personalization and media library complete — users can create personal notes, access video library with progress tracking, and configure all app settings including appearance and privacy.
+**Goal**: Video library with progress tracking, account lifecycle management (deactivation, deletion, email/password changes, streaks), and admin moderation system (report queue, bans, audit log) — users can browse and watch videos with resume, manage their account, and admins can moderate content and users.
 
 **Depends on**: Phase 2 (requires posts and content system)
 
@@ -182,11 +182,23 @@ Plans:
   21. Admin can view reported content in moderation queue
   22. Admin can remove inappropriate content with reason logging
 
-**Plans**: TBD
+**Plans**: 14 plans in 4 waves
 
 Plans:
-- [ ] 04-01: TBD during phase planning
-- [ ] 04-02: TBD during phase planning
+- [ ] 04-01-PLAN.md — Video database (VideoCategory, Video, VideoProgress, VideoReaction models + migrations)
+- [ ] 04-02-PLAN.md — Account/moderation database (User status, Ban, ModerationLog, ActivityStreak, role, notifications)
+- [ ] 04-03-PLAN.md — Email change, password change, OAuth provider link/unlink APIs
+- [ ] 04-04-PLAN.md — Video library + categories CRUD API (listing, detail, hero, admin management)
+- [ ] 04-05-PLAN.md — Video engagement API (progress tracking, reactions, share to chat)
+- [ ] 04-06-PLAN.md — Ban enforcement, withModerator, account deactivate/delete, login reactivation, cleanup cron
+- [ ] 04-07-PLAN.md — Activity streak tracking + account stats API
+- [ ] 04-08-PLAN.md — Admin moderation queue, ban management, user administration, audit log APIs
+- [ ] 04-09-PLAN.md — Video upload processing (thumbnail + captions) + admin video management UI
+- [ ] 04-10-PLAN.md — Video library home UI (Netflix layout, hero banner, category rows, nav rename)
+- [ ] 04-11-PLAN.md — Video detail page + immersive player (resume, captions, controls, progress saving)
+- [ ] 04-12-PLAN.md — Account settings UI (stats, email/password, connected accounts, danger zone)
+- [ ] 04-13-PLAN.md — Admin moderation UI (queue, user browser, bans, audit log, stats dashboard)
+- [ ] 04-14-PLAN.md — Integration (ban screen, deactivated profiles, shared video messages, new video notifications)
 
 ### Phase 5: Workshops (v2 - DEFERRED)
 **Goal**: Live video workshop infrastructure complete — hosts can schedule and broadcast live workshops, attendees can join with video/audio participation, and workshops support real-time chat and presence tracking.
