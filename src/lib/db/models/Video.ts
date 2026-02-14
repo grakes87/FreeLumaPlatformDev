@@ -5,7 +5,7 @@ export interface VideoAttributes {
   id: number;
   title: string;
   description: string | null;
-  category_id: number;
+  category_id: number | null;
   video_url: string;
   thumbnail_url: string | null;
   caption_url: string | null;
@@ -20,6 +20,7 @@ export interface VideoAttributes {
 
 export interface VideoCreationAttributes extends Optional<VideoAttributes,
   | 'id'
+  | 'category_id'
   | 'description'
   | 'thumbnail_url'
   | 'caption_url'
@@ -35,7 +36,7 @@ class Video extends Model<VideoAttributes, VideoCreationAttributes> implements V
   declare id: number;
   declare title: string;
   declare description: string | null;
-  declare category_id: number;
+  declare category_id: number | null;
   declare video_url: string;
   declare thumbnail_url: string | null;
   declare caption_url: string | null;
@@ -65,7 +66,7 @@ Video.init(
     },
     category_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'video_categories',
         key: 'id',

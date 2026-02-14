@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { HeroBanner } from '@/components/video/HeroBanner';
 import { CategoryRow } from '@/components/video/CategoryRow';
+import { Top10Row } from '@/components/video/Top10Row';
 import type { VideoData } from '@/components/video/VideoCard';
 
 interface CategoryData {
@@ -22,6 +23,8 @@ export default function WatchPage() {
   const [heroVideo, setHeroVideo] = useState<HeroVideo | null>(null);
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [continueWatching, setContinueWatching] = useState<VideoData[]>([]);
+  const [top10, setTop10] = useState<VideoData[]>([]);
+  const [uncategorized, setUncategorized] = useState<VideoData[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -38,6 +41,8 @@ export default function WatchPage() {
         if (videosJson.data) {
           setCategories(videosJson.data.categories || []);
           setContinueWatching(videosJson.data.continue_watching || []);
+          setTop10(videosJson.data.top_10 || []);
+          setUncategorized(videosJson.data.uncategorized || []);
         }
       }
 
@@ -68,6 +73,9 @@ export default function WatchPage() {
       {/* Hero Banner */}
       <HeroBanner video={heroVideo} />
 
+      {/* Top 10 Most Watched */}
+      {top10.length > 0 && <Top10Row videos={top10} />}
+
       {/* Continue Watching row */}
       {continueWatching.length > 0 && (
         <CategoryRow
@@ -86,8 +94,13 @@ export default function WatchPage() {
         />
       ))}
 
+      {/* Uncategorized videos */}
+      {uncategorized.length > 0 && (
+        <CategoryRow name="More Videos" videos={uncategorized} />
+      )}
+
       {/* Empty state if no content at all */}
-      {categories.length === 0 && continueWatching.length === 0 && !heroVideo && (
+      {categories.length === 0 && continueWatching.length === 0 && top10.length === 0 && uncategorized.length === 0 && !heroVideo && (
         <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
           <svg
             className="mb-4 h-12 w-12 text-text-muted dark:text-text-muted-dark"

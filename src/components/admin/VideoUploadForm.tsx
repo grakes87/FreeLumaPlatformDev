@@ -49,9 +49,7 @@ export function VideoUploadForm({
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [categoryId, setCategoryId] = useState<number>(
-    categories[0]?.id || 0
-  );
+  const [categoryId, setCategoryId] = useState<number | null>(null);
   const [published, setPublished] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -94,11 +92,6 @@ export function VideoUploadForm({
       toast.error('Title is required');
       return;
     }
-    if (!categoryId) {
-      toast.error('Please select a category');
-      return;
-    }
-
     setUploading(true);
     setStep('uploading');
     setProgress(0);
@@ -152,7 +145,7 @@ export function VideoUploadForm({
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || undefined,
-          category_id: categoryId,
+          category_id: categoryId || undefined,
           video_url: publicUrl,
           duration_seconds: durationSeconds,
           published,
@@ -312,11 +305,14 @@ export function VideoUploadForm({
       {/* Category */}
       <div>
         <label className="mb-1.5 block text-sm font-medium text-text dark:text-text-dark">
-          Category
+          Category (optional)
         </label>
         <select
-          value={categoryId}
-          onChange={(e) => setCategoryId(parseInt(e.target.value, 10))}
+          value={categoryId ?? ''}
+          onChange={(e) => {
+            const val = e.target.value;
+            setCategoryId(val ? parseInt(val, 10) : null);
+          }}
           disabled={uploading}
           className={cn(
             'w-full rounded-xl border border-border bg-surface px-4 py-3 text-text transition-colors',
@@ -325,9 +321,7 @@ export function VideoUploadForm({
             'disabled:cursor-not-allowed disabled:opacity-60'
           )}
         >
-          {categories.length === 0 && (
-            <option value={0}>No categories available</option>
-          )}
+          <option value="">No Category</option>
           {categories.map((cat) => (
             <option key={cat.id} value={cat.id}>
               {cat.name}
@@ -380,7 +374,7 @@ export function VideoUploadForm({
         <Button
           type="submit"
           loading={uploading}
-          disabled={!file || !title.trim() || !categoryId}
+          disabled={!file || !title.trim()}
           className="flex-1"
         >
           Upload Video

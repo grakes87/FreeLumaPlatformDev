@@ -10,7 +10,7 @@ const VIDEOS_PER_CATEGORY = 10;
 const createVideoSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().optional(),
-  category_id: z.number().int().positive('Valid category required'),
+  category_id: z.number().int().positive('Valid category required').nullable().optional(),
   video_url: z.string().url('Valid video URL required'),
   duration_seconds: z.number().int().min(0).default(0),
   thumbnail_url: z.string().url().optional(),
@@ -115,6 +115,31 @@ export const GET = withAuth(
       // Filter out categories with no videos
       const nonEmptyCategories = groupedCategories.filter((c) => c.videos.length > 0);
 
+      // Uncategorized videos (category_id IS NULL)
+      const uncategorizedVideos = await Video.findAll({
+        where: {
+          category_id: null,
+          ...publishedFilter,
+        },
+        attributes: [
+          'id', 'title', 'description', 'thumbnail_url',
+          'duration_seconds', 'view_count', 'published', 'created_at',
+        ],
+        order: [['view_count', 'DESC']],
+        limit: VIDEOS_PER_CATEGORY,
+      });
+
+      // Top 10 most watched
+      const top10 = await Video.findAll({
+        where: publishedFilter,
+        attributes: [
+          'id', 'title', 'description', 'thumbnail_url',
+          'duration_seconds', 'view_count', 'published', 'created_at',
+        ],
+        order: [['view_count', 'DESC']],
+        limit: 10,
+      });
+
       // Continue Watching row: user's in-progress videos
       const progressRows = await VideoProgress.findAll({
         where: {
@@ -152,6 +177,8 @@ export const GET = withAuth(
       return successResponse({
         categories: nonEmptyCategories,
         continue_watching: continueWatching,
+        top_10: top10,
+        uncategorized: uncategorizedVideos,
       });
     } catch (error) {
       return serverError(error, 'Failed to fetch videos');
@@ -175,10 +202,12 @@ export const POST = withAdmin(
 
       const data = parsed.data;
 
-      // Verify category exists
-      const category = await VideoCategory.findByPk(data.category_id);
-      if (!category) {
-        return errorResponse('Video category not found', 400);
+      // Verify category exists (if provided)
+      if (data.category_id) {
+        const category = await VideoCategory.findByPk(data.category_id);
+        if (!category) {
+          return errorResponse('Video category not found', 400);
+        }
       }
 
       // If is_hero=true, unset on all others
@@ -189,7 +218,7 @@ export const POST = withAdmin(
       const video = await Video.create({
         title: data.title,
         description: data.description ?? null,
-        category_id: data.category_id,
+        category_id: data.category_id ?? null,
         video_url: data.video_url,
         duration_seconds: data.duration_seconds,
         thumbnail_url: data.thumbnail_url ?? null,
