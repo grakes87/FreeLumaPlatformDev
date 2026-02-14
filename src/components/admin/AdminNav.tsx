@@ -8,6 +8,7 @@ import {
   Settings,
   BarChart3,
   Users,
+  Video,
   ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -47,6 +48,11 @@ export function AdminNav({ pendingCount = 0 }: AdminNavProps) {
       label: 'Users',
       href: '/admin/users',
       icon: Users,
+    },
+    {
+      label: 'Videos',
+      href: '/admin/videos',
+      icon: Video,
     },
     {
       label: 'Analytics',
