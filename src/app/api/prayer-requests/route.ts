@@ -140,6 +140,18 @@ export const GET = withAuth(
       }
       // my_joined tab is handled via include below
 
+      // Hidden posts: visible to original poster + repost participants
+      if (tab !== 'my_requests') {
+        postWhere[Op.and as unknown as string] = [
+          ...(Array.isArray(postWhere[Op.and as unknown as string]) ? postWhere[Op.and as unknown as string] : []),
+          sequelize.literal(
+            `(\`Post\`.\`hidden\` = 0 OR \`Post\`.\`user_id\` = ${userId}` +
+            ` OR \`Post\`.\`id\` IN (SELECT r.post_id FROM reposts r WHERE r.user_id = ${userId})` +
+            ` OR \`Post\`.\`id\` IN (SELECT r.quote_post_id FROM reposts r INNER JOIN posts p ON r.post_id = p.id WHERE p.user_id = ${userId}))`
+          ),
+        ];
+      }
+
       // Cursor pagination
       if (cursor) {
         const decoded = decodeCursor(cursor);
@@ -232,7 +244,13 @@ export const GET = withAuth(
               'post_id',
               [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
             ],
-            where: { post_id: { [Op.in]: postIds } },
+            where: {
+              post_id: { [Op.in]: postIds },
+              [Op.or as unknown as string]: [
+                { hidden: false },
+                { hidden: true, user_id: userId },
+              ],
+            },
             group: ['post_id'],
             raw: true,
           })

@@ -13,6 +13,8 @@ import {
   Play,
   Check,
   X,
+  RefreshCw,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -40,6 +42,7 @@ interface Video {
   view_count: number;
   is_hero: boolean;
   published: boolean;
+  published_at: string | null;
   created_at: string;
   category?: VideoCategory;
 }
@@ -75,26 +78,53 @@ export default function AdminVideosPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Retry thumbnail state
+  const [retryingThumbnailId, setRetryingThumbnailId] = useState<number | null>(null);
+
   const fetchVideos = useCallback(async () => {
     try {
-      // Fetch all videos for admin (includes unpublished)
-      const res = await fetch('/api/videos', { credentials: 'include' });
+      // Fetch all videos for admin (includes unpublished/scheduled via drafts=true)
+      const res = await fetch('/api/videos?drafts=true', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        // Videos API returns categories array with nested videos
         const allVideos: Video[] = [];
+        const seenIds = new Set<number>();
+
+        // Videos from categories
         if (data.categories) {
           for (const cat of data.categories) {
             for (const v of cat.videos) {
-              allVideos.push({
-                ...v,
-                category: { id: cat.id, name: cat.name, slug: cat.slug },
-              });
+              if (!seenIds.has(v.id)) {
+                seenIds.add(v.id);
+                allVideos.push({
+                  ...v,
+                  category: { id: cat.id, name: cat.name, slug: cat.slug },
+                });
+              }
             }
           }
         }
-        // Also check for unpublished videos that might not appear in categories
-        // Use a separate admin-specific approach
+
+        // Uncategorized videos
+        if (data.uncategorized) {
+          for (const v of data.uncategorized) {
+            if (!seenIds.has(v.id)) {
+              seenIds.add(v.id);
+              allVideos.push({ ...v, category_id: null });
+            }
+          }
+        }
+
+        // Top 10 (catch any remaining)
+        if (data.top_10) {
+          for (const v of data.top_10) {
+            if (!seenIds.has(v.id)) {
+              seenIds.add(v.id);
+              allVideos.push(v);
+            }
+          }
+        }
+
         setVideos(allVideos);
       }
     } catch {
@@ -174,7 +204,7 @@ export default function AdminVideosPage() {
     setEditingId(video.id);
     setEditTitle(video.title);
     setEditDescription(video.description || '');
-    setEditCategoryId(video.category_id);
+    setEditCategoryId(video.category_id ?? 0);
   };
 
   const cancelEdit = () => {
@@ -237,6 +267,38 @@ export default function AdminVideosPage() {
       setDeleting(false);
     }
   };
+
+  const handleRetryThumbnail = async (video: Video) => {
+    setRetryingThumbnailId(video.id);
+    try {
+      const res = await fetch(`/api/videos/${video.id}/process`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.processed?.thumbnail) {
+          toast.success('Thumbnail generated successfully');
+        } else {
+          const logMsg = data.log?.join('\n') || 'No details';
+          toast.error(`Thumbnail not generated. Check console for details.`);
+          console.warn('[RetryThumbnail]', logMsg);
+        }
+        fetchVideos();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to process video');
+      }
+    } catch {
+      toast.error('Failed to retry thumbnail');
+    } finally {
+      setRetryingThumbnailId(null);
+    }
+  };
+
+  /** Check if a video is scheduled for a future date */
+  const isScheduledFuture = (video: Video) =>
+    video.published && video.published_at && new Date(video.published_at) > new Date();
 
   if (loading) {
     return (
@@ -411,6 +473,12 @@ export default function AdminVideosPage() {
                               Draft
                             </span>
                           )}
+                          {isScheduledFuture(video) && (
+                            <span className="flex shrink-0 items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(video.published_at!).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-text-muted dark:text-text-muted-dark">
                           {video.category && (
@@ -480,6 +548,17 @@ export default function AdminVideosPage() {
                             )}
                           />
                         </button>
+                        {!video.thumbnail_url && (
+                          <button
+                            type="button"
+                            onClick={() => handleRetryThumbnail(video)}
+                            disabled={retryingThumbnailId === video.id}
+                            className="rounded-lg p-2 text-text-muted transition-colors hover:bg-surface-hover hover:text-text dark:text-text-muted-dark dark:hover:bg-surface-hover-dark dark:hover:text-text-dark disabled:opacity-50"
+                            title="Retry thumbnail"
+                          >
+                            <RefreshCw className={cn('h-4 w-4', retryingThumbnailId === video.id && 'animate-spin')} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(video.id)}
@@ -508,7 +587,7 @@ export default function AdminVideosPage() {
         isOpen={showUpload}
         onClose={() => setShowUpload(false)}
         title="Upload Video"
-        size="lg"
+        size="xl"
       >
         <VideoUploadForm
           categories={categories}

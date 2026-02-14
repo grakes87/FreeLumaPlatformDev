@@ -8,13 +8,14 @@ import {
   PostComment,
   Bookmark,
   PrayerRequest,
+  Repost,
   User,
   Follow,
 } from '@/lib/db/models';
 import { getBlockedUserIds } from '@/lib/utils/blocks';
 import { checkAndFlag } from '@/lib/moderation/profanity';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
-import { fn, col } from 'sequelize';
+import { fn, col, Op } from 'sequelize';
 
 const POST_BODY_MAX = 5000;
 
@@ -69,6 +70,26 @@ export const GET = withAuth(
 
       if (!post) {
         return errorResponse('Post not found', 404);
+      }
+
+      // Hidden check — hidden posts visible to author + repost participants
+      if (post.hidden && post.user_id !== userId) {
+        // Check if user reposted this post
+        const userReposted = await Repost.findOne({
+          where: { post_id: post.id, user_id: userId },
+          attributes: ['id'],
+        });
+        if (!userReposted) {
+          // Check if this post is a repost of user's own post
+          const isRepostOfMine = await Repost.findOne({
+            where: { quote_post_id: post.id },
+            include: [{ model: Post, as: 'originalPost', attributes: ['user_id'], where: { user_id: userId } }],
+            attributes: ['id'],
+          });
+          if (!isRepostOfMine) {
+            return errorResponse('Post not found', 404);
+          }
+        }
       }
 
       // Block check — prevent viewing posts from blocked users

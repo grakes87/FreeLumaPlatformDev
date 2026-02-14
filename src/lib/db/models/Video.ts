@@ -13,6 +13,7 @@ export interface VideoAttributes {
   view_count: number;
   is_hero: boolean;
   published: boolean;
+  published_at: Date | null;
   uploaded_by: number;
   created_at: Date;
   updated_at: Date;
@@ -28,6 +29,7 @@ export interface VideoCreationAttributes extends Optional<VideoAttributes,
   | 'view_count'
   | 'is_hero'
   | 'published'
+  | 'published_at'
   | 'created_at'
   | 'updated_at'
 > {}
@@ -44,6 +46,7 @@ class Video extends Model<VideoAttributes, VideoCreationAttributes> implements V
   declare view_count: number;
   declare is_hero: boolean;
   declare published: boolean;
+  declare published_at: Date | null;
   declare uploaded_by: number;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
@@ -103,6 +106,11 @@ Video.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false,
+    },
+    published_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
     uploaded_by: {
       type: DataTypes.INTEGER,

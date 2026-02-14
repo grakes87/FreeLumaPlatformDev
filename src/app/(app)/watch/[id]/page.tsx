@@ -79,7 +79,7 @@ export default function VideoDetailPage({
         return;
       }
       const json = await res.json();
-      setVideo(json.data);
+      setVideo(json.data ?? json);
     } catch {
       setNotFound(true);
     } finally {

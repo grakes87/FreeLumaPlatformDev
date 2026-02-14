@@ -2,7 +2,7 @@
 
 import { useState, lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils/cn';
-import { Shield, Users, Ban, ScrollText, BarChart3 } from 'lucide-react';
+import { Shield, Users, Ban, ScrollText, BarChart3, FileText, MessageCircle } from 'lucide-react';
 import { ModerationQueue } from '@/components/admin/ModerationQueue';
 
 const UserBrowser = lazy(() =>
@@ -17,11 +17,19 @@ const AuditLog = lazy(() =>
 const ModerationStats = lazy(() =>
   import('@/components/admin/ModerationStats').then((m) => ({ default: m.ModerationStats }))
 );
+const PostBrowser = lazy(() =>
+  import('@/components/admin/PostBrowser').then((m) => ({ default: m.PostBrowser }))
+);
+const CommentBrowser = lazy(() =>
+  import('@/components/admin/CommentBrowser').then((m) => ({ default: m.CommentBrowser }))
+);
 
-type TabKey = 'queue' | 'users' | 'bans' | 'audit' | 'stats';
+type TabKey = 'queue' | 'posts' | 'comments' | 'users' | 'bans' | 'audit' | 'stats';
 
 const TABS: { key: TabKey; label: string; icon: typeof Shield }[] = [
   { key: 'queue', label: 'Queue', icon: Shield },
+  { key: 'posts', label: 'Posts', icon: FileText },
+  { key: 'comments', label: 'Comments', icon: MessageCircle },
   { key: 'users', label: 'Users', icon: Users },
   { key: 'bans', label: 'Bans', icon: Ban },
   { key: 'audit', label: 'Audit Log', icon: ScrollText },
@@ -74,6 +82,18 @@ export default function ModerationPage() {
 
       {/* Tab Content */}
       {activeTab === 'queue' && <ModerationQueue />}
+
+      {activeTab === 'posts' && (
+        <Suspense fallback={<TabFallback />}>
+          <PostBrowser />
+        </Suspense>
+      )}
+
+      {activeTab === 'comments' && (
+        <Suspense fallback={<TabFallback />}>
+          <CommentBrowser />
+        </Suspense>
+      )}
 
       {activeTab === 'users' && (
         <Suspense fallback={<TabFallback />}>

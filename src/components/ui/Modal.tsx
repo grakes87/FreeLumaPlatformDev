@@ -9,6 +9,7 @@ const sizeStyles = {
   sm: 'max-w-sm',
   md: 'max-w-md',
   lg: 'max-w-lg',
+  xl: 'max-w-2xl',
 } as const;
 
 export interface ModalProps {
@@ -120,7 +121,7 @@ export function Modal({
         )}
 
         {/* Body */}
-        <div className="p-6">{children}</div>
+        <div className="max-h-[calc(100vh-8rem)] overflow-y-auto p-6">{children}</div>
       </div>
     </div>
   );

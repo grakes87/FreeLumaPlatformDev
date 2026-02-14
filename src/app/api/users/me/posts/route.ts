@@ -106,10 +106,16 @@ export const GET = withAuth(
         reactionMap.set(row.post_id, parseInt(row.count, 10));
       }
 
-      // Comment counts per post
+      // Comment counts per post (exclude hidden comments unless they belong to the current user)
       const commentCountRows = postIds.length > 0
         ? await PostComment.findAll({
-            where: { post_id: { [Op.in]: postIds } },
+            where: {
+              post_id: { [Op.in]: postIds },
+              [Op.or as unknown as string]: [
+                { hidden: false },
+                { hidden: true, user_id: userId },
+              ],
+            },
             attributes: [
               'post_id',
               [fn('COUNT', col('id')), 'count'],

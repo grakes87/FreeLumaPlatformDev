@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { withAuth, type AuthContext } from '@/lib/auth/middleware';
-import { withAdmin } from '@/lib/auth/middleware';
+import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middleware';
+import { withAdmin, type AuthContext } from '@/lib/auth/middleware';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 import { fn, col, Op } from 'sequelize';
 
@@ -15,13 +15,14 @@ const updateVideoSchema = z.object({
   caption_url: z.string().url().nullable().optional(),
   is_hero: z.boolean().optional(),
   published: z.boolean().optional(),
+  published_at: z.string().datetime().nullable().optional(),
 });
 
 /**
  * GET /api/videos/[id] — Get video detail with user-specific progress and reactions
  */
-export const GET = withAuth(
-  async (_req: NextRequest, context: AuthContext) => {
+export const GET = withOptionalAuth(
+  async (_req: NextRequest, context: OptionalAuthContext) => {
     try {
       const {
         Video,
@@ -37,11 +38,14 @@ export const GET = withAuth(
         return errorResponse('Invalid video ID');
       }
 
-      const userId = context.user.id;
+      const userId = context.user?.id ?? null;
 
       // Check if user is admin
-      const adminUser = await User.findByPk(userId, { attributes: ['id', 'is_admin'] });
-      const isAdmin = adminUser?.is_admin === true;
+      let isAdmin = false;
+      if (userId) {
+        const adminUser = await User.findByPk(userId, { attributes: ['id', 'is_admin'] });
+        isAdmin = adminUser?.is_admin === true;
+      }
 
       const video = await Video.findByPk(videoId, {
         include: [
@@ -57,22 +61,28 @@ export const GET = withAuth(
         return errorResponse('Video not found', 404);
       }
 
-      // Non-admin users cannot see unpublished videos
-      if (!video.published && !isAdmin) {
-        return errorResponse('Video not found', 404);
+      // Non-admin users cannot see unpublished or future-scheduled videos
+      if (!isAdmin) {
+        const isLive = video.published && (!video.published_at || video.published_at <= new Date());
+        if (!isLive) {
+          return errorResponse('Video not found', 404);
+        }
       }
 
-      // Get user's progress
-      const userProgress = await VideoProgress.findOne({
-        where: { user_id: userId, video_id: videoId },
-        attributes: ['watched_seconds', 'last_position', 'duration_seconds', 'completed'],
-      });
+      // Get user's progress (only for logged-in users)
+      let userProgress = null;
+      let userReaction = null;
+      if (userId) {
+        userProgress = await VideoProgress.findOne({
+          where: { user_id: userId, video_id: videoId },
+          attributes: ['watched_seconds', 'last_position', 'duration_seconds', 'completed'],
+        });
 
-      // Get user's reaction
-      const userReaction = await VideoReaction.findOne({
-        where: { user_id: userId, video_id: videoId },
-        attributes: ['reaction_type'],
-      });
+        userReaction = await VideoReaction.findOne({
+          where: { user_id: userId, video_id: videoId },
+          attributes: ['reaction_type'],
+        });
+      }
 
       // Get reaction counts by type
       const reactionRows = await VideoReaction.findAll({
@@ -163,10 +173,27 @@ export const PUT = withAdmin(
         await Video.update({ is_hero: false }, { where: { is_hero: true } });
       }
 
-      await video.update(data);
+      // Build update payload with scheduling logic
+      const updateData: Record<string, unknown> = { ...data };
+
+      if (data.published_at !== undefined) {
+        // Explicit published_at: set it (or clear it with null)
+        updateData.published_at = data.published_at ? new Date(data.published_at) : null;
+        // Setting a future date auto-marks as published (will be hidden by filter until then)
+        if (data.published_at) {
+          updateData.published = true;
+        }
+      } else if (data.published === true && !wasPublished && !video.published_at) {
+        // Toggling to published without explicit published_at: set to now
+        updateData.published_at = new Date();
+      }
+
+      await video.update(updateData);
 
       // Fire-and-forget: send new_video notifications on first publish
-      if (data.published === true && !wasPublished) {
+      // Only notify if video is live now (not future-scheduled)
+      const isLiveNow = video.published && (!video.published_at || video.published_at <= new Date());
+      if (data.published === true && !wasPublished && isLiveNow) {
         dispatchNewVideoNotifications(videoId, video.title, context.user.id).catch(() => {});
       }
 

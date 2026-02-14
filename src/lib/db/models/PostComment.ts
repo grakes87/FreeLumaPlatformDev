@@ -9,6 +9,7 @@ export interface PostCommentAttributes {
   body: string;
   edited: boolean;
   flagged: boolean;
+  hidden: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -18,6 +19,7 @@ export interface PostCommentCreationAttributes extends Optional<PostCommentAttri
   | 'parent_id'
   | 'edited'
   | 'flagged'
+  | 'hidden'
   | 'created_at'
   | 'updated_at'
 > {}
@@ -30,6 +32,7 @@ class PostComment extends Model<PostCommentAttributes, PostCommentCreationAttrib
   declare body: string;
   declare edited: boolean;
   declare flagged: boolean;
+  declare hidden: boolean;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
 }
@@ -75,6 +78,11 @@ PostComment.init(
       defaultValue: false,
     },
     flagged: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    hidden: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

@@ -11,6 +11,7 @@ export interface PostAttributes {
   edited: boolean;
   is_anonymous: boolean;
   flagged: boolean;
+  hidden: boolean;
   deleted_at: Date | null;
   created_at: Date;
   updated_at: Date;
@@ -23,6 +24,7 @@ export interface PostCreationAttributes extends Optional<PostAttributes,
   | 'edited'
   | 'is_anonymous'
   | 'flagged'
+  | 'hidden'
   | 'deleted_at'
   | 'created_at'
   | 'updated_at'
@@ -38,6 +40,7 @@ class Post extends Model<PostAttributes, PostCreationAttributes> implements Post
   declare edited: boolean;
   declare is_anonymous: boolean;
   declare flagged: boolean;
+  declare hidden: boolean;
   declare deleted_at: Date | null;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
@@ -87,6 +90,11 @@ Post.init(
       defaultValue: false,
     },
     flagged: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    hidden: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

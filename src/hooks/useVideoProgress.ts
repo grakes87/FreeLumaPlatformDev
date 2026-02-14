@@ -158,7 +158,7 @@ export function useVideoProgress({
     watchedSeconds,
     lastPosition,
     completed,
-    startPosition: initialProgress?.last_position ?? 0,
+    startPosition: initialProgress?.completed ? 0 : (initialProgress?.last_position ?? 0),
     updateProgress,
     saveProgress,
     onPlay,

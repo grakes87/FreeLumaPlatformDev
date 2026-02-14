@@ -67,6 +67,11 @@ export function VideoPlayer({
   const [videoDuration, setVideoDuration] = useState(duration || 0);
   const [isSeeking, setIsSeeking] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
+  const [viewportSize, setViewportSize] = useState({ w: 0, h: 0 });
+  const [isLoading, setIsLoading] = useState(true);   // initial load before first play
+  const [isBuffering, setIsBuffering] = useState(false); // mid-playback stall
+  const [bufferPercent, setBufferPercent] = useState(0);
 
   const {
     startPosition,
@@ -83,10 +88,72 @@ export function VideoPlayer({
   // Set immersive mode on mount, clear on unmount
   useEffect(() => {
     setImmersive(true);
+    // Scroll to hide Safari address bar
+    window.scrollTo(0, 1);
     return () => {
       setImmersive(false);
     };
   }, [setImmersive]);
+
+  // Force landscape: use actual window.innerWidth/innerHeight for accurate sizing
+  useEffect(() => {
+    const measure = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      setIsPortrait(h > w);
+      setViewportSize({ w, h });
+    };
+    measure();
+
+    // Try native fullscreen + orientation lock (Android Chrome)
+    const tryNativeFullscreen = async () => {
+      try {
+        const el = containerRef.current;
+        if (el?.requestFullscreen) {
+          await el.requestFullscreen();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const orient = screen.orientation as any;
+          if (orient?.lock) {
+            await orient.lock('landscape');
+          }
+          // Native fullscreen worked — no CSS rotation needed
+          setIsPortrait(false);
+          return;
+        }
+      } catch {
+        // Not supported — CSS rotation fallback handles it
+      }
+    };
+    tryNativeFullscreen();
+
+    window.addEventListener('resize', measure);
+    // Also listen for orientation change (fires on iOS before resize sometimes)
+    window.addEventListener('orientationchange', () => setTimeout(measure, 100));
+    return () => {
+      window.removeEventListener('resize', measure);
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (screen.orientation as any)?.unlock?.();
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
+  // Handle device/browser back button: push a history entry so back closes the player
+  useEffect(() => {
+    history.pushState({ videoPlayer: true }, '');
+    const onPopState = () => {
+      onClose();
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, [onClose]);
 
   // Set start position when video is ready
   const handleLoadedMetadata = useCallback(() => {
@@ -98,30 +165,83 @@ export function VideoPlayer({
     }
   }, [startPosition, duration]);
 
-  // Auto-play on mount after metadata loaded
-  const handleCanPlay = useCallback(() => {
+  // Compute how much of the video is buffered (as a percentage of total duration)
+  const updateBufferProgress = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !video.duration) return;
+    const buffered = video.buffered;
+    if (buffered.length > 0) {
+      // Find the buffer range that contains (or is closest ahead of) currentTime
+      let bufferedEnd = 0;
+      for (let i = 0; i < buffered.length; i++) {
+        if (buffered.start(i) <= video.currentTime) {
+          bufferedEnd = Math.max(bufferedEnd, buffered.end(i));
+        }
+      }
+      setBufferPercent(Math.round((bufferedEnd / video.duration) * 100));
+    }
+  }, []);
+
+  // Auto-play once browser has enough data
+  const handleCanPlayThrough = useCallback(() => {
+    setIsLoading(false);
+    setIsBuffering(false);
     if (!hasStarted) {
       const video = videoRef.current;
       if (video) {
         video.play().catch(() => {
-          // Autoplay may be blocked; user will tap play
+          // Autoplay blocked — user will see the play button
         });
         setHasStarted(true);
       }
     }
   }, [hasStarted]);
 
-  // Time update handler
+  // canplay fires earlier than canplaythrough — start playing sooner
+  const handleCanPlay = useCallback(() => {
+    setIsLoading(false);
+    if (!hasStarted) {
+      const video = videoRef.current;
+      if (video) {
+        video.play().catch(() => {});
+        setHasStarted(true);
+      }
+    }
+  }, [hasStarted]);
+
+  // Mid-playback stall: show buffering spinner
+  const handleWaiting = useCallback(() => {
+    // Only show buffering UI if playback already started (not initial load)
+    if (hasStarted) {
+      setIsBuffering(true);
+      setShowControls(true);
+    }
+  }, [hasStarted]);
+
+  const handlePlaying = useCallback(() => {
+    setIsLoading(false);
+    setIsBuffering(false);
+  }, []);
+
+  // Time update handler — also updates buffer progress
   const handleTimeUpdate = useCallback(() => {
     const video = videoRef.current;
     if (!video || isSeeking) return;
     setCurrentTime(video.currentTime);
     updateProgress(video.currentTime);
-  }, [updateProgress, isSeeking]);
+    updateBufferProgress();
+  }, [updateProgress, isSeeking, updateBufferProgress]);
+
+  // Also track buffer progress during loading
+  const handleProgress = useCallback(() => {
+    updateBufferProgress();
+  }, [updateBufferProgress]);
 
   // Play/Pause handlers
   const handlePlay = useCallback(() => {
     setIsPlaying(true);
+    setIsLoading(false);
+    setIsBuffering(false);
     onProgressPlay();
     resetHideTimer();
   }, [onProgressPlay]);
@@ -194,45 +314,59 @@ export function VideoPlayer({
     }
   }, [captionsOn]);
 
-  // Handle close
+  // Handle close (in-app back button): pop the history entry, which triggers popstate → onClose
   const handleClose = useCallback(() => {
     const video = videoRef.current;
     if (video && !video.paused) {
       video.pause();
     }
     saveProgress();
-    onClose();
-  }, [saveProgress, onClose]);
+    history.back();
+  }, [saveProgress]);
+
+  // Compute seek ratio from a pointer/touch event.
+  // When the player is CSS-rotated 90deg, the visual X-axis maps to screen Y-axis,
+  // so we need to use clientY and the rect's top/height instead.
+  const getSeekRatio = useCallback(
+    (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+      if (!seekBarRef.current) return null;
+      const rect = seekBarRef.current.getBoundingClientRect();
+      if (isPortrait) {
+        // Rotated: visual left-to-right maps to screen top-to-bottom
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        return Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+      }
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    },
+    [isPortrait]
+  );
 
   // Seek bar interaction
   const handleSeekStart = useCallback(
     (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-      if (!seekBarRef.current || !videoRef.current) return;
+      if (!videoRef.current) return;
       setIsSeeking(true);
-      const rect = seekBarRef.current.getBoundingClientRect();
-      const clientX =
-        'touches' in e ? e.touches[0].clientX : e.clientX;
-      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const ratio = getSeekRatio(e);
+      if (ratio === null) return;
       const newTime = ratio * videoDuration;
       videoRef.current.currentTime = newTime;
       setCurrentTime(newTime);
       resetHideTimer();
     },
-    [videoDuration, resetHideTimer]
+    [videoDuration, resetHideTimer, getSeekRatio]
   );
 
   const handleSeekMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-      if (!isSeeking || !seekBarRef.current || !videoRef.current) return;
-      const rect = seekBarRef.current.getBoundingClientRect();
-      const clientX =
-        'touches' in e ? e.touches[0].clientX : e.clientX;
-      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      if (!isSeeking || !videoRef.current) return;
+      const ratio = getSeekRatio(e);
+      if (ratio === null) return;
       const newTime = ratio * videoDuration;
       videoRef.current.currentTime = newTime;
       setCurrentTime(newTime);
     },
-    [isSeeking, videoDuration]
+    [isSeeking, videoDuration, getSeekRatio]
   );
 
   const handleSeekEnd = useCallback(() => {
@@ -268,25 +402,42 @@ export function VideoPlayer({
   const progressPercent =
     videoDuration > 0 ? (currentTime / videoDuration) * 100 : 0;
 
+  // When portrait, rotate: width becomes viewport height, height becomes viewport width
+  const portraitStyle: React.CSSProperties | undefined = isPortrait && viewportSize.w > 0
+    ? {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: `${viewportSize.h}px`,
+        height: `${viewportSize.w}px`,
+        transform: `rotate(90deg) translateY(-${viewportSize.w}px)`,
+        transformOrigin: 'top left',
+      }
+    : undefined;
+
   return createPortal(
     <div
       ref={containerRef}
-      className="fixed inset-0 z-50 bg-black"
-      onClick={handleContainerTap}
+      className={cn('fixed inset-0 z-50 bg-black', isPortrait && 'overflow-hidden')}
+      style={portraitStyle}
     >
-      {/* Video element */}
+      {/* Video element — pointer-events-none so clicks fall through to controls overlay */}
       <video
         ref={videoRef}
         src={videoUrl}
-        className="h-full w-full object-contain"
+        className="pointer-events-none h-full w-full object-contain"
         playsInline
+        preload="auto"
         onLoadedMetadata={handleLoadedMetadata}
         onCanPlay={handleCanPlay}
+        onCanPlayThrough={handleCanPlayThrough}
+        onWaiting={handleWaiting}
+        onPlaying={handlePlaying}
+        onProgress={handleProgress}
         onTimeUpdate={handleTimeUpdate}
         onPlay={handlePlay}
         onPause={handlePause}
         onEnded={handleEnded}
-        onClick={(e) => e.stopPropagation()}
       >
         {captionUrl && (
           <track
@@ -298,16 +449,16 @@ export function VideoPlayer({
         )}
       </video>
 
-      {/* Controls overlay */}
+      {/* Controls overlay — always interactive so taps toggle visibility */}
       <div
         className={cn(
           'absolute inset-0 transition-opacity duration-300',
-          showControls ? 'opacity-100' : 'pointer-events-none opacity-0'
+          showControls ? 'opacity-100' : 'opacity-0'
         )}
-        onClick={(e) => e.stopPropagation()}
+        onClick={handleContainerTap}
       >
         {/* Top bar: close button */}
-        <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/60 to-transparent px-4 pb-12 pt-[env(safe-area-inset-top,0px)]">
+        <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/60 to-transparent px-4 pb-12 pt-[env(safe-area-inset-top,0px)]" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             onClick={handleClose}
@@ -318,23 +469,52 @@ export function VideoPlayer({
           </button>
         </div>
 
-        {/* Center play/pause */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <button
-            type="button"
-            onClick={togglePlayPause}
-            className="flex h-16 w-16 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm active:scale-90"
-          >
-            {isPlaying ? (
-              <Pause className="h-8 w-8" fill="currentColor" />
-            ) : (
-              <Play className="h-8 w-8" fill="currentColor" />
-            )}
-          </button>
+        {/* Center: loading / buffering / play-pause */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          {isLoading ? (
+            /* Initial loading spinner */
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/20 border-t-white" />
+              <span className="text-sm font-medium text-white/70">Loading</span>
+            </div>
+          ) : isBuffering ? (
+            /* Mid-playback buffering with progress ring */
+            <div className="flex flex-col items-center gap-2">
+              <div className="relative flex h-20 w-20 items-center justify-center">
+                <svg className="h-20 w-20 -rotate-90" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="34" fill="none" stroke="white" strokeOpacity="0.2" strokeWidth="4" />
+                  <circle
+                    cx="40" cy="40" r="34" fill="none" stroke="white" strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 34}`}
+                    strokeDashoffset={`${2 * Math.PI * 34 * (1 - bufferPercent / 100)}`}
+                    className="transition-[stroke-dashoffset] duration-300"
+                  />
+                </svg>
+                <span className="absolute text-sm font-semibold tabular-nums text-white">
+                  {bufferPercent}%
+                </span>
+              </div>
+              <span className="text-xs font-medium text-white/70">Buffering</span>
+            </div>
+          ) : (
+            /* Play / Pause button */
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); togglePlayPause(); }}
+              className="pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm active:scale-90"
+            >
+              {isPlaying ? (
+                <Pause className="h-8 w-8" fill="currentColor" />
+              ) : (
+                <Play className="h-8 w-8" fill="currentColor" />
+              )}
+            </button>
+          )}
         </div>
 
         {/* Bottom bar: seek + controls */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[env(safe-area-inset-bottom,0px)] pt-12">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-4 pb-[env(safe-area-inset-bottom,0px)] pt-12" onClick={(e) => e.stopPropagation()}>
           {/* Seek bar */}
           <div
             ref={seekBarRef}
@@ -348,10 +528,15 @@ export function VideoPlayer({
             onTouchEnd={handleSeekEnd}
           >
             {/* Track background */}
-            <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-white/30">
-              {/* Progress fill */}
+            <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-white/20">
+              {/* Buffer fill (gray) */}
               <div
-                className="h-full rounded-full bg-primary"
+                className="absolute inset-y-0 left-0 rounded-full bg-white/30"
+                style={{ width: `${bufferPercent}%` }}
+              />
+              {/* Playback progress fill */}
+              <div
+                className="absolute inset-y-0 left-0 rounded-full bg-primary"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>

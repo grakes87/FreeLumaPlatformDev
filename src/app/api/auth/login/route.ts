@@ -89,11 +89,7 @@ export async function POST(req: NextRequest) {
       }
       await user.update({ status: 'active' });
     } else if (user.status === 'deactivated') {
-      // Auto-reactivate on login
-      await user.update({
-        status: 'active',
-        deactivated_at: null,
-      });
+      // Allow login but keep deactivated — user must explicitly reactivate
     } else if (user.status === 'pending_deletion') {
       // Cancel deletion on login
       await user.update({

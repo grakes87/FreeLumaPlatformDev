@@ -56,6 +56,12 @@ export const GET = withAuth(
         where.user_id = { [Op.notIn]: blockedArray };
       }
 
+      // Hidden comments only visible to the original commenter
+      where[Op.or as unknown as string] = [
+        { hidden: false },
+        { hidden: true, user_id: context.user.id },
+      ];
+
       if (cursor) {
         where.id = { [Op.gt]: parseInt(cursor, 10) };
       }
@@ -73,7 +79,7 @@ export const GET = withAuth(
           include: [
             [
               literal(
-                `(SELECT COUNT(*) FROM post_comments AS r WHERE r.parent_id = \`PostComment\`.\`id\`)`
+                `(SELECT COUNT(*) FROM post_comments AS r WHERE r.parent_id = \`PostComment\`.\`id\` AND (r.hidden = 0 OR r.user_id = ${context.user.id}))`
               ),
               'reply_count',
             ],
@@ -97,6 +103,11 @@ export const GET = withAuth(
         if (blockedArray.length > 0) {
           replyWhere.user_id = { [Op.notIn]: blockedArray };
         }
+        // Hidden replies only visible to the original commenter
+        replyWhere[Op.or as unknown as string] = [
+          { hidden: false },
+          { hidden: true, user_id: context.user.id },
+        ];
 
         const allReplies = await PostComment.findAll({
           where: replyWhere,

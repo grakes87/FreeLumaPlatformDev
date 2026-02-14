@@ -20,6 +20,7 @@ export interface UserData {
   avatar_color: string;
   bio: string | null;
   mode: 'bible' | 'positivity';
+  status: 'active' | 'deactivated' | 'pending_deletion' | 'banned';
   email_verified: boolean;
   onboarding_complete: boolean;
   is_admin: boolean;
@@ -80,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Handle banned user: 403 with "Account suspended"
+      // Handle banned / inactive user: 403
       if (res.status === 403) {
         try {
           const data = await res.json();
@@ -89,6 +90,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (data.reason) params.set('reason', data.reason);
             if (data.expires_at) params.set('expires', data.expires_at);
             window.location.href = `/banned?${params.toString()}`;
+            return;
+          }
+          if (data.error === 'Account inactive') {
+            // pending_deletion — clear session
+            setUser(null);
+            setAuthToken(null);
+            sessionStorage.removeItem(TOKEN_KEY);
+            setLoading(false);
             return;
           }
         } catch {

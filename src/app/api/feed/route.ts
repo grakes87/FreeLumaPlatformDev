@@ -57,6 +57,12 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
         { visibility: 'followers', user_id: { [Op.in]: [...followedIds, userId] } },
       ],
     },
+    // Hidden posts visible to original poster + repost participants
+    literal(
+      `(\`Post\`.\`hidden\` = 0 OR \`Post\`.\`user_id\` = ${userId}` +
+      ` OR \`Post\`.\`id\` IN (SELECT r.post_id FROM reposts r WHERE r.user_id = ${userId})` +
+      ` OR \`Post\`.\`id\` IN (SELECT r.quote_post_id FROM reposts r INNER JOIN posts p ON r.post_id = p.id WHERE p.user_id = ${userId}))`
+    ),
   ];
 
   if (modeIsolation === 'true') {
@@ -109,7 +115,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
           'reaction_count',
         ],
         [
-          literal(`(SELECT COUNT(*) FROM post_comments WHERE post_comments.post_id = \`Post\`.id)`),
+          literal(`(SELECT COUNT(*) FROM post_comments WHERE post_comments.post_id = \`Post\`.id AND (post_comments.hidden = 0 OR post_comments.user_id = ${userId}))`),
           'comment_count',
         ],
         [

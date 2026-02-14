@@ -1,10 +1,11 @@
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegStatic from 'ffmpeg-static';
 import sharp from 'sharp';
+import { existsSync } from 'fs';
 import { Writable } from 'stream';
 
-// Set the ffmpeg binary path from ffmpeg-static
-if (ffmpegStatic) {
+// Set ffmpeg binary: prefer ffmpeg-static if it exists, else fall back to system PATH
+if (ffmpegStatic && existsSync(ffmpegStatic)) {
   ffmpeg.setFfmpegPath(ffmpegStatic as string);
 }
 

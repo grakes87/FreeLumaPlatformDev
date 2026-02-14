@@ -39,6 +39,13 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
     }
   }, [loading, isAuthenticated, user, router]);
 
+  // Deactivated users must explicitly reactivate before using the app
+  useEffect(() => {
+    if (!loading && isAuthenticated && user && user.status === 'deactivated' && pathname !== '/reactivate') {
+      router.replace('/reactivate');
+    }
+  }, [loading, isAuthenticated, user, pathname, router]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -58,6 +65,11 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
 
   if (user && !user.onboarding_complete) {
     return null;
+  }
+
+  // Deactivated users see reactivation page without app shell
+  if (user && user.status === 'deactivated') {
+    return <>{children}</>;
   }
 
   return (

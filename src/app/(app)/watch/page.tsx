@@ -37,20 +37,21 @@ export default function WatchPage() {
 
       // Parse videos
       if (videosRes.ok) {
-        const videosJson = await videosRes.json();
-        if (videosJson.data) {
-          setCategories(videosJson.data.categories || []);
-          setContinueWatching(videosJson.data.continue_watching || []);
-          setTop10(videosJson.data.top_10 || []);
-          setUncategorized(videosJson.data.uncategorized || []);
-        }
+        const json = await videosRes.json();
+        // successResponse returns data directly (not wrapped in .data)
+        const d = json.data ?? json;
+        setCategories(d.categories || []);
+        setContinueWatching(d.continue_watching || []);
+        setTop10(d.top_10 || []);
+        setUncategorized(d.uncategorized || []);
       }
 
       // Parse hero (204 = no hero)
       if (heroRes.ok && heroRes.status !== 204) {
-        const heroJson = await heroRes.json();
-        if (heroJson.data?.video) {
-          setHeroVideo(heroJson.data.video);
+        const json = await heroRes.json();
+        const d = json.data ?? json;
+        if (d.video) {
+          setHeroVideo(d.video);
         }
       }
     } catch {

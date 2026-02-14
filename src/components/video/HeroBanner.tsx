@@ -19,10 +19,24 @@ interface HeroBannerProps {
 export function HeroBanner({ video, className }: HeroBannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Auto-play first ~15 seconds, then loop back
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
+    const PREVIEW_END = 15;
+
+    const handleTimeUpdate = () => {
+      if (el.currentTime >= PREVIEW_END) {
+        el.currentTime = 0;
+      }
+    };
+
+    el.addEventListener('timeupdate', handleTimeUpdate);
     el.play().catch(() => {});
+
+    return () => {
+      el.removeEventListener('timeupdate', handleTimeUpdate);
+    };
   }, [video?.video_url]);
 
   // Placeholder when no hero
@@ -60,7 +74,6 @@ export function HeroBanner({ video, className }: HeroBannerProps) {
           src={video.video_url}
           autoPlay
           muted
-          loop
           playsInline
           className="absolute inset-0 h-full w-full object-cover"
         />

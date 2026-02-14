@@ -84,12 +84,13 @@ export function withAuth(handler: AuthHandler) {
       }
       await dbUser.update({ status: 'active' });
       // Continue — user is now active
-    } else if (dbUser.status === 'deactivated' || dbUser.status === 'pending_deletion') {
+    } else if (dbUser.status === 'pending_deletion') {
       return NextResponse.json(
         { error: 'Account inactive', status: dbUser.status },
         { status: 403 }
       );
     }
+    // Deactivated users pass through — gated at UI level (redirected to /reactivate)
 
     return handler(req, { ...context, user, token });
   };

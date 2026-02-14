@@ -210,6 +210,14 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
         whereClause.visibility = isFollowing
           ? { [Op.in]: ['public', 'followers'] }
           : 'public';
+        // Hidden posts only visible to original poster + repost participants
+        whereClause[Op.and] = [
+          literal(
+            `(\`Post\`.\`hidden\` = 0 OR \`Post\`.\`user_id\` = ${currentUserId}` +
+            ` OR \`Post\`.\`id\` IN (SELECT r.post_id FROM reposts r WHERE r.user_id = ${currentUserId})` +
+            ` OR \`Post\`.\`id\` IN (SELECT r.quote_post_id FROM reposts r INNER JOIN posts p ON r.post_id = p.id WHERE p.user_id = ${currentUserId}))`
+          ),
+        ];
       }
 
       if (cursorParam) {
@@ -345,7 +353,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
           {
             model: Post,
             as: 'quotePost',
-            attributes: ['id', 'user_id', 'body', 'post_type', 'visibility', 'mode', 'created_at'],
+            attributes: ['id', 'user_id', 'body', 'post_type', 'visibility', 'mode', 'hidden', 'created_at'],
             include: [
               {
                 model: User,
@@ -362,7 +370,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
           {
             model: Post,
             as: 'originalPost',
-            attributes: ['id', 'user_id', 'body', 'post_type', 'visibility', 'mode', 'created_at'],
+            attributes: ['id', 'user_id', 'body', 'post_type', 'visibility', 'mode', 'hidden', 'created_at'],
             include: [
               {
                 model: User,
@@ -381,8 +389,23 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
         limit: limit + 1,
       });
 
-      const hasMore = repostRows.length > limit;
-      const items = hasMore ? repostRows.slice(0, limit) : repostRows;
+      // Filter out hidden reposts for non-participants
+      const filteredReposts = isSelf ? repostRows : repostRows.filter((r) => {
+        const json = r.toJSON() as Record<string, unknown>;
+        const qp = json.quotePost as { hidden?: boolean; user_id?: number } | null;
+        const op = json.originalPost as { hidden?: boolean; user_id?: number } | null;
+        // If the quote post is hidden, only show to original poster or reposter
+        if (qp?.hidden && qp.user_id !== currentUserId && r.user_id !== currentUserId) {
+          // Also allow if the original post author is the current user
+          if (op?.user_id !== currentUserId) return false;
+        }
+        // If the original post is hidden, only show to its author or the reposter
+        if (op?.hidden && op.user_id !== currentUserId && r.user_id !== currentUserId) return false;
+        return true;
+      });
+
+      const hasMore = filteredReposts.length > limit;
+      const items = hasMore ? filteredReposts.slice(0, limit) : filteredReposts;
 
       if (hasMore && items.length > 0) {
         const last = items[items.length - 1];

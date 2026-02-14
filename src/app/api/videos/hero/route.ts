@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, type AuthContext } from '@/lib/auth/middleware';
+import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middleware';
 import { successResponse, serverError } from '@/lib/utils/api';
+import { Op, literal } from 'sequelize';
 
 /**
  * GET /api/videos/hero — Get the featured hero video for the banner
  */
-export const GET = withAuth(
-  async (_req: NextRequest, _context: AuthContext) => {
+export const GET = withOptionalAuth(
+  async (_req: NextRequest, _context: OptionalAuthContext) => {
     try {
       const { Video, VideoCategory } = await import('@/lib/db/models');
 
@@ -14,6 +15,10 @@ export const GET = withAuth(
         where: {
           is_hero: true,
           published: true,
+          [Op.or]: [
+            { published_at: null },
+            { published_at: { [Op.lte]: literal('NOW()') } },
+          ],
         },
         include: [
           {
