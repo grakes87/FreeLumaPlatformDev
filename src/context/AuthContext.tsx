@@ -80,6 +80,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Handle banned user: 403 with "Account suspended"
+      if (res.status === 403) {
+        try {
+          const data = await res.json();
+          if (data.error === 'Account suspended') {
+            const params = new URLSearchParams();
+            if (data.reason) params.set('reason', data.reason);
+            if (data.expires_at) params.set('expires', data.expires_at);
+            window.location.href = `/banned?${params.toString()}`;
+            return;
+          }
+        } catch {
+          // JSON parse failed, fall through to normal clear
+        }
+      }
+
       // Both failed — only clear if no login() happened while we were fetching
       if (fetchStarted > loginTimestampRef.current) {
         setUser(null);

@@ -154,6 +154,12 @@ export function PostCard({
       }
     : undefined;
 
+  // Hide posts from banned authors
+  const authorStatus = (post.author as FeedPost['author'] & { status?: string })?.status;
+  if (authorStatus === 'banned') {
+    return null;
+  }
+
   return (
     <div ref={impressionRef} className="h-full">
       {feedStyle === 'tiktok' ? (

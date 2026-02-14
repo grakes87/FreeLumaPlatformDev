@@ -19,6 +19,7 @@ interface FollowUser {
   avatar_color: string;
   bio?: string | null;
   is_verified?: boolean;
+  status?: 'active' | 'deactivated' | 'pending_deletion' | 'banned';
 }
 
 interface FollowListItem {
@@ -191,11 +192,15 @@ export function FollowList({ userId, type, isOpen, onClose }: FollowListProps) {
             if (!u) return null;
 
             const isSelf = currentUser?.id === u.id;
+            const isInactive = u.status === 'deactivated' || u.status === 'banned' || u.status === 'pending_deletion';
 
             return (
               <div
                 key={item.id}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50',
+                  isInactive && 'opacity-60'
+                )}
               >
                 <Link
                   href={`/profile/${u.username}`}
@@ -205,12 +210,15 @@ export function FollowList({ userId, type, isOpen, onClose }: FollowListProps) {
                     <img
                       src={u.avatar_url}
                       alt={u.display_name}
-                      className="h-10 w-10 rounded-full object-cover"
+                      className={cn(
+                        'h-10 w-10 rounded-full object-cover',
+                        isInactive && 'grayscale'
+                      )}
                     />
                   ) : (
                     <InitialsAvatar
                       name={u.display_name}
-                      color={u.avatar_color}
+                      color={isInactive ? '#9ca3af' : u.avatar_color}
                       size={40}
                     />
                   )}
@@ -222,14 +230,26 @@ export function FollowList({ userId, type, isOpen, onClose }: FollowListProps) {
                 >
                   <p className="flex items-center gap-1 text-sm font-semibold text-text dark:text-text-dark">
                     <span className="truncate">{u.display_name}</span>
-                    {u.is_verified && <VerifiedBadge />}
+                    {u.is_verified && !isInactive && <VerifiedBadge />}
                   </p>
-                  <p className="truncate text-xs text-text-muted dark:text-text-muted-dark">
-                    @{u.username}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-xs text-text-muted dark:text-text-muted-dark">
+                      @{u.username}
+                    </p>
+                    {u.status === 'deactivated' && (
+                      <span className="shrink-0 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                        Deactivated
+                      </span>
+                    )}
+                    {u.status === 'banned' && (
+                      <span className="shrink-0 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                        Suspended
+                      </span>
+                    )}
+                  </div>
                 </Link>
 
-                {!isSelf && (
+                {!isSelf && !isInactive && (
                   <FollowButton
                     userId={u.id}
                     initialStatus={item.follow_status || 'none'}

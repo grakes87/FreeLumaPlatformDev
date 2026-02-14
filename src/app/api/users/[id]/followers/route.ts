@@ -76,7 +76,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
         {
           model: User,
           as: 'follower',
-          attributes: ['id', 'display_name', 'username', 'avatar_url', 'avatar_color', 'bio', 'is_verified'],
+          attributes: ['id', 'display_name', 'username', 'avatar_url', 'avatar_color', 'bio', 'is_verified', 'status'],
         },
       ],
       order: [['id', 'DESC']],

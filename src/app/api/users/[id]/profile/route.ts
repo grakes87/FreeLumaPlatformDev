@@ -36,7 +36,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
       attributes: [
         'id', 'username', 'display_name', 'bio', 'avatar_url', 'avatar_color',
         'is_verified', 'profile_privacy', 'mode', 'denomination', 'church', 'location',
-        'website', 'date_of_birth', 'created_at',
+        'website', 'date_of_birth', 'created_at', 'status',
       ],
     });
 
@@ -146,6 +146,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
       location: targetUser.location,
       website: targetUser.website,
       created_at: targetUser.created_at,
+      status: targetUser.status,
     };
 
     // Only include date_of_birth for own profile

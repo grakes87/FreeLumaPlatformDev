@@ -96,7 +96,9 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
       {
         model: User,
         as: 'user',
-        attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified'],
+        attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color', 'is_verified', 'status'],
+        where: { status: 'active' },
+        required: true,
       },
       {
         model: PostMedia,

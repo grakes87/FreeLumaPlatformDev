@@ -10,6 +10,7 @@ import { ProfileGridItem } from '@/components/profile/ProfileGridItem';
 import { ProfilePostViewer } from '@/components/profile/ProfilePostViewer';
 import { FollowList } from '@/components/profile/FollowList';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { DeactivatedProfile } from '@/components/common/DeactivatedProfile';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 
 interface ProfileData {
@@ -21,6 +22,7 @@ interface ProfileData {
     avatar_url: string | null;
     avatar_color: string;
     profile_privacy: 'public' | 'private';
+    status?: 'active' | 'deactivated' | 'pending_deletion' | 'banned';
     mode?: string;
     denomination?: string | null;
     church?: string | null;
@@ -74,6 +76,7 @@ export default function UserProfilePage() {
 
   const isOwnProfile = !!(currentUser && profile && profile.relationship === 'self');
   const isPrivate = profile?.posts === null && profile?.user.profile_privacy === 'private';
+  const isDeactivated = !isOwnProfile && profile?.user.status && profile.user.status !== 'active';
 
   const handleBlockConfirm = useCallback(async () => {
     if (!profile) return;
@@ -259,6 +262,33 @@ export default function UserProfilePage() {
       );
     }
     return errContent;
+  }
+
+  // Show deactivated/banned placeholder for non-own profiles
+  if (isDeactivated) {
+    const deactivatedContent = (
+      <DeactivatedProfile username={profile.user.username} />
+    );
+
+    if (fromChat) {
+      return (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900 overflow-y-auto">
+          <div className="sticky top-0 z-10 flex h-12 items-center gap-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3">
+            <button type="button" onClick={() => router.back()} className="rounded-full p-1.5 text-gray-600 dark:text-gray-300 transition-colors hover:text-primary" aria-label="Back to chat">
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Profile</span>
+          </div>
+          {deactivatedContent}
+        </div>
+      );
+    }
+
+    return (
+      <div className="mx-auto max-w-lg">
+        {deactivatedContent}
+      </div>
+    );
   }
 
   const profileContent = (
