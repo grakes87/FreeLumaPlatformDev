@@ -8,7 +8,7 @@ import {
   Heart,
   MessageSquare,
   BookOpen,
-  Film,
+  Play,
   Plus,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,10 +25,10 @@ interface NavTab {
 
 /**
  * Tab order per CONTEXT:
- * Daily | Prayer | Feed | (+) | Studies | Animations | Profile
+ * Daily | Prayer | Feed | (+) | Studies | Watch | Profile
  *
  * Prayer wall tab: bibleOnly (hidden for positivity mode)
- * Animations tab: bibleOnly (hidden for positivity mode)
+ * Watch tab: visible for all modes (video library is mode-agnostic)
  */
 const LEFT_TABS: NavTab[] = [
   { href: '/', icon: Sparkles, label: 'Daily Post' },
@@ -38,7 +38,7 @@ const LEFT_TABS: NavTab[] = [
 
 const RIGHT_TABS: NavTab[] = [
   { href: '/bible-studies', icon: BookOpen, label: 'Bible Studies' },
-  { href: '/animations', icon: Film, label: 'Luma Animations', bibleOnly: true },
+  { href: '/watch', icon: Play, label: 'Watch' },
   { href: '/profile', icon: Sparkles, label: 'Profile' },  // icon unused for profile tab
 ];
 
