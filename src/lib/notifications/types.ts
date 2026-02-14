@@ -8,6 +8,10 @@ export enum NotificationType {
   MENTION = 'mention',
   GROUP_INVITE = 'group_invite',
   DAILY_REMINDER = 'daily_reminder',
+  NEW_VIDEO = 'new_video',
+  CONTENT_REMOVED = 'content_removed',
+  WARNING = 'warning',
+  BAN = 'ban',
 }
 
 export enum NotificationEntityType {
@@ -18,6 +22,7 @@ export enum NotificationEntityType {
   MESSAGE = 'message',
   CONVERSATION = 'conversation',
   DAILY_CONTENT = 'daily_content',
+  VIDEO = 'video',
 }
 
 export interface NotificationActor {

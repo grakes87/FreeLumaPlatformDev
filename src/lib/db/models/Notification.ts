@@ -5,8 +5,8 @@ export interface NotificationAttributes {
   id: number;
   recipient_id: number;
   actor_id: number;
-  type: 'follow' | 'follow_request' | 'reaction' | 'comment' | 'prayer' | 'message' | 'mention' | 'group_invite' | 'daily_reminder';
-  entity_type: 'post' | 'comment' | 'follow' | 'prayer_request' | 'message' | 'conversation' | 'daily_content';
+  type: 'follow' | 'follow_request' | 'reaction' | 'comment' | 'prayer' | 'message' | 'mention' | 'group_invite' | 'daily_reminder' | 'new_video' | 'content_removed' | 'warning' | 'ban';
+  entity_type: 'post' | 'comment' | 'follow' | 'prayer_request' | 'message' | 'conversation' | 'daily_content' | 'video';
   entity_id: number;
   preview_text: string | null;
   group_key: string | null;
@@ -28,8 +28,8 @@ class Notification extends Model<NotificationAttributes, NotificationCreationAtt
   declare id: number;
   declare recipient_id: number;
   declare actor_id: number;
-  declare type: 'follow' | 'follow_request' | 'reaction' | 'comment' | 'prayer' | 'message' | 'mention' | 'group_invite' | 'daily_reminder';
-  declare entity_type: 'post' | 'comment' | 'follow' | 'prayer_request' | 'message' | 'conversation' | 'daily_content';
+  declare type: 'follow' | 'follow_request' | 'reaction' | 'comment' | 'prayer' | 'message' | 'mention' | 'group_invite' | 'daily_reminder' | 'new_video' | 'content_removed' | 'warning' | 'ban';
+  declare entity_type: 'post' | 'comment' | 'follow' | 'prayer_request' | 'message' | 'conversation' | 'daily_content' | 'video';
   declare entity_id: number;
   declare preview_text: string | null;
   declare group_key: string | null;
@@ -62,11 +62,11 @@ Notification.init(
       },
     },
     type: {
-      type: DataTypes.ENUM('follow', 'follow_request', 'reaction', 'comment', 'prayer', 'message', 'mention', 'group_invite', 'daily_reminder'),
+      type: DataTypes.ENUM('follow', 'follow_request', 'reaction', 'comment', 'prayer', 'message', 'mention', 'group_invite', 'daily_reminder', 'new_video', 'content_removed', 'warning', 'ban'),
       allowNull: false,
     },
     entity_type: {
-      type: DataTypes.ENUM('post', 'comment', 'follow', 'prayer_request', 'message', 'conversation', 'daily_content'),
+      type: DataTypes.ENUM('post', 'comment', 'follow', 'prayer_request', 'message', 'conversation', 'daily_content', 'video'),
       allowNull: false,
     },
     entity_id: {

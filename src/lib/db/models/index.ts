@@ -39,6 +39,9 @@ import { VideoCategory } from './VideoCategory';
 import { Video } from './Video';
 import { VideoProgress } from './VideoProgress';
 import { VideoReaction } from './VideoReaction';
+import { Ban } from './Ban';
+import { ModerationLog } from './ModerationLog';
+import { ActivityStreak } from './ActivityStreak';
 
 // ---- Associations ----
 
@@ -710,6 +713,60 @@ VideoReaction.belongsTo(User, {
   as: 'user',
 });
 
+// Message -> Video (shared video)
+Message.belongsTo(Video, {
+  foreignKey: 'shared_video_id',
+  as: 'sharedVideo',
+});
+Video.hasMany(Message, {
+  foreignKey: 'shared_video_id',
+  as: 'sharedInMessages',
+});
+
+// ---- Phase 4: Moderation & Account Lifecycle Associations ----
+
+// User -> Ban (one-to-many, as banned user)
+User.hasMany(Ban, {
+  foreignKey: 'user_id',
+  as: 'bans',
+});
+Ban.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// User -> Ban (as admin who banned)
+Ban.belongsTo(User, {
+  foreignKey: 'banned_by',
+  as: 'bannedBy',
+});
+
+// User -> ModerationLog (as admin performing action)
+User.hasMany(ModerationLog, {
+  foreignKey: 'admin_id',
+  as: 'moderationActions',
+});
+ModerationLog.belongsTo(User, {
+  foreignKey: 'admin_id',
+  as: 'admin',
+});
+
+// ModerationLog -> User (target user)
+ModerationLog.belongsTo(User, {
+  foreignKey: 'target_user_id',
+  as: 'targetUser',
+});
+
+// User -> ActivityStreak (one-to-many)
+User.hasMany(ActivityStreak, {
+  foreignKey: 'user_id',
+  as: 'activityStreaks',
+});
+ActivityStreak.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
 export {
   sequelize,
   User,
@@ -752,4 +809,7 @@ export {
   Video,
   VideoProgress,
   VideoReaction,
+  Ban,
+  ModerationLog,
+  ActivityStreak,
 };
