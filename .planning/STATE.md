@@ -278,6 +278,11 @@ Recent decisions affecting current work:
 - **Co-host cannot remove co-host:** Only host can remove co-hosts; co-hosts can remove regular attendees
 - **Two-tier attendee authorization:** Host-only for co-host promotion/demotion; host or co-host for speaker approval and attendee removal
 - **Self-modification guard:** Host/co-host cannot modify own attendee properties via management endpoint
+- **Fire-and-forget recording:** Cloud recording start/stop is async fire-and-forget; failures logged but don't block workshop lifecycle
+- **Webhook 200 on all paths:** Recording callback always returns 200 even on errors to prevent Agora retry loops
+- **Token role mapping:** Host/co-host/speaker get PUBLISHER token; regular attendees get SUBSCRIBER for receive-only
+- **Start transaction lock:** SELECT FOR UPDATE inside transaction prevents race between host start and no-show cron cancel
+- **Recording-to-video pipeline:** Webhook creates Video entry automatically with published=true and notifies attendees
 
 ### Pending Todos
 
@@ -342,6 +347,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-15T00:30:00Z
-Stopped at: Completed 05-07-PLAN.md (Workshop Attendee Management API)
+Last session: 2026-02-15T00:31:00Z
+Stopped at: Completed 05-06-PLAN.md (Workshop Lifecycle Endpoints)
 Resume file: None
