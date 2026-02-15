@@ -248,7 +248,7 @@ function VideoRoom({
 
         // Fetch separate token for screen share UID
         const tokenRes = await fetch(
-          `/api/workshops/${channelName.replace('workshop_', '')}/token?uid=${screenUid}`,
+          `/api/workshops/${channelName.replace('workshop-', '')}/token?uid=${screenUid}`,
           { credentials: 'include' }
         );
         let screenToken = token; // Fallback to same token
