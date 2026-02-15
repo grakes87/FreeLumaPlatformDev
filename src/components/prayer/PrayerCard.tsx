@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from 'react';
 import {
   MoreHorizontal,
   MessageCircle,
+  Heart,
   Repeat2,
   Flag,
   Ban,
@@ -137,7 +138,7 @@ export function PrayerCard({
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          mark_answered: true,
+          action: 'mark_answered',
           testimony: testimonyInput.trim() || undefined,
         }),
       });
@@ -352,7 +353,8 @@ export function PrayerCard({
                   src={m.url}
                   className="h-48 w-auto max-w-[280px] rounded-xl object-cover"
                   controls
-                  preload="metadata"
+                  playsInline
+                  preload="auto"
                 />
               )}
             </div>
@@ -379,7 +381,7 @@ export function PrayerCard({
               className="rounded-full p-2 text-text-muted/60 transition-colors hover:bg-black/5 hover:text-text-muted dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70"
               aria-label="React"
             >
-              <span className="text-base">&#x1F64F;</span>
+              <Heart className="h-5 w-5" />
             </button>
           )}
 
