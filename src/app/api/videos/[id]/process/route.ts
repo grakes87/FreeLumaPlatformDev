@@ -80,6 +80,7 @@ export const POST = withAdmin(
                 Key: thumbnailKey,
                 Body: thumbnailBuffer,
                 ContentType: 'image/webp',
+                CacheControl: 'public, max-age=31536000, immutable',
               })
             );
             updates.thumbnail_url = getPublicUrl(thumbnailKey);
@@ -122,6 +123,7 @@ export const POST = withAdmin(
                   Key: captionKey,
                   Body: captionBuffer,
                   ContentType: 'text/vtt',
+                  CacheControl: 'public, max-age=31536000, immutable',
                 })
               );
               updates.caption_url = getPublicUrl(captionKey);

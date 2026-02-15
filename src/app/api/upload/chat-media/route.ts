@@ -143,6 +143,7 @@ export const POST = withAuth(
           Key: key,
           Body: buffer,
           ContentType: file.type,
+          CacheControl: 'public, max-age=31536000, immutable',
         })
       );
 

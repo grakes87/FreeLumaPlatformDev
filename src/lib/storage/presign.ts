@@ -23,6 +23,7 @@ export async function getUploadUrl(
     Bucket: B2_BUCKET,
     Key: key,
     ContentType: contentType,
+    CacheControl: 'public, max-age=31536000, immutable',
   });
 
   return getSignedUrl(b2Client, command, { expiresIn });
