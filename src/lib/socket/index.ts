@@ -4,6 +4,7 @@ import { authMiddleware } from '@/lib/socket/auth';
 import { presenceManager } from '@/lib/socket/presence';
 import { registerChatHandlers } from '@/lib/socket/chat';
 import { registerNotificationHandlers } from '@/lib/socket/notifications';
+import { registerWorkshopHandlers } from '@/lib/socket/workshop';
 
 // Extend globalThis for the Socket.IO instance
 declare global {
@@ -16,7 +17,7 @@ declare global {
 let namespacesReady = false;
 
 /**
- * Set up /chat and /notifications namespaces with auth middleware.
+ * Set up /chat, /notifications, and /workshop namespaces with auth middleware.
  * Called lazily on first getIO() access. Idempotent (runs once).
  */
 function setupNamespaces(io: SocketIOServer): void {
@@ -55,6 +56,20 @@ function setupNamespaces(io: SocketIOServer): void {
     });
   });
 
+  // --- /workshop namespace ---
+  const workshopNs: Namespace = io.of('/workshop');
+  workshopNs.use(authMiddleware);
+  workshopNs.on('connection', (socket) => {
+    const userId = socket.data.userId as number;
+    console.log('[Socket/workshop] connection — userId:', userId, 'socketId:', socket.id);
+
+    // Join user-specific room for targeted messages
+    socket.join(`user:${userId}`);
+
+    // Register all workshop event handlers
+    registerWorkshopHandlers(workshopNs, socket);
+  });
+
   namespacesReady = true;
   if (process.env.NODE_ENV !== 'production') {
     globalThis.__ioNamespacesReady = true;
@@ -71,6 +86,12 @@ function setupNamespaces(io: SocketIOServer): void {
     initAccountCleanup();
   }).catch((err) => {
     console.error('[Socket] Failed to initialize account cleanup:', err);
+  });
+
+  import('@/lib/workshop/reminders').then(({ initWorkshopCrons }) => {
+    initWorkshopCrons();
+  }).catch((err) => {
+    console.error('[Socket] Failed to initialize workshop crons:', err);
   });
 }
 
