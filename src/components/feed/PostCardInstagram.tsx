@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef, Fragment } from 'react';
+import { useState, useRef, Fragment } from 'react';
 import Link from 'next/link';
 import { Heart, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import { REACTION_EMOJI_MAP, REACTION_TYPES } from '@/lib/utils/constants';
+import { REACTION_EMOJI_MAP } from '@/lib/utils/constants';
 import type { ReactionType } from '@/lib/utils/constants';
 import type { FeedPost } from '@/hooks/useFeed';
 import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
 import { PostReactionBar } from '@/components/social/PostReactionBar';
+import { QuickReactionPicker } from '@/components/daily/QuickReactionPicker';
 import { BookmarkButton } from '@/components/social/BookmarkButton';
 import { RepostButton } from '@/components/social/RepostButton';
 import { PostCommentSheet } from '@/components/social/PostCommentSheet';
@@ -123,21 +124,9 @@ export function PostCardInstagram({
   onDelete,
 }: PostCardInstagramProps) {
   const [expanded, setExpanded] = useState(false);
-  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [pickerAnchor, setPickerAnchor] = useState<DOMRect | null>(null);
   const [showComments, setShowComments] = useState(false);
   const actionBarRef = useRef<HTMLDivElement>(null);
-
-  // Close inline picker on outside click
-  useEffect(() => {
-    if (!showReactionPicker) return;
-    const handler = (e: MouseEvent) => {
-      if (actionBarRef.current && !actionBarRef.current.contains(e.target as Node)) {
-        setShowReactionPicker(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showReactionPicker]);
   const displayCommentCount = post.comment_count;
 
   const author = post.author;
@@ -302,25 +291,15 @@ export function PostCardInstagram({
       {/* Action bar — matches PrayerCard separator */}
       <div ref={actionBarRef} className="relative mt-3 flex items-center justify-between border-t border-border/50 pt-3 dark:border-white/10">
         <div className="flex items-center gap-2">
-          {/* Reaction button */}
+          {/* Reaction button — always opens picker */}
           <button
             type="button"
-            onClick={() => {
-              if (userReaction) {
-                onToggleReaction(userReaction);
-              } else {
-                setShowReactionPicker((v) => !v);
-              }
-            }}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setShowReactionPicker((v) => !v);
-            }}
+            onClick={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
             className={cn(
               'rounded-full p-2 transition-colors',
               'hover:bg-black/5 dark:hover:bg-white/10',
               userReaction
-                ? 'text-primary'
+                ? 'text-primary bg-primary/10 dark:bg-primary/20'
                 : 'text-text-muted/60 dark:text-white/40'
             )}
             aria-label="React"
@@ -335,12 +314,14 @@ export function PostCardInstagram({
           </button>
 
           {/* Reaction bar (counts) */}
-          <PostReactionBar
-            counts={reactionCounts}
-            total={reactionTotal}
-            userReaction={userReaction}
-            onOpenPicker={() => setShowReactionPicker((v) => !v)}
-          />
+          {reactionTotal > 0 && (
+            <PostReactionBar
+              counts={reactionCounts}
+              total={reactionTotal}
+              userReaction={userReaction}
+              onOpenPicker={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
+            />
+          )}
 
           {/* Comment button */}
           <button
@@ -373,29 +354,19 @@ export function PostCardInstagram({
           postId={post.id}
           initialBookmarked={isBookmarked}
         />
-
-        {/* Inline reaction picker — iMessage style pill */}
-        {showReactionPicker && (
-          <div className="absolute -top-12 left-0 z-10 flex items-center gap-1 rounded-full border border-white/20 bg-gray-800/90 px-3 py-1.5 shadow-lg backdrop-blur-xl">
-            {REACTION_TYPES.map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => {
-                  onToggleReaction(type);
-                  setShowReactionPicker(false);
-                }}
-                className={cn(
-                  'rounded-full p-1 text-2xl transition-transform hover:scale-125 active:scale-90',
-                  userReaction === type && 'bg-white/20'
-                )}
-              >
-                {REACTION_EMOJI_MAP[type]}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Reaction picker — floating bar */}
+      <QuickReactionPicker
+        isOpen={pickerAnchor !== null}
+        onClose={() => setPickerAnchor(null)}
+        onSelect={(type) => {
+          onToggleReaction(type);
+          setPickerAnchor(null);
+        }}
+        anchorRect={pickerAnchor}
+        selectedReaction={userReaction}
+      />
 
       {/* Comment sheet */}
       <PostCommentSheet

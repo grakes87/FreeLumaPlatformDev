@@ -370,20 +370,10 @@ export function PostCardTikTok({
           </Link>
         )}
 
-        {/* Reaction button */}
+        {/* Reaction button — always opens picker */}
         <button
           type="button"
-          onClick={(e) => {
-            if (userReaction) {
-              onToggleReaction(userReaction);
-            } else {
-              setPickerAnchor(e.currentTarget.getBoundingClientRect());
-            }
-          }}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            setPickerAnchor(e.currentTarget.getBoundingClientRect());
-          }}
+          onClick={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
           className="flex flex-col items-center gap-0.5 active:scale-90"
         >
           {userReaction ? (

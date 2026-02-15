@@ -97,39 +97,12 @@ export function DailyPostSlide({
     [toggleReaction]
   );
 
-  // Heart button pointer handlers — tap to toggle, long-press for quick picker
-  const heartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const heartLongPressedRef = useRef(false);
-
-  const handleHeartPointerDown = useCallback(() => {
-    heartLongPressedRef.current = false;
-    heartTimerRef.current = setTimeout(() => {
-      heartLongPressedRef.current = true;
-      if (reactionBarRef.current) {
-        setAnchorRect(reactionBarRef.current.getBoundingClientRect());
-      }
-      setShowQuickPicker(true);
-    }, 500);
-  }, []);
-
-  const handleHeartPointerUp = useCallback(() => {
-    if (heartTimerRef.current) clearTimeout(heartTimerRef.current);
-    if (heartLongPressedRef.current) return;
-
-    if (userReaction) {
-      // Already reacted — tap removes it
-      toggleReaction(userReaction);
-    } else {
-      // No reaction — show floating emoji bubble bar (like Meta)
-      if (reactionBarRef.current) {
-        setAnchorRect(reactionBarRef.current.getBoundingClientRect());
-      }
-      setShowQuickPicker(true);
+  // Heart button — always opens quick picker
+  const handleHeartClick = useCallback(() => {
+    if (reactionBarRef.current) {
+      setAnchorRect(reactionBarRef.current.getBoundingClientRect());
     }
-  }, [userReaction, toggleReaction]);
-
-  const handleHeartPointerCancel = useCallback(() => {
-    if (heartTimerRef.current) clearTimeout(heartTimerRef.current);
+    setShowQuickPicker(true);
   }, []);
 
   const handleCommentCountChange = useCallback((delta: number) => {
@@ -223,9 +196,7 @@ export function DailyPostSlide({
           <div className="flex flex-col items-center gap-1">
             <button
               type="button"
-              onPointerDown={handleHeartPointerDown}
-              onPointerUp={handleHeartPointerUp}
-              onPointerCancel={handleHeartPointerCancel}
+              onClick={handleHeartClick}
               className="flex items-center justify-center transition-all active:scale-90"
             >
               {userReaction ? (
