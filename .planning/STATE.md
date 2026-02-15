@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 5 of 6 (Workshops)
-Plan: 10 of 14 complete
+Plan: 12 of 14 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 05-10-PLAN.md (Workshop Detail Page)
+Last activity: 2026-02-15 — Completed 05-12-PLAN.md (Workshop Room Sidebar Components)
 
-Progress: [███████████████████████████████████████████████████████████████░░░] 63/67 plans (94%)
+Progress: [█████████████████████████████████████████████████████████████████░░] 65/67 plans (97%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 63
+- Total plans completed: 65
 - Average duration: 4 min
-- Total execution time: 278 min
+- Total execution time: 282 min
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [███████████████████████
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
 | 04-enhanced-content | 14/14 | 58 min | 4 min |
-| 05-workshops | 10/14 | 36 min | 4 min |
+| 05-workshops | 12/14 | 40 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-06 (2 min), 05-07 (2 min), 05-08 (4 min), 05-09 (3 min), 05-10 (3 min)
+- Last 5 plans: 05-08 (4 min), 05-09 (3 min), 05-10 (3 min), 05-11 (3 min), 05-12 (4 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -292,6 +292,10 @@ Recent decisions affecting current work:
 - **Fixed bottom action bar for workshops:** Workshop detail uses fixed bottom bar for RSVP/Join/Start/Edit actions, matching post detail pattern
 - **RSVP optimistic toggle:** RSVPButton uses optimistic update with revert-on-error for instant user feedback
 - **Modal-based invite (not full-screen):** InviteUsersModal uses Modal component for smaller interaction scope vs UserPicker full-screen overlay
+- **Compact Twitch-style chat:** WorkshopChat uses compact line spacing with host amber/co-host indigo highlighting, not full DM bubbles
+- **Attendee inline action menu:** AttendeeMenu uses inline dropdown with remove confirmation step, not full modal
+- **Duration timer custom hook:** useDurationTimer extracted as reusable hook with HH:MM:SS format counting from startedAt
+- **Notes fire-and-forget unmount save:** WorkshopNotes uses fire-and-forget fetch on unmount to prevent data loss during navigation
 
 ### Pending Todos
 
@@ -356,6 +360,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-15T00:39:09Z
-Stopped at: Completed 05-10-PLAN.md (Workshop Detail Page)
+Last session: 2026-02-15T00:47:16Z
+Stopped at: Completed 05-12-PLAN.md (Workshop Room Sidebar Components)
 Resume file: None
