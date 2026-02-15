@@ -44,7 +44,9 @@ export function PostReactionBar({
       onClick={onOpenPicker}
       className={cn(
         'flex items-center gap-1.5 transition-all active:scale-95',
-        userReaction && 'rounded-full bg-primary/10 px-2 py-0.5 dark:bg-primary/15'
+        userReaction
+          ? 'rounded-full bg-primary/20 px-2 py-0.5 ring-2 ring-primary/50 scale-105 dark:bg-primary/25'
+          : ''
       )}
     >
       {/* Overlapping emojis — Meta style */}
@@ -59,7 +61,12 @@ export function PostReactionBar({
           </span>
         ))}
       </div>
-      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+      <span className={cn(
+        'text-xs font-semibold',
+        userReaction
+          ? 'text-primary dark:text-primary'
+          : 'text-gray-700 dark:text-gray-300'
+      )}>
         {total}
       </span>
     </button>

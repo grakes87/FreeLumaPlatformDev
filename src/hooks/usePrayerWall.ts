@@ -71,6 +71,8 @@ interface UsePrayerWallReturn {
   setStatusFilter: (filter: PrayerStatusFilter) => void;
   fetchNextPage: () => Promise<void>;
   refresh: () => Promise<void>;
+  /** Switch to My Requests tab and refresh — call after creating a new prayer */
+  onPrayerCreated: () => void;
   removePrayer: (id: number) => void;
   updatePrayer: (id: number, updates: Partial<PrayerItem>) => void;
 }
@@ -176,6 +178,13 @@ export function usePrayerWall(): UsePrayerWallReturn {
     setStatusFilterState(filter);
   }, []);
 
+  const onPrayerCreated = useCallback(() => {
+    // Switch to My Requests tab so the new prayer is visible immediately
+    // (the "others" tab filters out the user's own prayers)
+    setActiveTabState('my_requests');
+    // The useEffect on activeTab change will trigger a reset + fetch automatically
+  }, []);
+
   const removePrayer = useCallback((id: number) => {
     setPrayers((prev) => prev.filter((p) => p.id !== id));
   }, []);
@@ -204,6 +213,7 @@ export function usePrayerWall(): UsePrayerWallReturn {
     setStatusFilter,
     fetchNextPage,
     refresh,
+    onPrayerCreated,
     removePrayer,
     updatePrayer,
   };

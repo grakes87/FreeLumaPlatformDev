@@ -62,6 +62,7 @@ export default function PrayerWallPage() {
     setStatusFilter,
     fetchNextPage,
     refresh,
+    onPrayerCreated,
     removePrayer,
     updatePrayer,
   } = usePrayerWall();
@@ -90,8 +91,8 @@ export default function PrayerWallPage() {
   );
 
   const handleComposerSubmit = useCallback(() => {
-    refresh();
-  }, [refresh]);
+    onPrayerCreated();
+  }, [onPrayerCreated]);
 
   // Pull-to-refresh (touch-based)
   const [pullStartY, setPullStartY] = useState<number | null>(null);
