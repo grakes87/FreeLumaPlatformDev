@@ -24,6 +24,7 @@ export interface UserData {
   email_verified: boolean;
   onboarding_complete: boolean;
   is_admin: boolean;
+  can_host: boolean;
   preferred_translation: string;
   language: string;
   timezone: string;
