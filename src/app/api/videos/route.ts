@@ -183,7 +183,7 @@ export const GET = withOptionalAuth(
         });
 
         continueWatching = progressRows.map((p) => {
-          const json = p.toJSON() as Record<string, unknown>;
+          const json = p.toJSON() as unknown as Record<string, unknown>;
           const videoData = json.video as Record<string, unknown>;
           return {
             ...videoData,

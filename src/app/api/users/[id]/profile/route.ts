@@ -391,7 +391,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
 
       // Filter out hidden reposts for non-participants
       const filteredReposts = isSelf ? repostRows : repostRows.filter((r) => {
-        const json = r.toJSON() as Record<string, unknown>;
+        const json = r.toJSON() as unknown as Record<string, unknown>;
         const qp = json.quotePost as { hidden?: boolean; user_id?: number } | null;
         const op = json.originalPost as { hidden?: boolean; user_id?: number } | null;
         // If the quote post is hidden, only show to original poster or reposter

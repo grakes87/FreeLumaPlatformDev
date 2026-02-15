@@ -109,7 +109,8 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
       }
     }
 
-    const orderClauses: [unknown, string][] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const orderClauses: any[] = [];
     if (q.length >= 2) {
       orderClauses.push(
         [literal(`CASE WHEN username = ${User.sequelize!.escape(q)} THEN 0 WHEN username LIKE ${User.sequelize!.escape(q + '%')} THEN 1 ELSE 2 END`), 'ASC']

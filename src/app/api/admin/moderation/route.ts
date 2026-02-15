@@ -135,7 +135,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
         if (post) {
           contentPreview = (post.body || '').substring(0, 200);
           contentDeleted = !!post.deleted_at;
-          const postJson = post.toJSON() as Record<string, unknown>;
+          const postJson = post.toJSON() as unknown as Record<string, unknown>;
           const userObj = postJson.user as Record<string, unknown> | null;
           if (userObj) {
             author = {
@@ -157,7 +157,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
         });
         if (comment) {
           contentPreview = (comment.body || '').substring(0, 200);
-          const commentJson = comment.toJSON() as Record<string, unknown>;
+          const commentJson = comment.toJSON() as unknown as Record<string, unknown>;
           const userObj = commentJson.user as Record<string, unknown> | null;
           if (userObj) {
             author = {
@@ -170,7 +170,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       }
 
       const reportsList = reports.map((r) => {
-        const rJson = r.toJSON() as Record<string, unknown>;
+        const rJson = r.toJSON() as unknown as Record<string, unknown>;
         const reporter = rJson.reporter as Record<string, unknown> | null;
         return {
           id: rJson.id,

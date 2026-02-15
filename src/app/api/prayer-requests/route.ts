@@ -143,7 +143,7 @@ export const GET = withAuth(
       // Hidden posts: visible to original poster + repost participants
       if (tab !== 'my_requests') {
         postWhere[Op.and as unknown as string] = [
-          ...(Array.isArray(postWhere[Op.and as unknown as string]) ? postWhere[Op.and as unknown as string] : []),
+          ...(Array.isArray(postWhere[Op.and as unknown as string]) ? postWhere[Op.and as unknown as string] as unknown[] : []),
           sequelize.literal(
             `(\`Post\`.\`hidden\` = 0 OR \`Post\`.\`user_id\` = ${userId}` +
             ` OR \`Post\`.\`id\` IN (SELECT r.post_id FROM reposts r WHERE r.user_id = ${userId})` +

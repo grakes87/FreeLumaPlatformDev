@@ -117,7 +117,7 @@ export const PUT = withAdmin(async (req: NextRequest, context: AuthContext) => {
     // Track what changed for audit log
     const changedFields: Record<string, { from: unknown; to: unknown }> = {};
     for (const [key, newValue] of Object.entries(updates)) {
-      const oldValue = (user as Record<string, unknown>)[key];
+      const oldValue = (user as unknown as Record<string, unknown>)[key];
       if (oldValue !== newValue) {
         changedFields[key] = { from: oldValue, to: newValue };
       }

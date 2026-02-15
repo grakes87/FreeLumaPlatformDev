@@ -96,7 +96,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       : null;
 
     const commentList = paginatedComments.map((c) => {
-      const json = c.toJSON() as Record<string, unknown>;
+      const json = c.toJSON() as unknown as Record<string, unknown>;
       const post = json.post as Record<string, unknown> | null;
       return {
         id: json.id,

@@ -126,7 +126,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
         paranoid: false,
       });
       for (const op of originals) {
-        const oj = op.toJSON() as Record<string, unknown>;
+        const oj = op.toJSON() as unknown as Record<string, unknown>;
         originalPostsMap.set(op.id, {
           id: oj.id,
           body: (oj.body as string)?.substring(0, 200),
@@ -144,7 +144,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
     }
 
     const postList = paginatedPosts.map((p) => {
-      const json = p.toJSON() as Record<string, unknown>;
+      const json = p.toJSON() as unknown as Record<string, unknown>;
       return {
         id: json.id,
         body: (json.body as string)?.substring(0, 200),

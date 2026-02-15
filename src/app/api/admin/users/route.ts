@@ -92,7 +92,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
 
       activeBansMap = {};
       for (const ban of activeBans) {
-        const banJson = ban.toJSON() as Record<string, unknown>;
+        const banJson = ban.toJSON() as unknown as Record<string, unknown>;
         const uid = banJson.user_id as number;
         // Take the most recent active ban per user
         if (!activeBansMap[uid]) {
@@ -106,7 +106,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       : null;
 
     const userList = paginatedUsers.map((u) => {
-      const json = u.toJSON() as Record<string, unknown>;
+      const json = u.toJSON() as unknown as Record<string, unknown>;
       return {
         ...json,
         active_ban: activeBansMap[u.id] || null,

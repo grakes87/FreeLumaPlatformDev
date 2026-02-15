@@ -89,7 +89,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       : null;
 
     const items = paginatedEntries.map((entry) => {
-      const json = entry.toJSON() as Record<string, unknown>;
+      const json = entry.toJSON() as unknown as Record<string, unknown>;
       return {
         id: json.id,
         admin: json.admin,
