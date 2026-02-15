@@ -244,7 +244,7 @@ export function PostCardTikTok({
               isMultiMedia && 'snap-x snap-mandatory'
             )}
             onScroll={handleMediaScroll}
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x' }}
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x pan-y' }}
           >
             {sortedMedia.map((media) => (
               <div
@@ -293,16 +293,6 @@ export function PostCardTikTok({
         <TextPostGradient text="" postId={post.id} />
       ) : (
         <TextPostGradient text={post.body} postId={post.id} />
-      )}
-
-      {/* Tap-to-toggle play/pause layer — between video (z-0) and content overlay (z-10) */}
-      {activeIsVideo && (
-        <button
-          type="button"
-          onClick={togglePlayPause}
-          className="absolute inset-0 z-[5]"
-          aria-label="Toggle play/pause"
-        />
       )}
 
       {/* Content overlay — sized to dynamic viewport so icons/text stay visible */}
