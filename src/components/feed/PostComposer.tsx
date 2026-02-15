@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils/cn';
 import { compressMediaFile } from '@/lib/utils/compressMedia';
 import { uploadWithProgress } from '@/lib/utils/uploadWithProgress';
+import { generateVideoThumbnail, blobToDataUrl } from '@/lib/utils/generateVideoThumbnail';
 import { useAuth } from '@/hooks/useAuth';
 import { useDraft, type DraftData } from '@/hooks/useDraft';
 
@@ -266,6 +267,7 @@ function MediaStrip({
             <div className="relative h-20 w-20 rounded-lg bg-slate-900">
               <video
                 src={item.url}
+                poster={item.thumbnail_url || undefined}
                 preload="metadata"
                 playsInline
                 muted
@@ -516,6 +518,20 @@ export function PostComposer({
       };
 
       setMediaItems((prev) => [...prev, newItem]);
+
+      // Fire-and-forget thumbnail generation for videos
+      if (mediaType === 'video') {
+        generateVideoThumbnail(file).then((blob) => {
+          if (!blob) return;
+          blobToDataUrl(blob).then((dataUrl) => {
+            setMediaItems((prev) =>
+              prev.map((m) =>
+                m.id === itemId ? { ...m, thumbnail_url: dataUrl } : m
+              )
+            );
+          });
+        });
+      }
 
       try {
         // Compress image before upload (videos pass through as-is)
