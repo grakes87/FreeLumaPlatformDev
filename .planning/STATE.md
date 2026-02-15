@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 5 of 6 (Workshops)
-Plan: 2 of 14 complete
+Plan: 3 of 14 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 05-02-PLAN.md (Workshop Server-Side Utilities)
+Last activity: 2026-02-15 — Completed 05-03-PLAN.md (Workshop CRUD API)
 
-Progress: [█████████████████████████████████████████████████████░░░░░░░░░░░░] 55/67 plans (82%)
+Progress: [██████████████████████████████████████████████████████░░░░░░░░░░░] 56/67 plans (84%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 55
+- Total plans completed: 56
 - Average duration: 5 min
-- Total execution time: 253 min
+- Total execution time: 256 min
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [███████████████████████
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
 | 04-enhanced-content | 14/14 | 58 min | 4 min |
-| 05-workshops | 2/14 | 11 min | 6 min |
+| 05-workshops | 3/14 | 14 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-13 (7 min), 04-14 (7 min), 05-01 (6 min), 05-02 (5 min)
+- Last 5 plans: 04-14 (7 min), 05-01 (6 min), 05-02 (5 min), 05-03 (3 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -264,6 +264,9 @@ Recent decisions affecting current work:
 - **RRULE normalization:** normalizeRRule() adds "RRULE:" prefix when missing for rrule library compatibility
 - **Workshop cron globalThis guard:** initWorkshopCrons() follows established email/account cleanup pattern for HMR safety
 - **No-show transaction lock:** Auto-cancel re-reads status inside transaction with LOCK.UPDATE to prevent race with host start
+- **Private workshop app-layer filtering:** Private workshops filtered in JS after DB query (not SQL) for flexibility
+- **Category deletion nullifies references:** Workshop category DELETE nullifies category_id on referencing workshops rather than blocking
+- **Batch RSVP lookup in list:** User's RSVP status batch-fetched with IN clause to avoid N+1 queries
 
 ### Pending Todos
 
@@ -328,6 +331,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-15T00:03:00Z
-Stopped at: Completed 05-02-PLAN.md (Workshop Server-Side Utilities)
+Last session: 2026-02-15T00:10:00Z
+Stopped at: Completed 05-03-PLAN.md (Workshop CRUD API)
 Resume file: None
