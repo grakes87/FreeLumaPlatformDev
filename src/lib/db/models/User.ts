@@ -30,6 +30,7 @@ export interface UserAttributes {
   is_verified: boolean;
   status: 'active' | 'deactivated' | 'pending_deletion' | 'banned';
   role: 'user' | 'moderator' | 'admin';
+  can_host: boolean;
   deactivated_at: Date | null;
   deletion_requested_at: Date | null;
   last_login_at: Date | null;
@@ -65,6 +66,7 @@ export interface UserCreationAttributes extends Optional<UserAttributes,
   | 'is_verified'
   | 'status'
   | 'role'
+  | 'can_host'
   | 'deactivated_at'
   | 'deletion_requested_at'
   | 'last_login_at'
@@ -104,6 +106,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   declare is_verified: boolean;
   declare status: 'active' | 'deactivated' | 'pending_deletion' | 'banned';
   declare role: 'user' | 'moderator' | 'admin';
+  declare can_host: boolean;
   declare deactivated_at: Date | null;
   declare deletion_requested_at: Date | null;
   declare last_login_at: Date | null;
@@ -242,6 +245,11 @@ User.init(
     role: {
       type: DataTypes.ENUM('user', 'moderator', 'admin'),
       defaultValue: 'user',
+      allowNull: false,
+    },
+    can_host: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
       allowNull: false,
     },
     deactivated_at: {
