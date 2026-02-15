@@ -6,23 +6,23 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Daily inspirational content delivery and faith-based community connection — users come back every day for their daily post and stay to engage with their community.
 
-**Current focus:** Phase 4 - Enhanced Content (Complete)
+**Current focus:** Phase 5 - Workshops (In Progress)
 
 ## Current Position
 
-Phase: 4 of 6 (Enhanced Content)
-Plan: 14 of 14 complete
-Status: Phase complete
-Last activity: 2026-02-14 — Completed 04-14-PLAN.md (Integration & Polish)
+Phase: 5 of 6 (Workshops)
+Plan: 1 of 14 complete
+Status: In progress
+Last activity: 2026-02-15 — Completed 05-01-PLAN.md (Workshop Database Foundation)
 
-Progress: [█████████████████████████████████████████████████████] 53/53 plans (100%)
+Progress: [████████████████████████████████████████████████████░░░░░░░░░░░░░] 54/67 plans (81%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 53
-- Average duration: 4 min
-- Total execution time: 242 min
+- Total plans completed: 54
+- Average duration: 5 min
+- Total execution time: 248 min
 
 **By Phase:**
 
@@ -32,9 +32,10 @@ Progress: [███████████████████████
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
 | 04-enhanced-content | 14/14 | 58 min | 4 min |
+| 05-workshops | 1/14 | 6 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-11 (6 min), 04-09 (7 min), 04-12 (7 min), 04-13 (7 min), 04-14 (7 min)
+- Last 5 plans: 04-12 (7 min), 04-13 (7 min), 04-14 (7 min), 05-01 (6 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -253,6 +254,12 @@ Recent decisions affecting current work:
 - **SharedVideoMessage card component:** Card preview with thumbnail, play overlay, duration badge, links to /watch/[id]
 - **FollowList status badges:** Deactivated (gray) and Suspended (red) tags with opacity reduction and grayscale
 
+- **WorkshopSeries time_of_day STRING(8):** Stored as string (e.g. "19:00:00") instead of TIME type for Sequelize cross-database compatibility
+- **Workshop host FK RESTRICT:** Workshop and WorkshopSeries use ON DELETE RESTRICT on host_id to prevent accidental host user deletion
+- **Append-only chat/invite models:** WorkshopChat and WorkshopInvite use updatedAt:false since they are immutable records
+- **Workshop notification ENUM extension:** 6 new types (reminder, cancelled, invite, recording, updated, started) + 'workshop' entity_type
+- **User can_host default true:** All users can host by default; admin can revoke via setting can_host=false
+
 ### Pending Todos
 
 None.
@@ -316,6 +323,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-14T07:18:32Z
-Stopped at: Completed 04-14-PLAN.md (Integration & Polish) — Phase 4 COMPLETE
+Last session: 2026-02-15T00:02:00Z
+Stopped at: Completed 05-01-PLAN.md (Workshop Database Foundation)
 Resume file: None
