@@ -42,6 +42,13 @@ import { VideoReaction } from './VideoReaction';
 import { Ban } from './Ban';
 import { ModerationLog } from './ModerationLog';
 import { ActivityStreak } from './ActivityStreak';
+import { WorkshopCategory } from './WorkshopCategory';
+import { WorkshopSeries } from './WorkshopSeries';
+import { Workshop } from './Workshop';
+import { WorkshopAttendee } from './WorkshopAttendee';
+import { WorkshopChat } from './WorkshopChat';
+import { WorkshopNote } from './WorkshopNote';
+import { WorkshopInvite } from './WorkshopInvite';
 
 // ---- Associations ----
 
@@ -767,6 +774,144 @@ ActivityStreak.belongsTo(User, {
   as: 'user',
 });
 
+// ---- Phase 5: Workshop Associations ----
+
+// WorkshopCategory -> Workshop (one-to-many)
+WorkshopCategory.hasMany(Workshop, {
+  foreignKey: 'category_id',
+  as: 'workshops',
+});
+Workshop.belongsTo(WorkshopCategory, {
+  foreignKey: 'category_id',
+  as: 'category',
+});
+
+// WorkshopCategory -> WorkshopSeries (one-to-many)
+WorkshopCategory.hasMany(WorkshopSeries, {
+  foreignKey: 'category_id',
+  as: 'series',
+});
+WorkshopSeries.belongsTo(WorkshopCategory, {
+  foreignKey: 'category_id',
+  as: 'category',
+});
+
+// WorkshopSeries -> Workshop (one-to-many)
+WorkshopSeries.hasMany(Workshop, {
+  foreignKey: 'series_id',
+  as: 'workshops',
+});
+Workshop.belongsTo(WorkshopSeries, {
+  foreignKey: 'series_id',
+  as: 'series',
+});
+
+// User -> WorkshopSeries (one-to-many via host_id)
+User.hasMany(WorkshopSeries, {
+  foreignKey: 'host_id',
+  as: 'workshopSeries',
+});
+WorkshopSeries.belongsTo(User, {
+  foreignKey: 'host_id',
+  as: 'host',
+});
+
+// User -> Workshop (one-to-many via host_id)
+User.hasMany(Workshop, {
+  foreignKey: 'host_id',
+  as: 'hostedWorkshops',
+});
+Workshop.belongsTo(User, {
+  foreignKey: 'host_id',
+  as: 'host',
+});
+
+// Workshop -> WorkshopAttendee (one-to-many)
+Workshop.hasMany(WorkshopAttendee, {
+  foreignKey: 'workshop_id',
+  as: 'attendees',
+});
+WorkshopAttendee.belongsTo(Workshop, {
+  foreignKey: 'workshop_id',
+  as: 'workshop',
+});
+
+// User -> WorkshopAttendee (one-to-many)
+User.hasMany(WorkshopAttendee, {
+  foreignKey: 'user_id',
+  as: 'workshopAttendances',
+});
+WorkshopAttendee.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// Workshop -> WorkshopChat (one-to-many)
+Workshop.hasMany(WorkshopChat, {
+  foreignKey: 'workshop_id',
+  as: 'chatMessages',
+});
+WorkshopChat.belongsTo(Workshop, {
+  foreignKey: 'workshop_id',
+  as: 'workshop',
+});
+
+// User -> WorkshopChat (one-to-many)
+User.hasMany(WorkshopChat, {
+  foreignKey: 'user_id',
+  as: 'workshopChats',
+});
+WorkshopChat.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// Workshop -> WorkshopNote (one-to-many)
+Workshop.hasMany(WorkshopNote, {
+  foreignKey: 'workshop_id',
+  as: 'notes',
+});
+WorkshopNote.belongsTo(Workshop, {
+  foreignKey: 'workshop_id',
+  as: 'workshop',
+});
+
+// User -> WorkshopNote (one-to-many)
+User.hasMany(WorkshopNote, {
+  foreignKey: 'user_id',
+  as: 'workshopNotes',
+});
+WorkshopNote.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// Workshop -> WorkshopInvite (one-to-many)
+Workshop.hasMany(WorkshopInvite, {
+  foreignKey: 'workshop_id',
+  as: 'invites',
+});
+WorkshopInvite.belongsTo(Workshop, {
+  foreignKey: 'workshop_id',
+  as: 'workshop',
+});
+
+// User -> WorkshopInvite (one-to-many, as invited user)
+User.hasMany(WorkshopInvite, {
+  foreignKey: 'user_id',
+  as: 'workshopInvites',
+});
+WorkshopInvite.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// WorkshopInvite -> User (invited_by)
+WorkshopInvite.belongsTo(User, {
+  foreignKey: 'invited_by',
+  as: 'invitedBy',
+});
+
 export {
   sequelize,
   User,
@@ -812,4 +957,11 @@ export {
   Ban,
   ModerationLog,
   ActivityStreak,
+  WorkshopCategory,
+  WorkshopSeries,
+  Workshop,
+  WorkshopAttendee,
+  WorkshopChat,
+  WorkshopNote,
+  WorkshopInvite,
 };
