@@ -244,7 +244,7 @@ export function PostCardTikTok({
               isMultiMedia && 'snap-x snap-mandatory'
             )}
             onScroll={handleMediaScroll}
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x' }}
           >
             {sortedMedia.map((media) => (
               <div
@@ -295,8 +295,18 @@ export function PostCardTikTok({
         <TextPostGradient text={post.body} postId={post.id} />
       )}
 
+      {/* Tap-to-toggle play/pause layer — between video (z-0) and content overlay (z-10) */}
+      {activeIsVideo && (
+        <button
+          type="button"
+          onClick={togglePlayPause}
+          className="absolute inset-0 z-[5]"
+          aria-label="Toggle play/pause"
+        />
+      )}
+
       {/* Content overlay — sized to dynamic viewport so icons/text stay visible */}
-      <div className="absolute inset-x-0 top-0 z-10" style={{ height: '100svh' }}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10" style={{ height: '100svh' }}>
 
       {/* Play icon — visible only while paused on a video slide */}
       {activeIsVideo && userPaused && (
@@ -312,7 +322,7 @@ export function PostCardTikTok({
         <button
           type="button"
           onClick={toggleMute}
-          className="absolute right-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm active:scale-90"
+          className="pointer-events-auto absolute right-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm active:scale-90"
           style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 1rem)' }}
           aria-label={muted ? 'Unmute' : 'Mute'}
         >
@@ -326,7 +336,7 @@ export function PostCardTikTok({
 
       {/* Right side vertical action stack */}
       <div
-        className="absolute right-3 z-20 flex flex-col items-center gap-5"
+        className="pointer-events-auto absolute right-3 z-20 flex flex-col items-center gap-5"
         style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 4.5rem)' }}
       >
         {/* Own post: edit pencil, other's post: context menu */}
@@ -461,7 +471,7 @@ export function PostCardTikTok({
 
       {/* Bottom overlay: author name + text + repost content */}
       <div
-        className="absolute inset-x-0 bottom-0 z-10 px-4 pr-16"
+        className="pointer-events-auto absolute inset-x-0 bottom-0 z-10 px-4 pr-16"
         style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
         {/* Repost indicator */}
