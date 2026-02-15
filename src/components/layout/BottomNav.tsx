@@ -7,7 +7,7 @@ import {
   Sparkles,
   Heart,
   MessageSquare,
-  BookOpen,
+  Presentation,
   Play,
   Plus,
 } from 'lucide-react';
@@ -24,11 +24,12 @@ interface NavTab {
 }
 
 /**
- * Tab order per CONTEXT:
- * Daily | Prayer | Feed | (+) | Studies | Watch | Profile
+ * Tab order:
+ * Daily | Prayer | Feed | (+) | Workshops | Watch | Profile
  *
  * Prayer wall tab: bibleOnly (hidden for positivity mode)
  * Watch tab: visible for all modes (video library is mode-agnostic)
+ * Workshops tab: visible for all modes
  */
 const LEFT_TABS: NavTab[] = [
   { href: '/', icon: Sparkles, label: 'Daily Post' },
@@ -37,7 +38,7 @@ const LEFT_TABS: NavTab[] = [
 ];
 
 const RIGHT_TABS: NavTab[] = [
-  { href: '/bible-studies', icon: BookOpen, label: 'Bible Studies' },
+  { href: '/workshops', icon: Presentation, label: 'Workshops' },
   { href: '/watch', icon: Play, label: 'Watch' },
   { href: '/profile', icon: Sparkles, label: 'Profile' },  // icon unused for profile tab
 ];
