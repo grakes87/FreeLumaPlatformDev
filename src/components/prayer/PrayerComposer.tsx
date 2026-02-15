@@ -5,6 +5,7 @@ import { X, Image as ImageIcon, Loader2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { compressMediaFile } from '@/lib/utils/compressMedia';
 import { uploadWithProgress } from '@/lib/utils/uploadWithProgress';
+import { generateVideoThumbnail, blobToDataUrl } from '@/lib/utils/generateVideoThumbnail';
 import { useDraft } from '@/hooks/useDraft';
 
 interface PrayerComposerProps {
@@ -18,6 +19,7 @@ type PrayerPrivacy = 'public' | 'followers';
 interface MediaAttachment {
   file: File;
   previewUrl: string;
+  thumbnailUrl: string | null;
   publicUrl: string | null;
   uploading: boolean;
   progress: number;
@@ -118,6 +120,7 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
         const attachment: MediaAttachment = {
           file,
           previewUrl,
+          thumbnailUrl: null,
           publicUrl: null,
           uploading: true,
           progress: 0,
@@ -125,6 +128,20 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
         };
 
         setMedia((prev) => [...prev, attachment]);
+
+        // Fire-and-forget thumbnail generation for videos
+        if (file.type.startsWith('video/')) {
+          generateVideoThumbnail(file).then((blob) => {
+            if (!blob) return;
+            blobToDataUrl(blob).then((dataUrl) => {
+              setMedia((prev) =>
+                prev.map((m) =>
+                  m.previewUrl === previewUrl ? { ...m, thumbnailUrl: dataUrl } : m
+                )
+              );
+            });
+          });
+        }
 
         try {
           const publicUrl = await uploadFileWithProgress(file, previewUrl);
@@ -424,6 +441,7 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
                     {m.file.type.startsWith('video/') ? (
                       <video
                         src={m.previewUrl}
+                        poster={m.thumbnailUrl || undefined}
                         preload="metadata"
                         playsInline
                         muted
