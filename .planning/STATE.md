@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 5 of 6 (Workshops)
-Plan: 7 of 14 complete
+Plan: 8 of 14 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 05-07-PLAN.md (Workshop Attendee Management API)
+Last activity: 2026-02-15 — Completed 05-08-PLAN.md (Workshop Browse Page)
 
-Progress: [████████████████████████████████████████████████████████████░░░░░] 60/67 plans (90%)
+Progress: [█████████████████████████████████████████████████████████████░░░░░] 61/67 plans (91%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 60
+- Total plans completed: 61
 - Average duration: 4 min
-- Total execution time: 268 min
+- Total execution time: 272 min
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [███████████████████████
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
 | 04-enhanced-content | 14/14 | 58 min | 4 min |
-| 05-workshops | 7/14 | 26 min | 4 min |
+| 05-workshops | 8/14 | 30 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-03 (3 min), 05-04 (4 min), 05-05 (4 min), 05-06 (2 min), 05-07 (2 min)
+- Last 5 plans: 05-04 (4 min), 05-05 (4 min), 05-06 (2 min), 05-07 (2 min), 05-08 (4 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -284,6 +284,9 @@ Recent decisions affecting current work:
 - **Start transaction lock:** SELECT FOR UPDATE inside transaction prevents race between host start and no-show cron cancel
 - **Recording-to-video pipeline:** Webhook creates Video entry automatically with published=true and notifies attendees
 
+- **Host button for all users:** "Host" button shown to all authenticated users on workshop browse page; can_host not in UserData type, server validates on create
+- **Workshop browse infinite scroll:** useWorkshops hook with cursor-based pagination, consistent with useFeed/usePrayerWall pattern
+
 ### Pending Todos
 
 None.
@@ -347,6 +350,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-15T00:31:00Z
-Stopped at: Completed 05-06-PLAN.md (Workshop Lifecycle Endpoints)
+Last session: 2026-02-15T00:38:00Z
+Stopped at: Completed 05-08-PLAN.md (Workshop Browse Page)
 Resume file: None
