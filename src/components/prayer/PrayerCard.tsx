@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   MoreHorizontal,
   MessageCircle,
@@ -20,6 +20,7 @@ import { PostCommentSheet } from '@/components/social/PostCommentSheet';
 import { RepostButton } from '@/components/social/RepostButton';
 import { ReportModal } from '@/components/social/ReportModal';
 import { usePostReactions } from '@/hooks/usePostReactions';
+import { REACTION_EMOJI_MAP } from '@/lib/utils/constants';
 import type { PrayerItem } from '@/hooks/usePrayerWall';
 import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
@@ -88,8 +89,27 @@ export function PrayerCard({
   const [testimonyInput, setTestimonyInput] = useState('');
   const [showTestimonyForm, setShowTestimonyForm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const { post } = prayer;
+  const [localCommentCount, setLocalCommentCount] = useState(post.comment_count ?? 0);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick as EventListener);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick as EventListener);
+    };
+  }, [menuOpen]);
   const author = post.user;
   const isAuthor = author.id === currentUserId;
   const isAnonymous = post.is_anonymous && !isAuthor;
@@ -201,7 +221,7 @@ export function PrayerCard({
         </div>
 
         {/* Context menu */}
-        <div className="relative">
+        <div className="relative" ref={menuRef}>
           <button
             type="button"
             onClick={() => setMenuOpen((prev) => !prev)}
@@ -348,13 +368,14 @@ export function PrayerCard({
                 <img
                   src={m.url}
                   alt=""
-                  className="h-48 w-auto max-w-[280px] rounded-xl object-cover"
+                  className="h-48 w-auto max-w-[280px] cursor-pointer rounded-xl object-cover"
                   loading="lazy"
+                  onClick={() => setLightboxUrl(m.url)}
                 />
               ) : (
                 <video
                   src={m.url}
-                  className="w-full max-h-[70vh] rounded-xl bg-black"
+                  className="w-full max-h-[70vh] rounded-xl"
                   controls
                   playsInline
                   preload="auto"
@@ -369,7 +390,7 @@ export function PrayerCard({
       {/* Action bar */}
       <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-3 dark:border-white/10">
         <div className="flex items-center gap-2">
-          {/* Heart button (always visible) + reaction bar */}
+          {/* Reaction button — shows selected emoji or default heart */}
           <button
             type="button"
             onClick={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
@@ -381,7 +402,11 @@ export function PrayerCard({
             )}
             aria-label="React"
           >
-            <Heart className={cn('h-5 w-5', userReaction && 'fill-primary')} />
+            {userReaction ? (
+              <span className="text-lg leading-none">{REACTION_EMOJI_MAP[userReaction]}</span>
+            ) : (
+              <Heart className="h-5 w-5" />
+            )}
           </button>
           {reactionTotal > 0 && (
             <PostReactionBar
@@ -401,8 +426,8 @@ export function PrayerCard({
             aria-label="Comment"
           >
             <MessageCircle className="h-5 w-5" />
-            {(post.comment_count ?? 0) > 0 && (
-              <span className="text-xs font-medium">{post.comment_count}</span>
+            {localCommentCount > 0 && (
+              <span className="text-xs font-medium">{localCommentCount}</span>
             )}
           </button>
         </div>
@@ -417,6 +442,7 @@ export function PrayerCard({
         onClose={() => setPickerAnchor(null)}
         onSelect={toggleReaction}
         anchorRect={pickerAnchor}
+        selectedReaction={userReaction}
       />
 
       {/* Comment bottom sheet */}
@@ -424,7 +450,22 @@ export function PrayerCard({
         isOpen={commentSheetOpen}
         onClose={() => setCommentSheetOpen(false)}
         postId={post.id}
+        onCommentCountChange={(delta) => setLocalCommentCount((c) => c + delta)}
       />
+
+      {/* Image lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <img
+            src={lightboxUrl}
+            alt=""
+            className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain"
+          />
+        </div>
+      )}
 
       {/* Report modal */}
       <ReportModal

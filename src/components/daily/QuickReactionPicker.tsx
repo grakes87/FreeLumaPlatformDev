@@ -4,6 +4,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { REACTION_TYPES, REACTION_EMOJI_MAP } from '@/lib/utils/constants';
 import type { ReactionType } from '@/lib/utils/constants';
+import { cn } from '@/lib/utils/cn';
 
 interface QuickReactionPickerProps {
   isOpen: boolean;
@@ -12,6 +13,8 @@ interface QuickReactionPickerProps {
   anchorRect: DOMRect | null;
   /** Position the bar above (default) or to the left of the anchor */
   placement?: 'above' | 'left';
+  /** Currently selected reaction to highlight */
+  selectedReaction?: ReactionType | null;
 }
 
 export function QuickReactionPicker({
@@ -20,6 +23,7 @@ export function QuickReactionPicker({
   onSelect,
   anchorRect,
   placement = 'above',
+  selectedReaction,
 }: QuickReactionPickerProps) {
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -80,7 +84,10 @@ export function QuickReactionPicker({
             key={type}
             type="button"
             onClick={() => handleSelect(type)}
-            className="rounded-full p-1 text-[26px] leading-none transition-transform hover:-translate-y-1 hover:scale-125 active:scale-90"
+            className={cn(
+              'rounded-full p-1 text-[26px] leading-none transition-transform hover:-translate-y-1 hover:scale-125 active:scale-90',
+              selectedReaction === type && 'bg-primary/20 ring-2 ring-primary/50 scale-110'
+            )}
           >
             {REACTION_EMOJI_MAP[type]}
           </button>

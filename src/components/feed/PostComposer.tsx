@@ -824,7 +824,7 @@ export function PostComposer({
               aria-label="Add media"
             >
               <ImageIcon className="h-5 w-5" />
-              Media
+              Photo/Video
             </button>
 
             {mediaItems.length > 0 && (

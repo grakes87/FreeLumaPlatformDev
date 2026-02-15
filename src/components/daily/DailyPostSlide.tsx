@@ -286,6 +286,7 @@ export function DailyPostSlide({
         onClose={() => setShowQuickPicker(false)}
         onSelect={handleReactionSelect}
         anchorRect={anchorRect}
+        selectedReaction={userReaction}
       />
 
       <CommentBottomSheet

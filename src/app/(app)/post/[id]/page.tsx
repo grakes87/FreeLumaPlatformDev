@@ -22,6 +22,7 @@ import { REACTION_EMOJI_MAP } from '@/lib/utils/constants';
 import type { ReactionType } from '@/lib/utils/constants';
 import { QuickReactionPicker } from '@/components/daily/QuickReactionPicker';
 import { POST_COMMENT_MAX_LENGTH } from '@/lib/utils/constants';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 // ---- Types ----
 
@@ -31,6 +32,7 @@ interface PostAuthor {
   display_name: string;
   avatar_url: string | null;
   avatar_color: string;
+  is_verified?: boolean;
 }
 
 interface PostMediaItem {
@@ -224,8 +226,9 @@ function InlineCommentItem({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-semibold text-text dark:text-text-dark">
+          <span className="flex items-center gap-1 text-sm font-semibold text-text dark:text-text-dark">
             {comment.user.display_name}
+            {comment.user.is_verified && <VerifiedBadge className="h-3.5 w-3.5 shrink-0 text-blue-500" />}
           </span>
           <span className="text-xs text-text-muted dark:text-text-muted-dark">
             {relativeTime(comment.created_at)}
@@ -435,8 +438,9 @@ export default function PostDetailPage() {
         <div className="flex items-center gap-3">
           <Avatar user={post.user} />
           <div className="min-w-0 flex-1">
-            <div className="font-semibold text-text dark:text-text-dark">
+            <div className="flex items-center gap-1 font-semibold text-text dark:text-text-dark">
               {post.user.display_name}
+              {post.user.is_verified && <VerifiedBadge className="h-4 w-4 shrink-0 text-blue-500" />}
             </div>
             <div className="text-sm text-text-muted dark:text-text-muted-dark">
               @{post.user.username} &middot; {relativeTime(post.created_at)}
@@ -520,6 +524,7 @@ export default function PostDetailPage() {
           onClose={() => setPickerOpen(false)}
           onSelect={handleSelectReaction}
           anchorRect={pickerRect}
+          selectedReaction={userReaction}
         />
       </div>
 

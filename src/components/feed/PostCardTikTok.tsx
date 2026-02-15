@@ -596,6 +596,7 @@ export function PostCardTikTok({
         }}
         anchorRect={pickerAnchor}
         placement="left"
+        selectedReaction={userReaction}
       />
 
       {/* Comment sheet */}

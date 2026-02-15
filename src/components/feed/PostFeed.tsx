@@ -60,7 +60,7 @@ export function PostFeed({
   // TikTok mode: restore scroll position on mount (or start at top for fresh visits)
   const scrollRestoredRef = useRef(false);
   useEffect(() => {
-    if (feedStyle !== 'tiktok' || scrollRestoredRef.current) return;
+    if (feedStyle !== 'tiktok' || scrollRestoredRef.current || posts.length === 0) return;
     scrollRestoredRef.current = true;
     const saved = sessionStorage.getItem('feed_scroll');
     const container = getScrollContainer();
