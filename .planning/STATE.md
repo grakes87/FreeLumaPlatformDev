@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 5 of 6 (Workshops)
-Plan: 1 of 14 complete
+Plan: 2 of 14 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 05-01-PLAN.md (Workshop Database Foundation)
+Last activity: 2026-02-15 — Completed 05-02-PLAN.md (Workshop Server-Side Utilities)
 
-Progress: [████████████████████████████████████████████████████░░░░░░░░░░░░░] 54/67 plans (81%)
+Progress: [█████████████████████████████████████████████████████░░░░░░░░░░░░] 55/67 plans (82%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 54
+- Total plans completed: 55
 - Average duration: 5 min
-- Total execution time: 248 min
+- Total execution time: 253 min
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [███████████████████████
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
 | 04-enhanced-content | 14/14 | 58 min | 4 min |
-| 05-workshops | 1/14 | 6 min | 6 min |
+| 05-workshops | 2/14 | 11 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-12 (7 min), 04-13 (7 min), 04-14 (7 min), 05-01 (6 min)
+- Last 5 plans: 04-13 (7 min), 04-14 (7 min), 05-01 (6 min), 05-02 (5 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -259,6 +259,11 @@ Recent decisions affecting current work:
 - **Append-only chat/invite models:** WorkshopChat and WorkshopInvite use updatedAt:false since they are immutable records
 - **Workshop notification ENUM extension:** 6 new types (reminder, cancelled, invite, recording, updated, started) + 'workshop' entity_type
 - **User can_host default true:** All users can host by default; admin can revoke via setting can_host=false
+- **Recording UID convention:** 900000 + workshopId to avoid collision with real user IDs in Agora channel
+- **Workshop notification types in TS enums:** Extended NotificationType and NotificationEntityType to match Notification model ENUM values
+- **RRULE normalization:** normalizeRRule() adds "RRULE:" prefix when missing for rrule library compatibility
+- **Workshop cron globalThis guard:** initWorkshopCrons() follows established email/account cleanup pattern for HMR safety
+- **No-show transaction lock:** Auto-cancel re-reads status inside transaction with LOCK.UPDATE to prevent race with host start
 
 ### Pending Todos
 
@@ -323,6 +328,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-15T00:02:00Z
-Stopped at: Completed 05-01-PLAN.md (Workshop Database Foundation)
+Last session: 2026-02-15T00:03:00Z
+Stopped at: Completed 05-02-PLAN.md (Workshop Server-Side Utilities)
 Resume file: None
