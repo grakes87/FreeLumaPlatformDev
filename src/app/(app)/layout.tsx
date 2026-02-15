@@ -83,9 +83,15 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
 
 function GuestDailyWrapper({ children }: { children: ReactNode }) {
   return (
-    <div className="relative flex min-h-screen flex-col">
-      {/* Daily post content (full screen) */}
-      <main className="flex-1">{children}</main>
+    <div className="fixed inset-0 overflow-hidden bg-black">
+      {/* Daily post content (full screen, scroll snap matches authenticated AppShell) */}
+      <main
+        id="immersive-scroll"
+        className="h-full overflow-y-auto"
+        style={{ scrollSnapType: 'y mandatory', overscrollBehaviorY: 'contain' }}
+      >
+        {children}
+      </main>
 
       {/* Sign up / Sign in CTA overlay at bottom */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-black/90 via-black/70 to-transparent pb-6 pt-16 px-6">
