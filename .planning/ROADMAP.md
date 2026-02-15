@@ -17,7 +17,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 3: Real-Time** - Socket.IO, chat, and push notifications
 - [ ] **Phase 4: Enhanced Content** - Notes, video library, settings, and personalization
 - [ ] **Phase 5: Workshops** - Live video workshops via Agora SDK (v2 deferred)
-- [ ] **Phase 6: Migration & Launch** - Data migration, production deployment, user switchover
+- [ ] **Phase 6: Bug Fixes & Polish** - Fix accumulated bugs and UX issues across all phases
+- [ ] **Phase 7: Migration & Launch** - Data migration, production deployment, user switchover
 
 ## Phase Details
 
@@ -234,10 +235,34 @@ Plans:
 - [ ] 05-13-PLAN.md — Summary screen + chat replay + series overview
 - [ ] 05-14-PLAN.md — Host dashboard + nav integration + admin management
 
-### Phase 6: Migration & Launch
+### Phase 6: Bug Fixes & Polish
+**Goal**: Fix accumulated bugs, TypeScript errors, UI inconsistencies, and UX issues discovered across Phases 1–5 — the platform compiles cleanly, all pages render without runtime errors, and key user flows work end-to-end.
+
+**Depends on**: Phase 5 (all features built)
+
+**Requirements**: None (quality/stability phase)
+
+**Success Criteria** (what must be TRUE):
+  1. `npx next build` completes with zero TypeScript errors
+  2. All main user flows work without console errors (daily post, feed, prayer wall, chat, workshops, video library, settings, profile)
+  3. No broken imports or missing component references
+  4. Mobile responsiveness verified on key pages
+  5. Navigation between all app sections works correctly
+
+**Plans**: 6 plans in 2 waves
+
+Plans:
+- [ ] 06-01-PLAN.md — Build error fix, guest scroll snap, media caching headers
+- [ ] 06-02-PLAN.md — Feed TikTok fixes (carousel swipe, tap-to-pause, repost badges)
+- [ ] 06-03-PLAN.md — Prayer wall card fixes (heart icon, reaction highlight, mark-answered, new prayer appearance)
+- [ ] 06-04-PLAN.md — Prayer composer UX (single media picker, theme fix)
+- [ ] 06-05-PLAN.md — Video thumbnail generation utility + integration in both composers
+- [ ] 06-06-PLAN.md — Build verification + human UX verification checkpoint
+
+### Phase 7: Migration & Launch
 **Goal**: Production deployment with complete data migration — all existing users, content, and relationships transferred to new platform with zero data loss, secure password migration, and seamless user transition.
 
-**Depends on**: Phase 1, Phase 2, Phase 3, Phase 4 (all core features operational)
+**Depends on**: Phase 1, Phase 2, Phase 3, Phase 4, Phase 6 (all core features operational and bug-free)
 
 **Requirements**: MIG-01 through MIG-10, AUTH-10
 
@@ -261,13 +286,13 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 06-01: TBD during phase planning
-- [ ] 06-02: TBD during phase planning
+- [ ] 07-01: TBD during phase planning
+- [ ] 07-02: TBD during phase planning
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 **Parallel Opportunities:**
 - Phase 3 (Real-Time) and Phase 4 (Enhanced Content) are mostly independent and can be partially parallelized after Phase 2 completes
@@ -279,7 +304,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 3. Real-Time | 13/13 | Complete | 2026-02-13 |
 | 4. Enhanced Content | 14/14 | Complete | 2026-02-14 |
 | 5. Workshops | 14/14 | Complete | 2026-02-14 |
-| 6. Migration & Launch | 0/TBD | Not started | - |
+| 6. Bug Fixes & Polish | 0/6 | Planned | - |
+| 7. Migration & Launch | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-11*
@@ -288,4 +314,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 *Phase 3 planned: 2026-02-13 (13 plans in 4 waves)*
 *Phase 4 planned: 2026-02-13 (14 plans in 4 waves)*
 *Phase 5 planned: 2026-02-14 (14 plans in 6 waves)*
-*Depth: Comprehensive (6 phases covering 165 v1 requirements + v2 workshop requirements)*
+*Depth: Comprehensive (7 phases covering 165 v1 requirements + v2 workshop requirements)*
