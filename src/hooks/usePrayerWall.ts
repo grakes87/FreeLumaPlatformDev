@@ -179,11 +179,15 @@ export function usePrayerWall(): UsePrayerWallReturn {
   }, []);
 
   const onPrayerCreated = useCallback(() => {
-    // Switch to My Requests tab so the new prayer is visible immediately
-    // (the "others" tab filters out the user's own prayers)
-    setActiveTabState('my_requests');
-    // The useEffect on activeTab change will trigger a reset + fetch automatically
-  }, []);
+    if (activeTab === 'my_requests') {
+      // Already on My Requests — force a refresh since setActiveTabState won't trigger useEffect
+      setCursor(null);
+      fetchPrayers({ reset: true });
+    } else {
+      // Switch to My Requests tab — useEffect on activeTab change handles the fetch
+      setActiveTabState('my_requests');
+    }
+  }, [activeTab, fetchPrayers]);
 
   const removePrayer = useCallback((id: number) => {
     setPrayers((prev) => prev.filter((p) => p.id !== id));

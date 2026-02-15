@@ -544,7 +544,15 @@ export function PostComposer({
           );
         });
 
-        // Update item with public URL
+        // Update item with public URL, preserving thumbnail_url from async generation
+        setMediaItems((prev) =>
+          prev.map((m) =>
+            m.id === itemId
+              ? { ...m, url: public_url, uploading: false, progress: 100 }
+              : m
+          )
+        );
+
         const completed: MediaItem = {
           id: itemId,
           url: public_url,
@@ -553,10 +561,6 @@ export function PostComposer({
           uploading: false,
           progress: 100,
         };
-
-        setMediaItems((prev) =>
-          prev.map((m) => (m.id === itemId ? completed : m))
-        );
 
         return completed;
       } catch (err) {

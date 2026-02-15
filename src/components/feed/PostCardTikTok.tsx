@@ -473,11 +473,16 @@ export function PostCardTikTok({
         )}
 
         {/* Author info */}
-        {author && !isRepost && (
+        {author && (
           <div className="mb-1.5 flex items-center gap-1">
             <Link
               href={`/profile/${author.username}`}
               className="text-sm font-bold text-white drop-shadow-md hover:underline"
+              onClick={(e) => {
+                e.stopPropagation();
+                const container = document.getElementById('immersive-scroll');
+                if (container) sessionStorage.setItem('feed_scroll', String(container.scrollTop));
+              }}
             >
               @{author.username}
             </Link>
@@ -499,7 +504,11 @@ export function PostCardTikTok({
           <Link
             href={`/post/${post.original_post.id}`}
             className="mb-2 block rounded-xl border border-white/20 bg-black/40 p-3 backdrop-blur-sm active:bg-black/60 transition-colors"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              const container = document.getElementById('immersive-scroll');
+              if (container) sessionStorage.setItem('feed_scroll', String(container.scrollTop));
+            }}
           >
             {post.original_post.deleted ? (
               <p className="text-sm italic text-white/50">This post has been deleted</p>

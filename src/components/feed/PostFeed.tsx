@@ -57,11 +57,21 @@ export function PostFeed({
     }
   }, [inView, hasMore, loading, onLoadMore]);
 
-  // TikTok mode: scroll to top on mount
+  // TikTok mode: restore scroll position on mount (or start at top for fresh visits)
+  const scrollRestoredRef = useRef(false);
   useEffect(() => {
-    if (feedStyle !== 'tiktok') return;
-    getScrollContainer()?.scrollTo(0, 0);
-  }, [feedStyle]);
+    if (feedStyle !== 'tiktok' || scrollRestoredRef.current) return;
+    scrollRestoredRef.current = true;
+    const saved = sessionStorage.getItem('feed_scroll');
+    const container = getScrollContainer();
+    if (saved && container) {
+      sessionStorage.removeItem('feed_scroll');
+      // Defer to next frame so posts are rendered with correct heights
+      requestAnimationFrame(() => container.scrollTo(0, parseInt(saved, 10)));
+    } else {
+      container?.scrollTo(0, 0);
+    }
+  }, [feedStyle, posts.length]);
 
   // TikTok preloading: load next batch when user is 3 posts from the end
   useEffect(() => {

@@ -333,13 +333,16 @@ export function PrayerCard({
         )}
       </div>
 
-      {/* Media (simple image display -- MediaCarousel not yet available) */}
+      {/* Media */}
       {post.media && post.media.length > 0 && (
         <div className="mt-3 flex gap-2 overflow-x-auto rounded-xl">
           {post.media.map((m) => (
             <div
               key={m.id}
-              className="flex-shrink-0 overflow-hidden rounded-xl"
+              className={cn(
+                'overflow-hidden rounded-xl',
+                m.media_type === 'video' ? 'w-full' : 'flex-shrink-0'
+              )}
             >
               {m.media_type === 'image' ? (
                 <img
@@ -351,10 +354,11 @@ export function PrayerCard({
               ) : (
                 <video
                   src={m.url}
-                  className="h-48 w-auto max-w-[280px] rounded-xl object-cover"
+                  className="w-full max-h-[70vh] rounded-xl bg-black"
                   controls
                   playsInline
                   preload="auto"
+                  poster={m.thumbnail_url || undefined}
                 />
               )}
             </div>
@@ -365,8 +369,21 @@ export function PrayerCard({
       {/* Action bar */}
       <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-3 dark:border-white/10">
         <div className="flex items-center gap-2">
-          {/* Reaction bar / picker trigger — pray emoji prioritized */}
-          {reactionTotal > 0 ? (
+          {/* Heart button (always visible) + reaction bar */}
+          <button
+            type="button"
+            onClick={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
+            className={cn(
+              'rounded-full p-2 transition-colors',
+              userReaction
+                ? 'text-primary bg-primary/10 dark:bg-primary/20'
+                : 'text-text-muted/60 hover:bg-black/5 hover:text-text-muted dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70'
+            )}
+            aria-label="React"
+          >
+            <Heart className={cn('h-5 w-5', userReaction && 'fill-primary')} />
+          </button>
+          {reactionTotal > 0 && (
             <PostReactionBar
               counts={reactionCounts}
               total={reactionTotal}
@@ -374,15 +391,6 @@ export function PrayerCard({
               onOpenPicker={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
               prioritizeType="pray"
             />
-          ) : (
-            <button
-              type="button"
-              onClick={(e) => setPickerAnchor(e.currentTarget.getBoundingClientRect())}
-              className="rounded-full p-2 text-text-muted/60 transition-colors hover:bg-black/5 hover:text-text-muted dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white/70"
-              aria-label="React"
-            >
-              <Heart className="h-5 w-5" />
-            </button>
           )}
 
           {/* Comment button with count */}
