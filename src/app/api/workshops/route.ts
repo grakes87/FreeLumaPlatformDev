@@ -32,6 +32,7 @@ export const GET = withAuth(
       const categoryId = searchParams.get('category');
       const statusFilter = searchParams.get('status');
       const hostId = searchParams.get('host');
+      const seriesId = searchParams.get('series_id');
       const cursor = searchParams.get('cursor');
       const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
       const past = searchParams.get('past') === 'true';
@@ -41,13 +42,21 @@ export const GET = withAuth(
       // Build WHERE clause
       const where: Record<string, unknown> = {};
 
+      // Series filter: when filtering by series, show all statuses by default
+      if (seriesId) {
+        const sId = parseInt(seriesId, 10);
+        if (!isNaN(sId)) {
+          where.series_id = sId;
+        }
+      }
+
       if (past) {
         // Past workshops: ended, ordered by actual_ended_at DESC
         where.status = 'ended';
       } else if (statusFilter) {
         where.status = statusFilter;
-      } else {
-        // Default: upcoming scheduled, lobby, or live
+      } else if (!seriesId) {
+        // Default: upcoming scheduled, lobby, or live (skip when series filter shows all)
         where.status = { [Op.in]: ['scheduled', 'lobby', 'live'] };
         where.scheduled_at = { [Op.gte]: new Date() };
       }
