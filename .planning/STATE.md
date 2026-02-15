@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 5 of 6 (Workshops)
-Plan: 3 of 14 complete
+Plan: 4 of 14 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 05-03-PLAN.md (Workshop CRUD API)
+Last activity: 2026-02-15 — Completed 05-04-PLAN.md (Workshop Supporting API Routes)
 
-Progress: [██████████████████████████████████████████████████████░░░░░░░░░░░] 56/67 plans (84%)
+Progress: [███████████████████████████████████████████████████████░░░░░░░░░░] 57/67 plans (85%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 56
+- Total plans completed: 57
 - Average duration: 5 min
-- Total execution time: 256 min
+- Total execution time: 260 min
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [███████████████████████
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
 | 04-enhanced-content | 14/14 | 58 min | 4 min |
-| 05-workshops | 3/14 | 14 min | 5 min |
+| 05-workshops | 4/14 | 18 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-14 (7 min), 05-01 (6 min), 05-02 (5 min), 05-03 (3 min)
+- Last 5 plans: 05-01 (6 min), 05-02 (5 min), 05-03 (3 min), 05-04 (4 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -267,6 +267,11 @@ Recent decisions affecting current work:
 - **Private workshop app-layer filtering:** Private workshops filtered in JS after DB query (not SQL) for flexibility
 - **Category deletion nullifies references:** Workshop category DELETE nullifies category_id on referencing workshops rather than blocking
 - **Batch RSVP lookup in list:** User's RSVP status batch-fetched with IN clause to avoid N+1 queries
+- **RSVP findOrCreate idempotency:** Duplicate RSVP returns existing attendee rather than error; increment only on newly created
+- **Un-RSVP status guard:** Un-RSVP only allowed from 'rsvp' status; 'joined'/'left' attendees cannot be removed
+- **Invite 50-user limit:** Maximum 50 userIds per invite request to prevent abuse
+- **Notes 50k char limit:** Personal workshop notes capped at 50,000 characters via Zod validation
+- **Chat history default 500 max 1000:** Paginated with offset_ms ASC ordering for time-synced replay
 
 ### Pending Todos
 
@@ -331,6 +336,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-15T00:10:00Z
-Stopped at: Completed 05-03-PLAN.md (Workshop CRUD API)
+Last session: 2026-02-15T00:11:07Z
+Stopped at: Completed 05-04-PLAN.md (Workshop Supporting API Routes)
 Resume file: None
