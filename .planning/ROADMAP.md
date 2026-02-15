@@ -278,7 +278,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 2. Core Social | 14/14 | Complete | 2026-02-14 |
 | 3. Real-Time | 13/13 | Complete | 2026-02-13 |
 | 4. Enhanced Content | 14/14 | Complete | 2026-02-14 |
-| 5. Workshops | 0/14 | Planned | - |
+| 5. Workshops | 14/14 | Complete | 2026-02-14 |
 | 6. Migration & Launch | 0/TBD | Not started | - |
 
 ---
