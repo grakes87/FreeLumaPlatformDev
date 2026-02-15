@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 5 of 6 (Workshops)
-Plan: 9 of 14 complete
+Plan: 10 of 14 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 05-09-PLAN.md (Workshop Create & Edit Forms)
+Last activity: 2026-02-15 — Completed 05-10-PLAN.md (Workshop Detail Page)
 
-Progress: [██████████████████████████████████████████████████████████████░░░░] 62/67 plans (93%)
+Progress: [███████████████████████████████████████████████████████████████░░░] 63/67 plans (94%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 62
+- Total plans completed: 63
 - Average duration: 4 min
-- Total execution time: 275 min
+- Total execution time: 278 min
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [███████████████████████
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
 | 04-enhanced-content | 14/14 | 58 min | 4 min |
-| 05-workshops | 9/14 | 33 min | 4 min |
+| 05-workshops | 10/14 | 36 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-05 (4 min), 05-06 (2 min), 05-07 (2 min), 05-08 (4 min), 05-09 (3 min)
+- Last 5 plans: 05-06 (2 min), 05-07 (2 min), 05-08 (4 min), 05-09 (3 min), 05-10 (3 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -289,6 +289,9 @@ Recent decisions affecting current work:
 - **can_host added to UserData:** Client-side host privilege check added to AuthContext UserData interface; /api/auth/me already returns this field
 - **Native date/time inputs:** Workshop form uses browser-native type="date" and type="time" inputs instead of third-party date picker library
 - **Shared CreateWorkshopForm component:** Single form component with mode prop ('create'|'edit') handles both creation and editing flows
+- **Fixed bottom action bar for workshops:** Workshop detail uses fixed bottom bar for RSVP/Join/Start/Edit actions, matching post detail pattern
+- **RSVP optimistic toggle:** RSVPButton uses optimistic update with revert-on-error for instant user feedback
+- **Modal-based invite (not full-screen):** InviteUsersModal uses Modal component for smaller interaction scope vs UserPicker full-screen overlay
 
 ### Pending Todos
 
@@ -353,6 +356,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-15T00:38:44Z
-Stopped at: Completed 05-09-PLAN.md (Workshop Create & Edit Forms)
+Last session: 2026-02-15T00:39:09Z
+Stopped at: Completed 05-10-PLAN.md (Workshop Detail Page)
 Resume file: None
