@@ -12,6 +12,12 @@ export enum NotificationType {
   CONTENT_REMOVED = 'content_removed',
   WARNING = 'warning',
   BAN = 'ban',
+  WORKSHOP_REMINDER = 'workshop_reminder',
+  WORKSHOP_CANCELLED = 'workshop_cancelled',
+  WORKSHOP_INVITE = 'workshop_invite',
+  WORKSHOP_RECORDING = 'workshop_recording',
+  WORKSHOP_UPDATED = 'workshop_updated',
+  WORKSHOP_STARTED = 'workshop_started',
 }
 
 export enum NotificationEntityType {
@@ -23,6 +29,7 @@ export enum NotificationEntityType {
   CONVERSATION = 'conversation',
   DAILY_CONTENT = 'daily_content',
   VIDEO = 'video',
+  WORKSHOP = 'workshop',
 }
 
 export interface NotificationActor {
