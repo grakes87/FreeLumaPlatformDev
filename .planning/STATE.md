@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 5 of 6 (Workshops)
-Plan: 8 of 14 complete
+Plan: 9 of 14 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 05-08-PLAN.md (Workshop Browse Page)
+Last activity: 2026-02-15 — Completed 05-09-PLAN.md (Workshop Create & Edit Forms)
 
-Progress: [█████████████████████████████████████████████████████████████░░░░░] 61/67 plans (91%)
+Progress: [██████████████████████████████████████████████████████████████░░░░] 62/67 plans (93%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 61
+- Total plans completed: 62
 - Average duration: 4 min
-- Total execution time: 272 min
+- Total execution time: 275 min
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [███████████████████████
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
 | 04-enhanced-content | 14/14 | 58 min | 4 min |
-| 05-workshops | 8/14 | 30 min | 4 min |
+| 05-workshops | 9/14 | 33 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-04 (4 min), 05-05 (4 min), 05-06 (2 min), 05-07 (2 min), 05-08 (4 min)
+- Last 5 plans: 05-05 (4 min), 05-06 (2 min), 05-07 (2 min), 05-08 (4 min), 05-09 (3 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -286,6 +286,9 @@ Recent decisions affecting current work:
 
 - **Host button for all users:** "Host" button shown to all authenticated users on workshop browse page; can_host not in UserData type, server validates on create
 - **Workshop browse infinite scroll:** useWorkshops hook with cursor-based pagination, consistent with useFeed/usePrayerWall pattern
+- **can_host added to UserData:** Client-side host privilege check added to AuthContext UserData interface; /api/auth/me already returns this field
+- **Native date/time inputs:** Workshop form uses browser-native type="date" and type="time" inputs instead of third-party date picker library
+- **Shared CreateWorkshopForm component:** Single form component with mode prop ('create'|'edit') handles both creation and editing flows
 
 ### Pending Todos
 
@@ -350,6 +353,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-15T00:38:00Z
-Stopped at: Completed 05-08-PLAN.md (Workshop Browse Page)
+Last session: 2026-02-15T00:38:44Z
+Stopped at: Completed 05-09-PLAN.md (Workshop Create & Edit Forms)
 Resume file: None
