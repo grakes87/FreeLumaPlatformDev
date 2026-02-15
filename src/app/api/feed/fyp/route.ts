@@ -285,8 +285,8 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
 
   const postIds = resultItems.map((item) => item.post.id);
 
-  // 10. Batch lookup: user reactions + bookmarks
-  const [userReactions, userBookmarks] = await Promise.all([
+  // 10. Batch lookup: user reactions + bookmarks + user reposts
+  const [userReactions, userBookmarks, userReposts] = await Promise.all([
     PostReaction.findAll({
       where: { user_id: userId, post_id: { [Op.in]: postIds } },
       attributes: ['post_id', 'reaction_type'],
@@ -297,10 +297,16 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
       attributes: ['post_id'],
       raw: true,
     }),
+    Repost.findAll({
+      where: { user_id: userId, post_id: { [Op.in]: postIds } },
+      attributes: ['post_id'],
+      raw: true,
+    }),
   ]);
 
   const reactionMap = new Map(userReactions.map((r) => [r.post_id, r.reaction_type]));
   const bookmarkSet = new Set(userBookmarks.map((b) => b.post_id));
+  const userRepostedSet = new Set(userReposts.map((r) => r.post_id));
 
   // 11. Batch lookup: repost info
   const repostRows = await Repost.findAll({
@@ -373,6 +379,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
       repost_count: repostCount,
       user_reaction: reactionMap.get(post.id) || null,
       bookmarked: bookmarkSet.has(post.id),
+      user_reposted: userRepostedSet.has(post.id),
       original_post: quoteToOriginalMap.get(post.id) || null,
     };
   });
