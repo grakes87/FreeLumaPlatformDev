@@ -13,16 +13,16 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 Phase: 5 of 6 (Workshops)
 Plan: 12 of 14 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 05-12-PLAN.md (Workshop Room Sidebar Components)
+Last activity: 2026-02-15 — Completed 05-11-PLAN.md (Live Workshop Room)
 
-Progress: [█████████████████████████████████████████████████████████████████░░] 65/67 plans (97%)
+Progress: [██████████████████████████████████████████████████████████████████░] 66/67 plans (99%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 65
+- Total plans completed: 66
 - Average duration: 4 min
-- Total execution time: 282 min
+- Total execution time: 289 min
 
 **By Phase:**
 
@@ -35,7 +35,7 @@ Progress: [███████████████████████
 | 05-workshops | 12/14 | 40 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-08 (4 min), 05-09 (3 min), 05-10 (3 min), 05-11 (3 min), 05-12 (4 min)
+- Last 5 plans: 05-09 (3 min), 05-10 (3 min), 05-11-sidebar (3 min), 05-12 (4 min), 05-11-live (7 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -297,6 +297,12 @@ Recent decisions affecting current work:
 - **Duration timer custom hook:** useDurationTimer extracted as reusable hook with HH:MM:SS format counting from startedAt
 - **Notes fire-and-forget unmount save:** WorkshopNotes uses fire-and-forget fetch on unmount to prevent data loss during navigation
 
+- **WorkshopRoom default export:** Required for Next.js dynamic() import compatibility (named exports break ssr:false pattern)
+- **Screen share UID+100000 offset:** Separate Agora client per research; screen share UID = user.id + 100000 to avoid collision
+- **Token auto-refresh 50min:** Agora tokens expire at 1 hour; proactive 50-minute refresh prevents mid-session disconnection
+- **stopScreenShare ref pattern:** Ref-based stop function avoids circular useCallback dependency from track-ended handler
+- **Workshop state machine hook:** useWorkshopState manages loading/lobby/live/ended/error transitions with Socket.IO integration
+
 ### Pending Todos
 
 None.
@@ -360,6 +366,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-15T00:47:16Z
-Stopped at: Completed 05-12-PLAN.md (Workshop Room Sidebar Components)
+Last session: 2026-02-15T00:49:52Z
+Stopped at: Completed 05-11-PLAN.md (Live Workshop Room)
 Resume file: None
