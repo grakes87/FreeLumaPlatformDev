@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 5 of 6 (Workshops)
-Plan: 13 of 14 complete
+Plan: 14 of 14 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 05-14-PLAN.md (Host Dashboard & Admin Management)
+Last activity: 2026-02-15 — Completed 05-13-PLAN.md (Post-Workshop Summary & Series)
 
-Progress: [██████████████████████████████████████████████████████████████████░] 67/68 plans (99%)
+Progress: [██████████████████████████████████████████████████████████████████░] 68/68 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 67
+- Total plans completed: 68
 - Average duration: 4 min
-- Total execution time: 293 min
+- Total execution time: 298 min
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [███████████████████████
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
 | 04-enhanced-content | 14/14 | 58 min | 4 min |
-| 05-workshops | 13/14 | 44 min | 3 min |
+| 05-workshops | 14/14 | 49 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-10 (3 min), 05-11-sidebar (3 min), 05-12 (4 min), 05-11-live (7 min), 05-14 (4 min)
+- Last 5 plans: 05-11-sidebar (3 min), 05-12 (4 min), 05-11-live (7 min), 05-14 (4 min), 05-13 (5 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -289,6 +289,10 @@ Recent decisions affecting current work:
 - **Admin host privilege revocation:** User.can_host boolean toggled via admin PUT /api/admin/workshops with revoke_host/restore_host actions
 - **Workshop cancellation notifications:** Admin cancel sends WORKSHOP_CANCELLED notification to all attendees via createNotification()
 
+- **ChatReplay client-side time filtering:** Fetch all messages on mount, filter with useMemo by offset_ms <= currentTimeMs for smooth scrubbing
+- **Series page series list lookup:** No single-series GET endpoint; fetch all series and find by ID client-side
+- **series_id workshops API filter:** Added series_id query param to GET /api/workshops; skips default status filter when set
+
 - **Host button for all users:** "Host" button shown to all authenticated users on workshop browse page; can_host not in UserData type, server validates on create
 - **Workshop browse infinite scroll:** useWorkshops hook with cursor-based pagination, consistent with useFeed/usePrayerWall pattern
 - **can_host added to UserData:** Client-side host privilege check added to AuthContext UserData interface; /api/auth/me already returns this field
@@ -371,6 +375,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-15T00:58:07Z
-Stopped at: Completed 05-14-PLAN.md (Host Dashboard & Admin Management)
+Last session: 2026-02-15T00:58:48Z
+Stopped at: Completed 05-13-PLAN.md (Post-Workshop Summary & Series)
 Resume file: None
