@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 5 of 6 (Workshops)
-Plan: 5 of 14 complete
+Plan: 7 of 14 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 05-05-PLAN.md (Workshop Socket.IO Signaling)
+Last activity: 2026-02-15 — Completed 05-07-PLAN.md (Workshop Attendee Management API)
 
-Progress: [████████████████████████████████████████████████████████░░░░░░░░░] 58/67 plans (87%)
+Progress: [████████████████████████████████████████████████████████████░░░░░] 60/67 plans (90%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 58
-- Average duration: 5 min
-- Total execution time: 264 min
+- Total plans completed: 60
+- Average duration: 4 min
+- Total execution time: 268 min
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [███████████████████████
 | 02-core-social | 14/14 | 73 min | 5 min |
 | 03-real-time | 13/13 | 49 min | 4 min |
 | 04-enhanced-content | 14/14 | 58 min | 4 min |
-| 05-workshops | 5/14 | 22 min | 4 min |
+| 05-workshops | 7/14 | 26 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-01 (6 min), 05-02 (5 min), 05-03 (3 min), 05-04 (4 min), 05-05 (4 min)
+- Last 5 plans: 05-03 (3 min), 05-04 (4 min), 05-05 (4 min), 05-06 (2 min), 05-07 (2 min)
 - Trend: Stable (fast)
 
 *Updated after each plan completion*
@@ -275,6 +275,9 @@ Recent decisions affecting current work:
 - **Workshop chat server echo:** Chat messages use server echo pattern (not optimistic) for authoritative message ID and offset_ms
 - **Workshop socket rate limiting:** 10 chat messages per 5s, 5 hand raises per 10s to prevent spam
 - **Auto-create attendee on public join:** Non-RSVP'd users joining public workshops get WorkshopAttendee created automatically
+- **Co-host cannot remove co-host:** Only host can remove co-hosts; co-hosts can remove regular attendees
+- **Two-tier attendee authorization:** Host-only for co-host promotion/demotion; host or co-host for speaker approval and attendee removal
+- **Self-modification guard:** Host/co-host cannot modify own attendee properties via management endpoint
 
 ### Pending Todos
 
@@ -339,6 +342,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-15T00:12:00Z
-Stopped at: Completed 05-05-PLAN.md (Workshop Socket.IO Signaling)
+Last session: 2026-02-15T00:30:00Z
+Stopped at: Completed 05-07-PLAN.md (Workshop Attendee Management API)
 Resume file: None
