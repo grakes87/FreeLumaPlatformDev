@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { X, Camera, Image as ImageIcon, Loader2, XCircle } from 'lucide-react';
+import { X, Image as ImageIcon, Loader2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { compressMediaFile } from '@/lib/utils/compressMedia';
 import { uploadWithProgress } from '@/lib/utils/uploadWithProgress';
@@ -40,7 +40,6 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
   const [error, setError] = useState('');
   const [media, setMedia] = useState<MediaAttachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // Load draft on mount
   useEffect(() => {
@@ -468,50 +467,29 @@ export function PrayerComposer({ isOpen, onClose, onSubmit }: PrayerComposerProp
               </div>
             )}
 
-            {/* Media buttons */}
+            {/* Media button */}
             <div className="flex items-center gap-2 border-t border-white/10 pt-3">
-              <button
-                type="button"
-                onClick={() => cameraInputRef.current?.click()}
-                disabled={media.length >= MAX_MEDIA}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-white/40 transition-colors hover:bg-white/5 hover:text-white/60 disabled:opacity-30 disabled:cursor-not-allowed"
-                aria-label="Take photo"
-              >
-                <Camera className="h-4 w-4" />
-                <span>Camera</span>
-              </button>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={media.length >= MAX_MEDIA}
                 className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-white/40 transition-colors hover:bg-white/5 hover:text-white/60 disabled:opacity-30 disabled:cursor-not-allowed"
-                aria-label="Choose from gallery"
+                aria-label="Add photo or video"
               >
                 <ImageIcon className="h-4 w-4" />
-                <span>Gallery</span>
+                <span>Photo/Video</span>
               </button>
               {media.length > 0 && (
                 <span className="ml-auto text-xs text-white/30">{media.length}/{MAX_MEDIA}</span>
               )}
             </div>
 
-            {/* Hidden file inputs */}
+            {/* Hidden file input */}
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4"
+              accept="image/*,video/*"
               multiple
-              className="hidden"
-              onChange={(e) => {
-                handleFilesSelected(e.target.files);
-                e.target.value = '';
-              }}
-            />
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
               className="hidden"
               onChange={(e) => {
                 handleFilesSelected(e.target.files);
