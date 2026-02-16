@@ -15,16 +15,16 @@ Plan: 4 of 6 complete (01-04 done)
 Status: In progress
 Last activity: 2026-02-16 — Completed 09-03-PLAN.md (admin proxy workshop creation)
 
-Progress: [██████████████████████████████████████████████████████████████████████████░░] 77/79 plans (97%)
+Progress: [███████████████████████████████████████████████████████████████████████████░] 78/79 plans (99%)
 
 **Next Plans:** 09-05, 09-06
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 77
+- Total plans completed: 78
 - Average duration: 4 min
-- Total execution time: 335 min
+- Total execution time: 340 min
 
 **By Phase:**
 
@@ -37,10 +37,10 @@ Progress: [███████████████████████
 | 05-workshops | 14/14 | 49 min | 4 min |
 | 06-bug-fixes | 5/6 | 13 min | 3 min |
 | 08-database-migration-mapping | 2/3 | 14 min | 7 min |
-| 09-platform-refinements | 3/6 | 10 min | 3 min |
+| 09-platform-refinements | 4/6 | 15 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-01 (5 min), 08-01 (7 min), 08-02 (7 min), 09-01 (4 min), 09-04 (3 min)
+- Last 5 plans: 08-01 (7 min), 08-02 (7 min), 09-01 (4 min), 09-04 (3 min), 09-03 (5 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -326,6 +326,8 @@ Recent decisions affecting current work:
 - **Activation code source tracking:** ENUM('generated','imported') distinguishes admin-created from legacy codes
 - **Imported codes keep dashes:** XXXX-XXXX-XXXX format preserved; code column widened to VARCHAR(16)
 - **FontLoader placement in (app)/layout:** FontLoader placed inside authenticated (app)/layout.tsx (not root layout) because platform-settings API requires auth
+- **Admin proxy workshop inline form:** Inline creation form in modal instead of reusing CreateWorkshopForm (admin flow submits to different API endpoint)
+- **created_by_admin_id FK SET NULL:** Workshop.created_by_admin_id references users.id with ON DELETE SET NULL (admin deletion doesn't affect workshop)
 - **Font loading strategy:** Single Google Fonts CSS2 link tag with all selected families; display=swap prevents FOIT; preconnect in root layout
 - **CSS variable font approach:** CSS custom properties on :root via style tag; components reference via var(--font-field-name)
 
@@ -398,5 +400,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 09-04-PLAN.md (font system infrastructure)
+Stopped at: Completed 09-03-PLAN.md (admin proxy workshop creation)
 Resume file: None
