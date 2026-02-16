@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils/cn';
-import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { NotificationActor } from '@/lib/notifications/types';
 
 export interface NotificationItemData {
@@ -176,22 +176,12 @@ export function NotificationItem({
     >
       {/* Avatar with type icon overlay */}
       <div className="relative shrink-0">
-        {actor?.avatar_url ? (
-          <Image
-            src={actor.avatar_url}
-            alt={actorName}
-            width={compact ? 36 : 44}
-            height={compact ? 36 : 44}
-            className="rounded-full object-cover"
-            style={{ width: compact ? 36 : 44, height: compact ? 36 : 44 }}
-          />
-        ) : (
-          <InitialsAvatar
-            name={actorName}
-            color={actor?.avatar_color ?? '#62BEBA'}
-            size={compact ? 36 : 44}
-          />
-        )}
+        <UserAvatar
+          src={actor?.avatar_url}
+          name={actorName}
+          color={actor?.avatar_color ?? '#62BEBA'}
+          size={compact ? 36 : 44}
+        />
         {/* Type icon overlay in bottom-right */}
         <div
           className={cn(

@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePostComments, type PostComment } from '@/hooks/usePostComments';
 import { POST_COMMENT_MAX_LENGTH } from '@/lib/utils/constants';
 import VerifiedBadge from '@/components/ui/VerifiedBadge';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 // ---- Relative time helper ----
 function relativeTime(dateStr: string): string {
@@ -25,29 +26,13 @@ function relativeTime(dateStr: string): string {
 
 // ---- Avatar ----
 function Avatar({ user }: { user: PostComment['user'] }) {
-  if (user.avatar_url) {
-    return (
-      <img
-        src={user.avatar_url}
-        alt={user.display_name}
-        className="h-8 w-8 rounded-full object-cover"
-      />
-    );
-  }
-  const initials = user.display_name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
   return (
-    <div
-      className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
-      style={{ backgroundColor: user.avatar_color }}
-    >
-      {initials}
-    </div>
+    <UserAvatar
+      src={user.avatar_url}
+      name={user.display_name}
+      color={user.avatar_color}
+      size={32}
+    />
   );
 }
 

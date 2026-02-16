@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { cn } from '@/lib/utils/cn';
-import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { OnlineStatusDot } from './OnlineStatusDot';
 import type { ConversationData } from '@/hooks/useConversations';
 
@@ -82,7 +82,7 @@ export function ConversationItem({
           /* Group without custom avatar: overlapping member stack */
           <div className="flex items-center" style={{ width: 56, height: 56 }}>
             {groupAvatars.length === 0 ? (
-              <InitialsAvatar name={displayName} color="#3B82F6" size={56} />
+              <UserAvatar src={null} name={displayName} color="#3B82F6" size={56} />
             ) : (
               <div className="relative" style={{ width: 56, height: 56 }}>
                 {groupAvatars.map((p, i) => {
@@ -99,21 +99,13 @@ export function ConversationItem({
                       className="absolute rounded-full ring-2 ring-white dark:ring-gray-900"
                       style={{ top: pos.top, left: pos.left, zIndex: 3 - i }}
                     >
-                      {p.avatar_url ? (
-                        <img
-                          src={p.avatar_url}
-                          alt={p.display_name}
-                          className="rounded-full object-cover"
-                          style={{ width: size, height: size }}
-                        />
-                      ) : (
-                        <InitialsAvatar
-                          name={p.display_name}
-                          color={p.avatar_color}
-                          size={size}
-                          className="text-xs"
-                        />
-                      )}
+                      <UserAvatar
+                        src={p.avatar_url}
+                        name={p.display_name}
+                        color={p.avatar_color}
+                        size={size}
+                        className="text-xs"
+                      />
                     </div>
                   );
                 })}
@@ -128,14 +120,9 @@ export function ConversationItem({
               </div>
             )}
           </div>
-        ) : avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt={displayName}
-            className="h-14 w-14 rounded-full object-cover"
-          />
         ) : (
-          <InitialsAvatar
+          <UserAvatar
+            src={avatarUrl}
             name={displayName}
             color={avatarColor}
             size={56}

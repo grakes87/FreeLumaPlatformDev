@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils/cn';
 import { REACTION_EMOJI_MAP } from '@/lib/utils/constants';
 import type { ReactionType } from '@/lib/utils/constants';
 import type { FeedPost } from '@/hooks/useFeed';
-import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { PostReactionBar } from '@/components/social/PostReactionBar';
 import { QuickReactionPicker } from '@/components/daily/QuickReactionPicker';
 import { BookmarkButton } from '@/components/social/BookmarkButton';
@@ -141,19 +141,12 @@ export function PostCardInstagram({
         <div className="flex items-center gap-3">
           {author && (
             <Link href={`/profile/${author.username}`} className="shrink-0">
-              {author.avatar_url ? (
-                <img
-                  src={author.avatar_url}
-                  alt={author.display_name}
-                  className="h-10 w-10 rounded-full object-cover"
-                />
-              ) : (
-                <InitialsAvatar
-                  name={author.display_name}
-                  color={author.avatar_color}
-                  size={40}
-                />
-              )}
+              <UserAvatar
+                src={author.avatar_url}
+                name={author.display_name}
+                color={author.avatar_color}
+                size={40}
+              />
             </Link>
           )}
 
@@ -256,19 +249,12 @@ export function PostCardInstagram({
             <>
               {post.original_post.author && (
                 <div className="mb-1.5 flex items-center gap-2">
-                  {post.original_post.author.avatar_url ? (
-                    <img
-                      src={post.original_post.author.avatar_url}
-                      alt={post.original_post.author.display_name}
-                      className="h-6 w-6 rounded-full object-cover"
-                    />
-                  ) : (
-                    <InitialsAvatar
-                      name={post.original_post.author.display_name}
-                      color={post.original_post.author.avatar_color}
-                      size={24}
-                    />
-                  )}
+                  <UserAvatar
+                    src={post.original_post.author.avatar_url}
+                    name={post.original_post.author.display_name}
+                    color={post.original_post.author.avatar_color}
+                    size={24}
+                  />
                   <span className="text-xs font-semibold text-text dark:text-white">
                     {post.original_post.author.display_name}
                   </span>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { MapPin, Link as LinkIcon, Pencil, MessageCircle, MoreHorizontal, ShieldBan, Flag } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import VerifiedBadge from '@/components/ui/VerifiedBadge';
-import { InitialsAvatar } from './InitialsAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { ProfileStats } from './ProfileStats';
 import { FollowButton } from '@/components/social/FollowButton';
 import type { FollowStatus } from '@/hooks/useFollow';
@@ -106,19 +106,12 @@ export function ProfileHeader({
       <div className="flex items-center gap-4">
         {/* Avatar */}
         <div className="shrink-0">
-          {user.avatar_url ? (
-            <img
-              src={user.avatar_url}
-              alt={user.display_name}
-              className="h-20 w-20 rounded-full object-cover"
-            />
-          ) : (
-            <InitialsAvatar
-              name={user.display_name}
-              color={user.avatar_color}
-              size={80}
-            />
-          )}
+          <UserAvatar
+            src={user.avatar_url}
+            name={user.display_name}
+            color={user.avatar_color}
+            size={80}
+          />
         </div>
 
         {/* Name + Username */}

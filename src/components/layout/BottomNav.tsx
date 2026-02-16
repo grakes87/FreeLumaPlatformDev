@@ -14,7 +14,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils/cn';
 import { CreatePicker } from './CreatePicker';
-import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 interface NavTab {
   href: string;
@@ -62,11 +62,12 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
   const visibleRight = filterTabs(RIGHT_TABS);
 
   const handleCreateSelect = useCallback(
-    (type: 'post' | 'prayer_request') => {
+    (type: 'post' | 'prayer_request' | 'workshop') => {
       setPickerOpen(false);
-      // Navigate to feed page with composer query param
       if (type === 'prayer_request') {
         router.push('/prayer-wall?compose=prayer_request');
+      } else if (type === 'workshop') {
+        router.push('/workshops/create');
       } else {
         router.push('/feed?compose=post');
       }
@@ -102,19 +103,12 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
             'flex items-center justify-center rounded-full',
             isActive && 'ring-2 ring-primary'
           )}>
-            {user?.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt=""
-                className="h-7 w-7 rounded-full object-cover"
-              />
-            ) : (
-              <InitialsAvatar
-                name={user?.display_name || '?'}
-                color={user?.avatar_color || '#62BEBA'}
-                size={28}
-              />
-            )}
+            <UserAvatar
+              src={user?.avatar_url}
+              name={user?.display_name || '?'}
+              color={user?.avatar_color || '#62BEBA'}
+              size={28}
+            />
           </div>
         ) : (
           <Icon
@@ -152,6 +146,8 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
               router.push('/prayer-wall?compose=prayer_request');
             } else if (pathname === '/feed' || pathname.startsWith('/feed/')) {
               router.push('/feed?compose=post');
+            } else if (pathname === '/workshops' || pathname.startsWith('/workshops/')) {
+              router.push('/workshops/create');
             } else {
               setPickerOpen((prev) => !prev);
             }

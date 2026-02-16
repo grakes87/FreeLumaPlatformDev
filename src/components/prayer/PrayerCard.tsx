@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import {
   MoreHorizontal,
   MessageCircle,
@@ -190,20 +191,12 @@ export function PrayerCard({
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           {/* Avatar */}
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={displayName}
-              className="h-10 w-10 rounded-full object-cover"
-            />
-          ) : (
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white"
-              style={{ backgroundColor: avatarColor || '#62BEBA' }}
-            >
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <UserAvatar
+            src={avatarUrl}
+            name={displayName}
+            color={avatarColor || '#62BEBA'}
+            size={40}
+          />
 
           <div>
             <p className="flex items-center gap-1 text-sm font-semibold text-text dark:text-white">

@@ -8,7 +8,7 @@ import { REACTION_EMOJI_MAP } from '@/lib/utils/constants';
 import type { ReactionType } from '@/lib/utils/constants';
 import type { FeedPost } from '@/hooks/useFeed';
 import { useFeedMute } from '@/context/FeedMuteContext';
-import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { QuickReactionPicker } from '@/components/daily/QuickReactionPicker';
 import { RepostButton } from '@/components/social/RepostButton';
 import { PostCommentSheet } from '@/components/social/PostCommentSheet';
@@ -353,20 +353,13 @@ export function PostCardTikTok({
         {/* Author avatar */}
         {author && (
           <Link href={`/profile/${author.username}`} className="mb-2">
-            {author.avatar_url ? (
-              <img
-                src={author.avatar_url}
-                alt={author.display_name}
-                className="h-11 w-11 rounded-full border-2 border-white object-cover shadow-lg"
-              />
-            ) : (
-              <InitialsAvatar
-                name={author.display_name}
-                color={author.avatar_color}
-                size={44}
-                className="border-2 border-white shadow-lg"
-              />
-            )}
+            <UserAvatar
+              src={author.avatar_url}
+              name={author.display_name}
+              color={author.avatar_color}
+              size={44}
+              className="border-2 border-white shadow-lg"
+            />
           </Link>
         )}
 
@@ -506,19 +499,12 @@ export function PostCardTikTok({
               <>
                 {post.original_post.author && (
                   <div className="mb-1.5 flex items-center gap-2">
-                    {post.original_post.author.avatar_url ? (
-                      <img
-                        src={post.original_post.author.avatar_url}
-                        alt={post.original_post.author.display_name}
-                        className="h-6 w-6 rounded-full object-cover"
-                      />
-                    ) : (
-                      <InitialsAvatar
-                        name={post.original_post.author.display_name}
-                        color={post.original_post.author.avatar_color}
-                        size={24}
-                      />
-                    )}
+                    <UserAvatar
+                      src={post.original_post.author.avatar_url}
+                      name={post.original_post.author.display_name}
+                      color={post.original_post.author.avatar_color}
+                      size={24}
+                    />
                     <span className="text-xs font-semibold text-white/90">
                       {post.original_post.author.display_name}
                     </span>
