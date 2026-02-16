@@ -46,16 +46,10 @@ export const PUT = withAdmin(
 
       const { key, value } = parsed.data;
 
-      // Validate key exists (prevent creating arbitrary keys)
-      const existing = await PlatformSetting.findOne({ where: { key } });
-      if (!existing) {
-        return errorResponse(`Setting "${key}" does not exist`, 404);
-      }
+      // Upsert: create if not exists, update if exists
+      await PlatformSetting.set(key, value);
 
-      existing.value = value;
-      await existing.save();
-
-      return successResponse({ key: existing.key, value: existing.value });
+      return successResponse({ key, value });
     } catch (err) {
       return serverError(err, 'Failed to update platform setting');
     }
