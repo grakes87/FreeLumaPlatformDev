@@ -596,12 +596,16 @@ async function importPosts(conn, sqlContent, importedUserIds) {
         if (Array.isArray(mediaArr)) {
           let sortOrder = 0;
           for (const m of mediaArr) {
-            const mediaUrl = typeof m === 'string' ? m : (m.url || m.filename || String(m));
+            const mediaUrl = typeof m === 'string' ? m : (m.file_name || m.filename || m.url || null);
             if (!mediaUrl) continue;
-            // Determine media type from extension
+            // Determine media type from file_type field or extension
             let mediaType = 'image';
-            const ext = mediaUrl.toLowerCase().split('.').pop();
-            if (['mp4', 'mov', 'webm', 'avi'].includes(ext)) mediaType = 'video';
+            if (typeof m === 'object' && m.file_type) {
+              mediaType = m.file_type === 'video' ? 'video' : 'image';
+            } else {
+              const ext = mediaUrl.toLowerCase().split('.').pop();
+              if (['mp4', 'mov', 'webm', 'avi'].includes(ext)) mediaType = 'video';
+            }
 
             mediaValues.push([
               p.id, // post_id
