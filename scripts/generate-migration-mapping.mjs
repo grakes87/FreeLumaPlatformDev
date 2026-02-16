@@ -2,12 +2,13 @@
  * Migration Mapping Spreadsheet Generator
  *
  * Parses the old FreeLuma SQL dump and generates an Excel spreadsheet
- * documenting how every table/column maps to the new schema.
+ * documenting how old data should be IMPORTED into the existing new schema.
+ *
+ * IMPORTANT: This is a one-way import guide. The new database already exists
+ * with its own tables and data. We are NOT dropping or creating tables —
+ * only documenting which old data maps to which existing new tables.
  *
  * Usage: node scripts/generate-migration-mapping.mjs
- *
- * Phase 8 Plan 01: Users, Categories, Social domains
- * Phase 8 Plan 02: Daily Content, Verse, Chat, Notes, Notifications, Video domains
  */
 
 import fs from 'fs';
@@ -29,6 +30,15 @@ const EXCLUDED_TABLES = [
   'workshoplogs',
 ];
 
+// Tables already migrated separately — skip entirely
+const ALREADY_MIGRATED_TABLES = [
+  'dailyposts',
+  'dailypostcomments',
+  'dailypostusercomments',
+  'dailypostusers',
+  'dailychapters',
+];
+
 // Domain group order for sheet organization
 const DOMAIN_GROUPS = [
   {
@@ -42,10 +52,6 @@ const DOMAIN_GROUPS = [
   {
     name: 'Social/Posts Domain',
     tables: ['posts', 'comments', 'usercomments', 'follows'],
-  },
-  {
-    name: 'Daily Content Domain',
-    tables: ['dailyposts', 'dailypostcomments', 'dailypostusercomments', 'dailypostusers', 'dailychapters'],
   },
   {
     name: 'Verse Domain',
@@ -79,6 +85,7 @@ const COLORS = {
   lightBlue: 'FFD9E2F3',
   lightGreen: 'FFE2EFDA',
   lightYellow: 'FFFFF2CC',
+  lightPurple: 'FFE8D5F5',
   lightOrange: 'FFFCE4D6',
   lightGray: 'FFD9D9D9',
   mediumGray: 'FFD6D6D6',
@@ -560,23 +567,7 @@ function getOrphanChecks(tableName) {
       { fkCol: 'follower_id', refTable: 'users', refCol: 'id', note: '' },
       { fkCol: 'following_id', refTable: 'users', refCol: 'id', note: '' },
     ],
-    // Daily Content domain
-    dailyposts: [],
-    dailypostcomments: [
-      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
-      { fkCol: 'daily_post_id', refTable: 'dailyposts', refCol: 'id', note: '' },
-    ],
-    dailypostusercomments: [
-      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
-      { fkCol: 'comment_id', refTable: 'dailypostcomments', refCol: 'id', note: '' },
-    ],
-    dailypostusers: [
-      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
-      { fkCol: 'daily_post_id', refTable: 'dailyposts', refCol: 'id', note: '' },
-    ],
-    dailychapters: [
-      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
-    ],
+    // Daily Content domain — REMOVED (already migrated separately)
     // Verse domain
     verses: [],
     verse_comments: [
@@ -606,7 +597,7 @@ function getOrphanChecks(tableName) {
       { fkCol: 'action_done_by', refTable: 'users', refCol: 'id', note: '' },
       { fkCol: 'post_id', refTable: 'posts', refCol: 'id', note: 'Uses 0 for no-post. Only check non-zero values.' },
       { fkCol: 'comment_id', refTable: 'comments', refCol: 'id', note: 'Nullable' },
-      { fkCol: 'daily_post_comment_id', refTable: 'dailypostcomments', refCol: 'id', note: 'Nullable' },
+      // daily_post_comment_id orphan check removed — daily content already migrated
     ],
     // Video domain
     uservideos: [],
@@ -637,8 +628,6 @@ function detectOrphans(sql) {
     { table: 'categories', col: 'id' },
     { table: 'posts', col: 'id' },
     { table: 'comments', col: 'id' },
-    { table: 'dailyposts', col: 'id' },
-    { table: 'dailypostcomments', col: 'id' },
     { table: 'verses', col: 'id' },
     { table: 'verses', col: 'verse_name' },
     { table: 'verse_comments', col: 'id' },
@@ -803,7 +792,7 @@ function createOverviewSheet(workbook, tableSchemas, sql) {
         fgColor: { argb: COLORS.lightYellow },
       };
       row.font = { bold: true };
-    } else if (entry.status === 'EXCLUDED') {
+    } else if (entry.status === 'EXCLUDED' || entry.status === 'SKIP') {
       row.fill = {
         type: 'pattern',
         pattern: 'solid',
@@ -814,6 +803,12 @@ function createOverviewSheet(workbook, tableSchemas, sql) {
         type: 'pattern',
         pattern: 'solid',
         fgColor: { argb: COLORS.lightGreen },
+      };
+    } else if (entry.status === 'ALREADY MIGRATED') {
+      row.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: COLORS.lightPurple },
       };
     }
   }
@@ -1162,9 +1157,9 @@ const CATEGORY_USER_RELATIONS_MAPPING = {
 
 const HOMESCREEN_TILE_CATEGORIES_MAPPING = {
   oldTable: 'homescreen_tile_categories',
-  status: 'NEEDS DECISION',
-  newTables: ['(no direct equivalent)'],
-  notes: 'NEEDS DECISION: 10 category entries for homescreen tiles. No direct mapping in new schema. Options: (a) map to video_categories, (b) drop, (c) create new model.',
+  status: 'SKIP',
+  newTables: ['(no equivalent in new schema)'],
+  notes: 'SKIP: 10 category entries for homescreen tiles. No equivalent in new schema — old homescreen layout not carried over.',
   columns: [
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION: no direct equivalent', quality: '' },
     { oldCol: 'name', oldType: 'varchar(255)', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION: category names like hopeandencouragement, anxietyandstress, etc.', quality: '10 categories total' },
@@ -1280,120 +1275,10 @@ const FOLLOWS_MAPPING = {
 // Section G: Mapping Configuration -- Daily Content Domain
 // ---------------------------------------------------------------------------
 
-const DAILYPOSTS_MAPPING = {
-  oldTable: 'dailyposts',
-  status: 'MAPPED',
-  newTables: ['daily_content'],
-  notes: 'Daily posts indexed by date string (daily_post_name). ~702 rows. The old table is a sparse index -- actual content (audio, text, verse) was managed externally or in the app layer. Maps to daily_content which is the rich content model.',
-  columns: [
-    { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: 'daily_content', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'direct copy (preserve IDs)', quality: '' },
-    { oldCol: 'daily_post_name', oldType: 'varchar(255)', newTable: 'daily_content', newCol: 'date', newType: 'DATEONLY', transform: "rename: daily_post_name -> date. Convert string '2024-06-01' to DATE type.", quality: 'Date-formatted strings like 2024-06-01. Should be unique per day.' },
-    { oldCol: 'likes_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT from daily_reactions) -- no migration needed', quality: 'Denormalized counter' },
-    { oldCol: 'comments_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT from daily_comments) -- no migration needed', quality: 'Denormalized counter' },
-    { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: 'daily_content', newCol: 'created_at', newType: 'DATE', transform: 'rename', quality: '' },
-    { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: 'daily_content', newCol: 'updated_at', newType: 'DATE', transform: 'rename', quality: '' },
-    // New schema columns with no old source -- daily_content is much richer
-    { oldCol: '(new)', oldType: '--', newTable: 'daily_content', newCol: 'title', newType: 'VARCHAR(255)', transform: 'NEEDS DECISION: old schema has no title. Generate from date or leave NULL for migration.', quality: '' },
-    { oldCol: '(new)', oldType: '--', newTable: 'daily_content', newCol: 'body', newType: 'TEXT', transform: 'NEEDS DECISION: old schema stores no body content. Must be populated from external source or left NULL.', quality: '' },
-    { oldCol: '(new)', oldType: '--', newTable: 'daily_content', newCol: 'verse_reference', newType: 'VARCHAR(255)', transform: 'NEEDS DECISION: no verse data in old dailyposts. May derive from dailychapters or external source.', quality: '' },
-    { oldCol: '(new)', oldType: '--', newTable: 'daily_content', newCol: 'mode', newType: "ENUM('bible','positivity')", transform: "default 'bible' for migrated rows (old schema has no mode distinction at dailypost level)", quality: '' },
-    { oldCol: '(new)', oldType: '--', newTable: 'daily_content', newCol: 'audio_url', newType: 'VARCHAR(500)', transform: 'NEEDS DECISION: old schema has no audio_url column. Audio files may exist in B2 storage keyed by date.', quality: '' },
-    { oldCol: '(new)', oldType: '--', newTable: 'daily_content', newCol: 'video_url', newType: 'VARCHAR(500)', transform: 'default NULL', quality: '' },
-  ],
-  relationships: [
-    { type: '1:N', from: 'dailyposts.id', to: 'dailypostcomments.daily_post_id', desc: 'Daily post comments', newEquiv: 'daily_content.id -> daily_comments.daily_content_id' },
-    { type: '1:N', from: 'dailyposts.id', to: 'dailypostusers.daily_post_id', desc: 'Daily post reactions/bookmarks', newEquiv: 'daily_content.id -> daily_reactions.daily_content_id + bookmarks.daily_content_id' },
-    { type: '1:N', from: 'dailyposts.id', to: 'dailychapters.daily_post_id (implicit)', desc: 'Listen progress by chapter name matching', newEquiv: 'daily_content.id -> listen_logs.daily_content_id' },
-  ],
-};
-
-const DAILYPOSTCOMMENTS_MAPPING = {
-  oldTable: 'dailypostcomments',
-  status: 'MAPPED',
-  newTables: ['daily_comments'],
-  notes: 'Comments on daily posts with self-referential threading (parent_id). ~3,146 rows.',
-  columns: [
-    { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: 'daily_comments', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'direct copy', quality: '' },
-    { oldCol: 'daily_post_id', oldType: 'int(11) NOT NULL', newTable: 'daily_comments', newCol: 'daily_content_id', newType: 'INTEGER', transform: 'rename: daily_post_id -> daily_content_id', quality: '' },
-    { oldCol: 'user_id', oldType: 'int(11) NOT NULL', newTable: 'daily_comments', newCol: 'user_id', newType: 'INTEGER', transform: 'direct copy', quality: '' },
-    { oldCol: 'parent_id', oldType: 'int(11) NOT NULL DEFAULT 0', newTable: 'daily_comments', newCol: 'parent_id', newType: 'INTEGER (nullable)', transform: 'Convert: parent_id=0 -> parent_id=NULL (root comment); otherwise direct copy', quality: 'MEDIUM: Uses 0 instead of NULL for root-level comments' },
-    { oldCol: 'text_content', oldType: 'text', newTable: 'daily_comments', newCol: 'body', newType: 'TEXT', transform: 'rename: text_content -> body', quality: '' },
-    { oldCol: 'likes_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema -- no migration needed', quality: 'Denormalized counter' },
-    { oldCol: 'reply_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema -- no migration needed', quality: 'Denormalized counter' },
-    { oldCol: 'is_deleted', oldType: 'tinyint(1) DEFAULT 0', newTable: 'daily_comments', newCol: 'deleted_at', newType: 'DATE (paranoid)', transform: 'Convert: is_deleted=1 -> deleted_at=updatedAt; is_deleted=0 -> NULL', quality: '' },
-    { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: 'daily_comments', newCol: 'created_at', newType: 'DATE', transform: 'rename', quality: '' },
-    { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: 'daily_comments', newCol: 'updated_at', newType: 'DATE', transform: 'rename', quality: '' },
-    { oldCol: 'category_id', oldType: 'int(11) DEFAULT NULL', newTable: '--', newCol: '--', newType: '--', transform: 'NOT NEEDED: daily_content carries mode; category_id on comments is redundant', quality: 'Redundant with parent dailypost context' },
-  ],
-  relationships: [
-    { type: 'N:1', from: 'dailypostcomments.daily_post_id', to: 'dailyposts.id', desc: 'Belongs to daily post', newEquiv: 'daily_comments.daily_content_id -> daily_content.id' },
-    { type: 'N:1', from: 'dailypostcomments.user_id', to: 'users.id', desc: 'Comment author', newEquiv: 'daily_comments.user_id -> users.id' },
-    { type: 'Self 1:N', from: 'dailypostcomments.parent_id', to: 'dailypostcomments.id', desc: 'Reply threading', newEquiv: 'daily_comments.parent_id -> daily_comments.id' },
-    { type: '1:N', from: 'dailypostcomments.id', to: 'dailypostusercomments.comment_id', desc: 'Comment reactions', newEquiv: 'daily_comments.id -> (NEEDS DECISION: daily_comment_reactions?)' },
-  ],
-};
-
-const DAILYPOSTUSERCOMMENTS_MAPPING = {
-  oldTable: 'dailypostusercomments',
-  status: 'NEEDS DECISION',
-  newTables: ['(daily_comment_reactions or extend daily_reactions)'],
-  notes: 'NEEDS DECISION: Reactions on daily post comments. ~6,733 rows. Each row = user liked a comment (is_liked flag). New schema daily_reactions targets daily_content, not daily_comments. Options: (a) create new daily_comment_reactions table, (b) extend daily_reactions with polymorphic target (entity_type + entity_id), (c) add comment_id FK to daily_reactions.',
-  columns: [
-    { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION: depends on target table choice', quality: '' },
-    { oldCol: 'comment_id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: 'comment_id', newType: 'INTEGER', transform: 'NEEDS DECISION: FK to dailypostcomments -> daily_comments', quality: '' },
-    { oldCol: 'user_id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: 'user_id', newType: 'INTEGER', transform: 'direct copy', quality: '' },
-    { oldCol: 'is_liked', oldType: 'tinyint(1) DEFAULT 0', newTable: '(TBD)', newCol: 'reaction_type', newType: "ENUM('like','love','pray','amen','praise')", transform: "NEEDS DECISION: is_liked=1 -> reaction_type='like'. Old schema only has like.", quality: 'Binary flag, no emoji types' },
-    { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: '(TBD)', newCol: 'created_at', newType: 'DATE', transform: 'rename', quality: '' },
-    { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: '(TBD)', newCol: 'updated_at', newType: 'DATE', transform: 'rename', quality: '' },
-  ],
-  relationships: [
-    { type: 'N:1', from: 'dailypostusercomments.comment_id', to: 'dailypostcomments.id', desc: 'Reaction on daily comment', newEquiv: '(NEEDS DECISION)' },
-    { type: 'N:1', from: 'dailypostusercomments.user_id', to: 'users.id', desc: 'Reaction by user', newEquiv: '(TBD).user_id -> users.id' },
-  ],
-};
-
-const DAILYPOSTUSERS_MAPPING = {
-  oldTable: 'dailypostusers',
-  status: 'MAPPED',
-  newTables: ['daily_reactions', 'bookmarks'],
-  notes: 'DUAL-PURPOSE pivot table. Each row has is_liked + is_bookmarked flags. ~23,685 rows. A single old row can generate BOTH a daily_reactions row AND a bookmarks row. WHERE is_liked=1 -> daily_reactions; WHERE is_bookmarked=1 -> bookmarks.',
-  columns: [
-    { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '(split)', newCol: '(new IDs)', newType: 'INTEGER AUTO_INCREMENT', transform: 'DO NOT preserve: old ID is meaningless when split into 2 tables. Generate new IDs.', quality: '' },
-    { oldCol: 'daily_post_id', oldType: 'int(11) NOT NULL', newTable: 'daily_reactions / bookmarks', newCol: 'daily_content_id', newType: 'INTEGER', transform: 'rename: daily_post_id -> daily_content_id (used in BOTH target tables)', quality: '' },
-    { oldCol: 'user_id', oldType: 'int(11) NOT NULL', newTable: 'daily_reactions / bookmarks', newCol: 'user_id', newType: 'INTEGER', transform: 'direct copy (used in BOTH target tables)', quality: '' },
-    { oldCol: 'is_liked', oldType: 'tinyint(1) DEFAULT 0', newTable: 'daily_reactions', newCol: 'reaction_type', newType: "ENUM('like','love','pray','amen','praise')", transform: "WHERE is_liked=1: create daily_reactions row with reaction_type='like'", quality: '' },
-    { oldCol: 'is_bookmarked', oldType: 'tinyint(1) DEFAULT 0', newTable: 'bookmarks', newCol: '(row existence)', newType: '--', transform: 'WHERE is_bookmarked=1: create bookmarks row with daily_content_id + user_id', quality: '' },
-    { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: 'daily_reactions / bookmarks', newCol: 'created_at', newType: 'DATE', transform: 'rename (copy to both target rows if both flags set)', quality: '' },
-    { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: 'daily_reactions / bookmarks', newCol: 'updated_at', newType: 'DATE', transform: 'rename', quality: '' },
-    { oldCol: 'category_id', oldType: 'int(11) DEFAULT NULL', newTable: '--', newCol: '--', newType: '--', transform: 'NOT NEEDED: daily_content carries mode; category_id on reactions is redundant', quality: 'Redundant with parent dailypost context' },
-  ],
-  relationships: [
-    { type: 'N:1', from: 'dailypostusers.daily_post_id', to: 'dailyposts.id', desc: 'Belongs to daily post', newEquiv: 'daily_reactions.daily_content_id -> daily_content.id / bookmarks.daily_content_id -> daily_content.id' },
-    { type: 'N:1', from: 'dailypostusers.user_id', to: 'users.id', desc: 'By user', newEquiv: 'daily_reactions.user_id -> users.id / bookmarks.user_id -> users.id' },
-  ],
-};
-
-const DAILYCHAPTERS_MAPPING = {
-  oldTable: 'dailychapters',
-  status: 'MAPPED',
-  newTables: ['listen_logs'],
-  notes: 'Tracks how far users listened to daily audio content. ~1,737 rows. chapter_name is a date or chapter reference string.',
-  columns: [
-    { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: 'listen_logs', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'direct copy', quality: '' },
-    { oldCol: 'chapter_name', oldType: 'varchar(255)', newTable: 'listen_logs', newCol: 'chapter_text', newType: 'VARCHAR(255)', transform: 'rename: chapter_name -> chapter_text. Contains date strings or chapter/verse references.', quality: 'May contain date strings like "2024-06-01" or verse refs' },
-    { oldCol: 'user_id', oldType: 'int(11) NOT NULL', newTable: 'listen_logs', newCol: 'user_id', newType: 'INTEGER', transform: 'direct copy', quality: '' },
-    { oldCol: 'listen_time', oldType: 'int(11) DEFAULT 0', newTable: 'listen_logs', newCol: 'progress', newType: 'INTEGER', transform: 'rename: listen_time -> progress. Value is seconds listened.', quality: 'Integer seconds' },
-    { oldCol: 'is_completed', oldType: 'tinyint(1) DEFAULT 0', newTable: 'listen_logs', newCol: 'completed', newType: 'BOOLEAN', transform: 'rename: is_completed -> completed', quality: '' },
-    { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: 'listen_logs', newCol: 'created_at', newType: 'DATE', transform: 'rename', quality: '' },
-    { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: 'listen_logs', newCol: 'updated_at', newType: 'DATE', transform: 'rename', quality: '' },
-    // Note: no daily_post_id FK in old schema -- listen_logs may link via chapter_name date matching
-    { oldCol: '(new)', oldType: '--', newTable: 'listen_logs', newCol: 'daily_content_id', newType: 'INTEGER', transform: 'NEEDS DECISION: old schema has no direct FK. Must derive from chapter_name matching dailyposts.daily_post_name by date string, or leave NULL.', quality: '' },
-  ],
-  relationships: [
-    { type: 'N:1', from: 'dailychapters.user_id', to: 'users.id', desc: 'Listener user', newEquiv: 'listen_logs.user_id -> users.id' },
-    { type: 'Implicit', from: 'dailychapters.chapter_name', to: 'dailyposts.daily_post_name', desc: 'Implicit link via date string (NOT a FK!)', newEquiv: 'listen_logs.daily_content_id -> daily_content.id (explicit FK in new schema)' },
-  ],
-};
+// ---------------------------------------------------------------------------
+// Daily Content Domain REMOVED — already migrated separately
+// (dailyposts, dailypostcomments, dailypostusercomments, dailypostusers, dailychapters)
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Section H: Mapping Configuration -- Verse Domain
@@ -1401,9 +1286,9 @@ const DAILYCHAPTERS_MAPPING = {
 
 const VERSES_MAPPING = {
   oldTable: 'verses',
-  status: 'NEEDS DECISION',
-  newTables: ['(no direct equivalent)'],
-  notes: 'NEEDS DECISION: 3,409 verses with no direct equivalent in new schema. New daily_content has verse_reference but verses are not standalone entities. Options: (a) migrate verse text into a reference table, (b) drop if superseded by daily_content verse_reference, (c) keep as read-only archive table for historical data.',
+  status: 'SKIP',
+  newTables: ['(no equivalent in new schema)'],
+  notes: 'SKIP: 3,409 verses. Verse content handled by daily_content.verse_reference in new schema. No standalone verse table needed.',
   columns: [
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
     { oldCol: 'verse_name', oldType: 'varchar(255) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION: verse_name is the verse reference string (e.g. "John 3:16"). Used as join key by verse_likes.', quality: 'Used as string FK by verse_likes (fragile join)' },
@@ -1420,9 +1305,9 @@ const VERSES_MAPPING = {
 
 const VERSE_COMMENTS_MAPPING = {
   oldTable: 'verse_comments',
-  status: 'NEEDS DECISION',
-  newTables: ['(no direct equivalent)'],
-  notes: 'NEEDS DECISION: 42 comments on verses. Could map to daily_comments if verses are matched to daily_content entries. Same structure as dailypostcomments (parent_id threading, is_deleted soft delete).',
+  status: 'SKIP',
+  newTables: ['(no equivalent in new schema)'],
+  notes: 'SKIP: 42 comments on verses. Only 42 rows — superseded by daily_comments in new schema.',
   columns: [
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
     { oldCol: 'verse_id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION: FK to verses.id', quality: '' },
@@ -1445,9 +1330,9 @@ const VERSE_COMMENTS_MAPPING = {
 
 const VERSE_LIKES_MAPPING = {
   oldTable: 'verse_likes',
-  status: 'NEEDS DECISION',
-  newTables: ['(no direct equivalent)'],
-  notes: 'NEEDS DECISION: 3,716 likes on verses. WARNING: References verses by NAME STRING, not by ID (fragile join). Some verse_name values may be empty strings. HIGH data quality concern.',
+  status: 'SKIP',
+  newTables: ['(no equivalent in new schema)'],
+  notes: 'SKIP: 3,716 likes on verses. Verse interactions superseded by daily_reactions. References verses by name string (not ID).',
   columns: [
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
     { oldCol: 'verse_name', oldType: 'varchar(255) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION: joined by name string to verses.verse_name. NOT a proper FK!', quality: 'HIGH: fragile string join. Some values may be empty.' },
@@ -1464,9 +1349,9 @@ const VERSE_LIKES_MAPPING = {
 
 const VERSE_USER_COMMENTS_MAPPING = {
   oldTable: 'verse_user_comments',
-  status: 'NEEDS DECISION',
-  newTables: ['(no direct equivalent)'],
-  notes: 'NEEDS DECISION: Only 1 row. Reactions on verse comments. Same NEEDS DECISION as parent verse tables. Structurally identical to dailypostusercomments and usercomments.',
+  status: 'SKIP',
+  newTables: ['(no equivalent in new schema)'],
+  notes: 'SKIP: Only 1 row. Verse comment reactions — not needed in new schema.',
   columns: [
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
     { oldCol: 'comment_id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION: FK to verse_comments.id', quality: '' },
@@ -1521,9 +1406,9 @@ const CHATS_MAPPING = {
 
 const NOTES_MAPPING = {
   oldTable: 'notes',
-  status: 'NEEDS DECISION',
-  newTables: ['(no direct equivalent)'],
-  notes: 'NEEDS DECISION: Only 7 personal journal/voice note entries. No direct equivalent in new schema (workshop_notes is workshop-specific). Options: (a) create a new personal_notes table, (b) drop (likely test data given only 7 rows), (c) archive to JSON export. Content is mostly voice notes (AUDIO type), with voice_audio column storing filename.',
+  status: 'SKIP',
+  newTables: ['(no equivalent in new schema)'],
+  notes: 'SKIP: Only 7 personal journal/voice notes — likely test data. No personal notes table in new schema.',
   columns: [
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
     { oldCol: 'title', oldType: 'varchar(255)', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION: mostly "Voice Note" titles', quality: 'Generic titles like "Voice Note"' },
@@ -1648,11 +1533,7 @@ const TABLE_MAPPINGS = {
   usercomments: USERCOMMENTS_MAPPING,
   follows: FOLLOWS_MAPPING,
   // Daily Content Domain (Plan 02)
-  dailyposts: DAILYPOSTS_MAPPING,
-  dailypostcomments: DAILYPOSTCOMMENTS_MAPPING,
-  dailypostusercomments: DAILYPOSTUSERCOMMENTS_MAPPING,
-  dailypostusers: DAILYPOSTUSERS_MAPPING,
-  dailychapters: DAILYCHAPTERS_MAPPING,
+  // Daily Content domain removed — already migrated separately
   // Verse Domain (Plan 02)
   verses: VERSES_MAPPING,
   verse_comments: VERSE_COMMENTS_MAPPING,
@@ -1682,27 +1563,27 @@ function getOverviewData() {
     // Categories Domain
     { oldTable: 'categories', status: 'MAPPED', newTables: 'categories', approxRows: 2, notes: 'Simple 1:1 mapping. BIBLE and POSITIVITY.' },
     { oldTable: 'category_user_relations', status: 'MAPPED', newTables: 'user_categories', approxRows: 44631, notes: 'Simple rename mapping.' },
-    { oldTable: 'homescreen_tile_categories', status: 'NEEDS DECISION', newTables: '(no direct equivalent)', approxRows: 10, notes: 'NEEDS DECISION: 10 homescreen tile categories. No new schema equivalent.' },
+    { oldTable: 'homescreen_tile_categories', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 10, notes: 'No equivalent table in new schema. Old homescreen tiles not carried over.' },
     // Social Domain
     { oldTable: 'posts', status: 'MAPPED', newTables: 'posts + post_media + prayer_requests', approxRows: 42, notes: 'COMPLEX: Type split FEED/PRAYER_WALL. WARNING: Only ~42 rows in dump, AUTO_INCREMENT=1230.' },
     { oldTable: 'comments', status: 'MAPPED', newTables: 'post_comments', approxRows: 620, notes: 'Post comments with threading (parent_id).' },
     { oldTable: 'usercomments', status: 'MAPPED', newTables: 'post_comment_reactions', approxRows: 494, notes: 'Comment like/reaction pivot.' },
     { oldTable: 'follows', status: 'MAPPED', newTables: 'follows', approxRows: 1194, notes: 'Social graph follows.' },
     // Daily Content Domain
-    { oldTable: 'dailyposts', status: 'MAPPED', newTables: 'daily_content', approxRows: 702, notes: 'Daily posts indexed by date string. Sparse index -- actual content managed externally.' },
-    { oldTable: 'dailypostcomments', status: 'MAPPED', newTables: 'daily_comments', approxRows: 3146, notes: 'Daily post comments with threading (parent_id).' },
-    { oldTable: 'dailypostusercomments', status: 'NEEDS DECISION', newTables: '(daily_comment_reactions TBD)', approxRows: 6733, notes: 'NEEDS DECISION: Reactions on daily comments. No matching target table.' },
-    { oldTable: 'dailypostusers', status: 'MAPPED', newTables: 'daily_reactions + bookmarks', approxRows: 23685, notes: 'DUAL-PURPOSE: is_liked -> daily_reactions, is_bookmarked -> bookmarks. One row can produce both.' },
-    { oldTable: 'dailychapters', status: 'MAPPED', newTables: 'listen_logs', approxRows: 1737, notes: 'Audio listen progress tracking. chapter_name links to dailyposts by date string.' },
+    { oldTable: 'dailyposts', status: 'ALREADY MIGRATED', newTables: 'daily_content', approxRows: 702, notes: 'Already migrated separately. No action needed.' },
+    { oldTable: 'dailypostcomments', status: 'ALREADY MIGRATED', newTables: 'daily_comments', approxRows: 3146, notes: 'Already migrated separately. No action needed.' },
+    { oldTable: 'dailypostusercomments', status: 'ALREADY MIGRATED', newTables: 'daily_reactions', approxRows: 6733, notes: 'Already migrated separately. No action needed.' },
+    { oldTable: 'dailypostusers', status: 'ALREADY MIGRATED', newTables: 'daily_reactions + bookmarks', approxRows: 23685, notes: 'Already migrated separately. No action needed.' },
+    { oldTable: 'dailychapters', status: 'ALREADY MIGRATED', newTables: 'listen_logs', approxRows: 1737, notes: 'Already migrated separately. No action needed.' },
     // Verse Domain
-    { oldTable: 'verses', status: 'NEEDS DECISION', newTables: '(no direct equivalent)', approxRows: 3409, notes: 'NEEDS DECISION: 3,409 verses. No standalone verse entity in new schema.' },
-    { oldTable: 'verse_comments', status: 'NEEDS DECISION', newTables: '(no direct equivalent)', approxRows: 42, notes: 'NEEDS DECISION: 42 comments on verses. Depends on verses table decision.' },
-    { oldTable: 'verse_likes', status: 'NEEDS DECISION', newTables: '(no direct equivalent)', approxRows: 3716, notes: 'NEEDS DECISION: 3,716 likes. WARNING: joined by name string, not ID.' },
-    { oldTable: 'verse_user_comments', status: 'NEEDS DECISION', newTables: '(no direct equivalent)', approxRows: 1, notes: 'NEEDS DECISION: Only 1 row. Depends on verse tables decision.' },
+    { oldTable: 'verses', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 3409, notes: 'Verses handled by daily_content.verse_reference in new schema. No standalone verse table needed.' },
+    { oldTable: 'verse_comments', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 42, notes: 'No equivalent. Only 42 comments — superseded by daily_comments.' },
+    { oldTable: 'verse_likes', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 3716, notes: 'No equivalent. Verse interactions superseded by daily_reactions.' },
+    { oldTable: 'verse_user_comments', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 1, notes: 'No equivalent. Only 1 row.' },
     // Chat Domain
     { oldTable: 'chats', status: 'MAPPED', newTables: 'conversations + conversation_participants + messages', approxRows: 286, notes: 'COMPLEX: flat chat -> grouped conversations + participants + messages.' },
     // Notes Domain
-    { oldTable: 'notes', status: 'NEEDS DECISION', newTables: '(no direct equivalent)', approxRows: 7, notes: 'NEEDS DECISION: 7 personal journal/voice notes. Likely test data.' },
+    { oldTable: 'notes', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 7, notes: 'Only 7 rows, likely test data. No personal notes table in new schema.' },
     // Notifications Domain
     { oldTable: 'notifications', status: 'MAPPED', newTables: 'notifications', approxRows: 28480, notes: 'COMPLEX: 18 cols -> 9. Polymorphic context columns collapsed into entity_id + entity_type.' },
     // Video Domain
