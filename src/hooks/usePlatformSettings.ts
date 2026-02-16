@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 type FeedStyle = 'tiktok' | 'instagram';
 
@@ -12,6 +12,7 @@ interface UsePlatformSettingsReturn {
   settings: PlatformSettings;
   feedStyle: FeedStyle;
   modeIsolation: boolean;
+  fontConfig: Record<string, string>;
   loading: boolean;
   getSetting: (key: string) => string | null;
 }
@@ -66,5 +67,16 @@ export function usePlatformSettings(): UsePlatformSettingsReturn {
   const modeIsolation =
     settings.mode_isolation_social === 'true';
 
-  return { settings, feedStyle, modeIsolation, loading, getSetting };
+  /** Parsed font_config JSON -- maps field keys to Google Font family names. */
+  const fontConfig: Record<string, string> = useMemo(() => {
+    const raw = settings.font_config;
+    if (!raw) return {};
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  }, [settings.font_config]);
+
+  return { settings, feedStyle, modeIsolation, fontConfig, loading, getSetting };
 }

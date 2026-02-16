@@ -22,6 +22,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Preconnect to Google Fonts for faster font loading */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body className="min-h-screen bg-background text-text antialiased dark:bg-background-dark dark:text-text-dark">
         <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem>
           <ToastProvider>

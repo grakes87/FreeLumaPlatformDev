@@ -9,6 +9,7 @@ import { NotificationProvider } from '@/context/NotificationContext';
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { AppShell } from '@/components/layout/AppShell';
+import { FontLoader } from '@/components/layout/FontLoader';
 
 // Suppress React 19 pointer capture error on unmounting elements during navigation
 if (typeof window !== 'undefined') {
@@ -75,6 +76,7 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
   return (
     <SocketProvider>
       <NotificationProvider>
+        <FontLoader />
         <AppShell>{children}</AppShell>
       </NotificationProvider>
     </SocketProvider>
