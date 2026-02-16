@@ -20,6 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 6: Bug Fixes & Polish** - Fix accumulated bugs and UX issues across all phases
 - [ ] **Phase 7: Migration & Launch** - Data migration, production deployment, user switchover
 - [ ] **Phase 8: Database Migration Mapping** - Deep-dive old DB schema, map all tables/columns to new DB, produce Excel mapping with sample data
+- [ ] **Phase 9: Platform Refinements & Admin Tools** - Remove laugh reactions from prayer/daily, repost views, admin font family control, activation codes, video thumbnail regen, admin workshop creation
 
 ## Phase Details
 
@@ -314,10 +315,36 @@ Plans:
 - [ ] 08-02-PLAN.md — Daily Content/Verse/Chat/Notes/Notifications/Video domain mappings + orphan detection (14 tables)
 - [ ] 08-03-PLAN.md — Human verification checkpoint for spreadsheet review and NEEDS DECISION items
 
+### Phase 9: Platform Refinements & Admin Tools
+**Goal**: Targeted UX refinements and admin tool additions — remove laugh reactions from prayer wall and daily content, add view counts to repost grid, admin-configurable per-field font family for the main app, activation code management in admin, video thumbnail regeneration, and admin ability to create workshops on behalf of users.
+
+**Depends on**: Phase 8 (all prior phases complete)
+
+**Requirements**: None (refinement/enhancement phase)
+
+**Success Criteria** (what must be TRUE):
+  1. Laugh (haha) reaction removed from prayer wall and daily content reaction pickers
+  2. Repost cards in profile grid show view counts
+  3. Admin can set a per-field font family that applies to user-facing text in the main app
+  4. Font family loads from platform settings on initial app load without degrading performance
+  5. Admin can generate and manage activation codes from admin dashboard
+  6. Admin can regenerate video thumbnails from admin video management
+  7. Admin can create a workshop on behalf of any user from admin dashboard
+
+**Plans**: 6 plans in 2 waves
+
+Plans:
+- [ ] 09-01-PLAN.md — Haha reaction removal + repost view count badges + video thumbnail regen button
+- [ ] 09-02-PLAN.md — Activation code schema enhancement (source, used_at, never-expire) + old code import
+- [ ] 09-03-PLAN.md — Admin proxy workshop creation (migration, API, UI with host picker)
+- [ ] 09-04-PLAN.md — Font system infrastructure (100 curated fonts, 16 field categories, FontLoader, CSS variables)
+- [ ] 09-05-PLAN.md — Activation code admin page (stats, table, generation, CSV export, nav link)
+- [ ] 09-06-PLAN.md — Font system admin UI (FontFamilySection, searchable picker, preview, publish flow)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 
 **Parallel Opportunities:**
 - Phase 3 (Real-Time) and Phase 4 (Enhanced Content) are mostly independent and can be partially parallelized after Phase 2 completes
@@ -332,6 +359,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 6. Bug Fixes & Polish | 0/6 | Planned | - |
 | 7. Migration & Launch | 0/TBD | Not started | - |
 | 8. Database Migration Mapping | 0/3 | Planned | - |
+| 9. Platform Refinements & Admin Tools | 0/6 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-11*
@@ -342,4 +370,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 *Phase 5 planned: 2026-02-14 (14 plans in 6 waves)*
 *Phase 8 added: 2026-02-15 (Database Migration Mapping)*
 *Phase 8 planned: 2026-02-15 (3 plans in 3 waves)*
-*Depth: Comprehensive (8 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping)*
+*Phase 9 added: 2026-02-16 (Platform Refinements & Admin Tools)*
+*Phase 9 planned: 2026-02-16 (6 plans in 2 waves)*
+*Depth: Comprehensive (9 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements)*
