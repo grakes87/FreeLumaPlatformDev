@@ -21,6 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 7: Migration & Launch** - Data migration, production deployment, user switchover
 - [ ] **Phase 8: Database Migration Mapping** - Deep-dive old DB schema, map all tables/columns to new DB, produce Excel mapping with sample data
 - [ ] **Phase 9: Platform Refinements & Admin Tools** - Remove laugh reactions from prayer/daily, repost views, admin font family control, activation codes, video thumbnail regen, admin workshop creation
+- [ ] **Phase 10: Email System Setup with SendGrid** - Configure SendGrid as email provider, migrate from SMTP to SendGrid API, wire up all transactional and notification emails
 
 ## Phase Details
 
@@ -341,10 +342,35 @@ Plans:
 - [ ] 09-05-PLAN.md — Activation code admin page (stats, table, generation, CSV export, nav link)
 - [ ] 09-06-PLAN.md — Font system admin UI (FontFamilySection, searchable picker, preview, publish flow)
 
+### Phase 10: Email System Setup with SendGrid
+**Goal**: Configure SendGrid as the email provider for all transactional and notification emails — replace current SMTP/Nodemailer setup with SendGrid API integration, wire up all email flows (verification, password reset, notification digests, daily reminders), and validate delivery.
+
+**Depends on**: Phase 9 (all prior phases complete)
+
+**Requirements**: None (infrastructure phase)
+
+**Success Criteria** (what must be TRUE):
+  1. SendGrid API key configured and authenticated
+  2. All transactional emails (verification, password reset, email change) sent via SendGrid
+  3. All notification emails (follow, reaction, comment, prayer, DM digest) sent via SendGrid
+  4. Daily reminder emails sent via SendGrid
+  5. Email templates render correctly with deep links
+  6. Unsubscribe links and List-Unsubscribe headers functional
+  7. Email delivery verified in SendGrid dashboard
+
+**Plans**: 5 plans in 3 waves
+
+Plans:
+- [ ] 10-01-PLAN.md — SendGrid SDK transport swap, DB migrations (3 settings + 8 email types), unsubscribe route update, hardcoded freeluma.com domain
+- [ ] 10-02-PLAN.md — Reaction/comment batch email template + 15-minute cron processor
+- [ ] 10-03-PLAN.md — Workshop lifecycle email templates (6 types) + dispatcher function
+- [ ] 10-04-PLAN.md — New video broadcast email template + chunked cron processor
+- [ ] 10-05-PLAN.md — Settings UI (3 new toggles) + video broadcast trigger + workshop email dispatch wiring
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 **Parallel Opportunities:**
 - Phase 3 (Real-Time) and Phase 4 (Enhanced Content) are mostly independent and can be partially parallelized after Phase 2 completes
@@ -360,6 +386,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 7. Migration & Launch | 0/TBD | Not started | - |
 | 8. Database Migration Mapping | 0/3 | Planned | - |
 | 9. Platform Refinements & Admin Tools | 6/6 | Complete | 2026-02-16 |
+| 10. Email System Setup with SendGrid | 0/5 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-11*
@@ -373,4 +400,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 *Phase 9 added: 2026-02-16 (Platform Refinements & Admin Tools)*
 *Phase 9 planned: 2026-02-16 (6 plans in 2 waves)*
 *Phase 9 executed: 2026-02-16 (6 plans in 2 waves, 21 min)*
-*Depth: Comprehensive (9 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements)*
+*Phase 10 added: 2026-02-16 (Email System Setup with SendGrid)*
+*Phase 10 planned: 2026-02-16 (5 plans in 3 waves)*
+*Depth: Comprehensive (10 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure)*
