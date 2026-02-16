@@ -126,8 +126,8 @@ export function ProfileGridItem({ item, tab, onClick }: ProfileGridItemProps) {
           </span>
         </div>
 
-        {/* Bottom-right: eye + view count — own posts tab, videos only */}
-        {tab === 'posts' && isVideo && (
+        {/* Bottom-right: eye + view count — posts and reposts tabs */}
+        {(tab === 'posts' || tab === 'reposts') && viewCount > 0 && (
           <div className="absolute bottom-1 right-1.5 flex items-center gap-0.5 text-white">
             <Eye className="h-3 w-3" />
             <span className="text-[11px] font-semibold drop-shadow">

@@ -54,7 +54,6 @@ async function generateUniqueCodes(count: number): Promise<string[]> {
 const postSchema = z.object({
   count: z.number().int().min(1).max(100),
   mode_hint: z.enum(['bible', 'positivity']).optional(),
-  expires_in_days: z.number().int().min(1).max(3650).optional().default(365),
 });
 
 export const POST = withAdmin(async (req: NextRequest, context) => {
@@ -70,7 +69,7 @@ export const POST = withAdmin(async (req: NextRequest, context) => {
       );
     }
 
-    const { count, mode_hint, expires_in_days } = result.data;
+    const { count, mode_hint } = result.data;
 
     const codes = await generateUniqueCodes(count);
 
@@ -81,13 +80,14 @@ export const POST = withAdmin(async (req: NextRequest, context) => {
       );
     }
 
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + expires_in_days);
+    // All generated codes never expire
+    const expiresAt = new Date('9999-12-31');
 
     const records = codes.map((code) => ({
       code,
       mode_hint: mode_hint ?? null,
       expires_at: expiresAt,
+      source: 'generated' as const,
       created_by: context.user.id,
     }));
 
@@ -109,8 +109,9 @@ export const POST = withAdmin(async (req: NextRequest, context) => {
 // GET: List activation codes with stats
 const getQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
   used: z.enum(['true', 'false']).optional(),
+  source: z.enum(['generated', 'imported']).optional(),
 });
 
 export const GET = withAdmin(async (req: NextRequest) => {
@@ -120,6 +121,7 @@ export const GET = withAdmin(async (req: NextRequest) => {
       page: searchParams.get('page') ?? undefined,
       limit: searchParams.get('limit') ?? undefined,
       used: searchParams.get('used') ?? undefined,
+      source: searchParams.get('source') ?? undefined,
     });
 
     if (!result.success) {
@@ -130,15 +132,24 @@ export const GET = withAdmin(async (req: NextRequest) => {
       );
     }
 
-    const { page, limit, used } = result.data;
+    const { page, limit, used, source } = result.data;
     const offset = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
     if (used === 'true') where.used = true;
     if (used === 'false') where.used = false;
+    if (source) where.source = source;
+
+    const { User } = await import('@/lib/db/models');
 
     const { rows: codes, count: total } = await ActivationCode.findAndCountAll({
       where,
+      include: [{
+        model: User,
+        as: 'usedByUser',
+        attributes: ['id', 'username', 'display_name'],
+        required: false,
+      }],
       order: [['created_at', 'DESC']],
       limit,
       offset,

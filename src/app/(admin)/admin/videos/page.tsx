@@ -548,17 +548,15 @@ export default function AdminVideosPage() {
                             )}
                           />
                         </button>
-                        {!video.thumbnail_url && (
-                          <button
-                            type="button"
-                            onClick={() => handleRetryThumbnail(video)}
-                            disabled={retryingThumbnailId === video.id}
-                            className="rounded-lg p-2 text-text-muted transition-colors hover:bg-surface-hover hover:text-text dark:text-text-muted-dark dark:hover:bg-surface-hover-dark dark:hover:text-text-dark disabled:opacity-50"
-                            title="Retry thumbnail"
-                          >
-                            <RefreshCw className={cn('h-4 w-4', retryingThumbnailId === video.id && 'animate-spin')} />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRetryThumbnail(video)}
+                          disabled={retryingThumbnailId === video.id}
+                          className="rounded-lg p-2 text-text-muted transition-colors hover:bg-surface-hover hover:text-text dark:text-text-muted-dark dark:hover:bg-surface-hover-dark dark:hover:text-text-dark disabled:opacity-50"
+                          title="Regenerate thumbnail"
+                        >
+                          <RefreshCw className={cn('h-4 w-4', retryingThumbnailId === video.id && 'animate-spin')} />
+                        </button>
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(video.id)}

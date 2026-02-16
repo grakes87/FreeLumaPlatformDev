@@ -6,9 +6,11 @@ export interface ActivationCodeAttributes {
   code: string;
   used: boolean;
   used_by: number | null;
+  used_at: Date | null;
   mode_hint: 'bible' | 'positivity' | null;
   expires_at: Date;
   created_by: number | null;
+  source: 'generated' | 'imported';
   created_at: Date;
   updated_at: Date;
 }
@@ -17,8 +19,10 @@ export interface ActivationCodeCreationAttributes extends Optional<ActivationCod
   | 'id'
   | 'used'
   | 'used_by'
+  | 'used_at'
   | 'mode_hint'
   | 'created_by'
+  | 'source'
   | 'created_at'
   | 'updated_at'
 > {}
@@ -28,9 +32,11 @@ class ActivationCode extends Model<ActivationCodeAttributes, ActivationCodeCreat
   declare code: string;
   declare used: boolean;
   declare used_by: number | null;
+  declare used_at: Date | null;
   declare mode_hint: 'bible' | 'positivity' | null;
   declare expires_at: Date;
   declare created_by: number | null;
+  declare source: 'generated' | 'imported';
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
 }
@@ -43,7 +49,7 @@ ActivationCode.init(
       autoIncrement: true,
     },
     code: {
-      type: DataTypes.STRING(12),
+      type: DataTypes.STRING(16),
       unique: true,
       allowNull: false,
     },
@@ -60,6 +66,10 @@ ActivationCode.init(
         key: 'id',
       },
     },
+    used_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     mode_hint: {
       type: DataTypes.ENUM('bible', 'positivity'),
       allowNull: true,
@@ -75,6 +85,11 @@ ActivationCode.init(
         model: 'users',
         key: 'id',
       },
+    },
+    source: {
+      type: DataTypes.ENUM('generated', 'imported'),
+      defaultValue: 'generated',
+      allowNull: false,
     },
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE,
