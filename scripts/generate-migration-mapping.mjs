@@ -30,12 +30,9 @@ const EXCLUDED_TABLES = [
   'workshoplogs',
 ];
 
-// Tables already migrated separately — skip entirely
+// Tables already migrated separately — skip entirely (content only, not interactions)
 const ALREADY_MIGRATED_TABLES = [
   'dailyposts',
-  'dailypostcomments',
-  'dailypostusercomments',
-  'dailypostusers',
   'dailychapters',
 ];
 
@@ -52,6 +49,10 @@ const DOMAIN_GROUPS = [
   {
     name: 'Social/Posts Domain',
     tables: ['posts', 'comments', 'usercomments', 'follows'],
+  },
+  {
+    name: 'Daily Content Interactions',
+    tables: ['dailypostcomments', 'dailypostusers', 'dailypostusercomments'],
   },
   {
     name: 'Verse Domain',
@@ -567,7 +568,19 @@ function getOrphanChecks(tableName) {
       { fkCol: 'follower_id', refTable: 'users', refCol: 'id', note: '' },
       { fkCol: 'following_id', refTable: 'users', refCol: 'id', note: '' },
     ],
-    // Daily Content domain — REMOVED (already migrated separately)
+    // Daily Content Interactions
+    dailypostcomments: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'daily_post_id', refTable: 'dailyposts', refCol: 'id', note: '' },
+    ],
+    dailypostusers: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'daily_post_id', refTable: 'dailyposts', refCol: 'id', note: '' },
+    ],
+    dailypostusercomments: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'comment_id', refTable: 'dailypostcomments', refCol: 'id', note: '' },
+    ],
     // Verse domain
     verses: [],
     verse_comments: [
@@ -628,6 +641,8 @@ function detectOrphans(sql) {
     { table: 'categories', col: 'id' },
     { table: 'posts', col: 'id' },
     { table: 'comments', col: 'id' },
+    { table: 'dailyposts', col: 'id' },
+    { table: 'dailypostcomments', col: 'id' },
     { table: 'verses', col: 'id' },
     { table: 'verses', col: 'verse_name' },
     { table: 'verse_comments', col: 'id' },
@@ -1275,10 +1290,76 @@ const FOLLOWS_MAPPING = {
 // Section G: Mapping Configuration -- Daily Content Domain
 // ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// Daily Content Domain REMOVED — already migrated separately
-// (dailyposts, dailypostcomments, dailypostusercomments, dailypostusers, dailychapters)
-// ---------------------------------------------------------------------------
+// dailyposts and dailychapters: ALREADY MIGRATED (content + listen logs)
+// The 3 interaction tables below still need importing:
+
+const DAILYPOSTCOMMENTS_MAPPING = {
+  oldTable: 'dailypostcomments',
+  status: 'MAPPED',
+  newTables: ['daily_comments'],
+  notes: 'Comments on daily content. 872 rows. Hierarchical (parent_id for replies). Map daily_post_id to daily_content_id via dailyposts.daily_post_name -> daily_content.post_date date lookup.',
+  columns: [
+    { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: 'daily_comments', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'direct copy', quality: '' },
+    { oldCol: 'daily_post_id', oldType: 'int(11) NOT NULL', newTable: 'daily_comments', newCol: 'daily_content_id', newType: 'INTEGER', transform: 'LOOKUP: old dailyposts.id -> dailyposts.daily_post_name (date string) -> match daily_content.post_date -> daily_content.id', quality: 'Requires cross-table ID resolution' },
+    { oldCol: 'user_id', oldType: 'int(11) NOT NULL', newTable: 'daily_comments', newCol: 'user_id', newType: 'INTEGER', transform: 'direct copy', quality: '' },
+    { oldCol: 'parent_id', oldType: 'int(11) NOT NULL DEFAULT 0', newTable: 'daily_comments', newCol: 'parent_id', newType: 'INTEGER NULL', transform: 'Convert: 0 -> NULL (root comment), non-zero -> direct copy (reply)', quality: 'Old uses 0 for root, new uses NULL' },
+    { oldCol: 'text_content', oldType: 'text', newTable: 'daily_comments', newCol: 'body', newType: 'TEXT', transform: 'rename: text_content -> body', quality: '' },
+    { oldCol: 'likes_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — computed dynamically in new schema', quality: 'Denormalized counter' },
+    { oldCol: 'reply_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — computed dynamically in new schema', quality: 'Denormalized counter' },
+    { oldCol: 'is_deleted', oldType: 'tinyint(1) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'FILTER: skip rows where is_deleted=1 (do not import deleted comments)', quality: 'Soft delete flag — hard delete in new schema' },
+    { oldCol: 'category_id', oldType: 'int(11) DEFAULT NULL', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — always 1, not used in new schema', quality: 'Always 1 in data' },
+    { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: 'daily_comments', newCol: 'created_at', newType: 'DATE', transform: 'rename: camelCase -> snake_case', quality: '' },
+    { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: 'daily_comments', newCol: 'updated_at', newType: 'DATE', transform: 'rename: camelCase -> snake_case', quality: '' },
+    // New schema columns not in old
+    { oldCol: '(new)', oldType: '--', newTable: 'daily_comments', newCol: 'edited', newType: 'BOOLEAN', transform: 'default false', quality: '' },
+  ],
+  relationships: [
+    { type: 'N:1', from: 'dailypostcomments.daily_post_id', to: 'dailyposts.id', desc: 'Belongs to daily post', newEquiv: 'daily_comments.daily_content_id -> daily_content.id' },
+    { type: 'N:1', from: 'dailypostcomments.user_id', to: 'users.id', desc: 'Comment author', newEquiv: 'daily_comments.user_id -> users.id' },
+    { type: 'N:1', from: 'dailypostcomments.parent_id', to: 'dailypostcomments.id', desc: 'Reply to comment', newEquiv: 'daily_comments.parent_id -> daily_comments.id' },
+    { type: '1:N', from: 'dailypostcomments.id', to: 'dailypostusercomments.comment_id', desc: 'Comment likes', newEquiv: '(see dailypostusercomments mapping)' },
+  ],
+};
+
+const DAILYPOSTUSERS_MAPPING = {
+  oldTable: 'dailypostusers',
+  status: 'MAPPED',
+  newTables: ['daily_reactions', 'bookmarks'],
+  notes: 'DUAL SPLIT: User interactions with daily posts. 2,925 rows. Each row has is_liked + is_bookmarked flags. Splits into daily_reactions (likes as love/heart) and bookmarks. A single old row can produce BOTH a reaction AND a bookmark.',
+  columns: [
+    { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — new IDs auto-generated for each split target', quality: '' },
+    { oldCol: 'daily_post_id', oldType: 'int(11) NOT NULL', newTable: 'daily_reactions / bookmarks', newCol: 'daily_content_id', newType: 'INTEGER', transform: 'LOOKUP: old dailyposts.id -> dailyposts.daily_post_name -> match daily_content.post_date -> daily_content.id', quality: 'Requires cross-table ID resolution' },
+    { oldCol: 'user_id', oldType: 'int(11) NOT NULL', newTable: 'daily_reactions / bookmarks', newCol: 'user_id', newType: 'INTEGER', transform: 'direct copy to whichever target row(s) are generated', quality: '' },
+    { oldCol: 'is_liked', oldType: 'tinyint(1) DEFAULT 0', newTable: 'daily_reactions', newCol: 'reaction_type', newType: "ENUM('like','love','haha','wow','sad','pray')", transform: "WHERE is_liked=1: create daily_reactions row with reaction_type='love' (heart). Skip if is_liked=0.", quality: '' },
+    { oldCol: 'is_bookmarked', oldType: 'tinyint(1) DEFAULT 0', newTable: 'bookmarks', newCol: 'daily_content_id', newType: 'INTEGER', transform: 'WHERE is_bookmarked=1: create bookmarks row with daily_content_id + user_id. Skip if is_bookmarked=0.', quality: '' },
+    { oldCol: 'category_id', oldType: 'int(11) DEFAULT NULL', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — always 1, not used in new schema', quality: 'Always 1 in data' },
+    { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: 'daily_reactions / bookmarks', newCol: 'created_at', newType: 'DATE', transform: 'rename: camelCase -> snake_case. Copy to whichever target row(s).', quality: '' },
+    { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: 'daily_reactions / bookmarks', newCol: 'updated_at', newType: 'DATE', transform: 'rename: camelCase -> snake_case', quality: '' },
+  ],
+  relationships: [
+    { type: 'N:1', from: 'dailypostusers.daily_post_id', to: 'dailyposts.id', desc: 'Belongs to daily post', newEquiv: 'daily_reactions.daily_content_id / bookmarks.daily_content_id -> daily_content.id' },
+    { type: 'N:1', from: 'dailypostusers.user_id', to: 'users.id', desc: 'Interacting user', newEquiv: 'daily_reactions.user_id / bookmarks.user_id -> users.id' },
+  ],
+};
+
+const DAILYPOSTUSERCOMMENTS_MAPPING = {
+  oldTable: 'dailypostusercomments',
+  status: 'NEEDS DECISION',
+  newTables: ['(no comment reactions table exists yet)'],
+  notes: 'NEEDS DECISION: Likes on daily post COMMENTS (not on posts). 6,733 rows. Each row = user liked a comment. New schema daily_reactions targets daily_content only, not comments. Options: (a) create new daily_comment_reactions table, (b) skip — comment like counts are small and can start fresh, (c) extend daily_reactions with a nullable comment_id column.',
+  columns: [
+    { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
+    { oldCol: 'comment_id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'FK to dailypostcomments.id — would need daily_comments.id lookup', quality: '' },
+    { oldCol: 'user_id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
+    { oldCol: 'is_liked', oldType: 'tinyint(1) DEFAULT 0', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'Binary like flag. Some rows have is_liked=0 (unliked).', quality: 'Contains both liked and unliked states' },
+    { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
+    { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
+  ],
+  relationships: [
+    { type: 'N:1', from: 'dailypostusercomments.comment_id', to: 'dailypostcomments.id', desc: 'The comment being liked', newEquiv: '(TBD) -> daily_comments.id' },
+    { type: 'N:1', from: 'dailypostusercomments.user_id', to: 'users.id', desc: 'User who liked', newEquiv: '(TBD) -> users.id' },
+  ],
+};
 
 // ---------------------------------------------------------------------------
 // Section H: Mapping Configuration -- Verse Domain
@@ -1532,8 +1613,10 @@ const TABLE_MAPPINGS = {
   comments: COMMENTS_MAPPING,
   usercomments: USERCOMMENTS_MAPPING,
   follows: FOLLOWS_MAPPING,
-  // Daily Content Domain (Plan 02)
-  // Daily Content domain removed — already migrated separately
+  // Daily Content Interactions (comments, likes, bookmarks — content itself already migrated)
+  dailypostcomments: DAILYPOSTCOMMENTS_MAPPING,
+  dailypostusers: DAILYPOSTUSERS_MAPPING,
+  dailypostusercomments: DAILYPOSTUSERCOMMENTS_MAPPING,
   // Verse Domain (Plan 02)
   verses: VERSES_MAPPING,
   verse_comments: VERSE_COMMENTS_MAPPING,
@@ -1570,10 +1653,10 @@ function getOverviewData() {
     { oldTable: 'usercomments', status: 'MAPPED', newTables: 'post_comment_reactions', approxRows: 494, notes: 'Comment like/reaction pivot.' },
     { oldTable: 'follows', status: 'MAPPED', newTables: 'follows', approxRows: 1194, notes: 'Social graph follows.' },
     // Daily Content Domain
-    { oldTable: 'dailyposts', status: 'ALREADY MIGRATED', newTables: 'daily_content', approxRows: 702, notes: 'Already migrated separately. No action needed.' },
-    { oldTable: 'dailypostcomments', status: 'ALREADY MIGRATED', newTables: 'daily_comments', approxRows: 3146, notes: 'Already migrated separately. No action needed.' },
-    { oldTable: 'dailypostusercomments', status: 'ALREADY MIGRATED', newTables: 'daily_reactions', approxRows: 6733, notes: 'Already migrated separately. No action needed.' },
-    { oldTable: 'dailypostusers', status: 'ALREADY MIGRATED', newTables: 'daily_reactions + bookmarks', approxRows: 23685, notes: 'Already migrated separately. No action needed.' },
+    { oldTable: 'dailyposts', status: 'ALREADY MIGRATED', newTables: 'daily_content', approxRows: 702, notes: 'Content already migrated separately. No action needed.' },
+    { oldTable: 'dailypostcomments', status: 'MAPPED', newTables: 'daily_comments', approxRows: 872, notes: 'Comments on daily content. parent_id for replies. Requires daily_post_id -> daily_content_id lookup via date.' },
+    { oldTable: 'dailypostusercomments', status: 'NEEDS DECISION', newTables: '(no comment reactions table)', approxRows: 6733, notes: 'NEEDS DECISION: Likes on daily comments. No target table exists yet in new schema.' },
+    { oldTable: 'dailypostusers', status: 'MAPPED', newTables: 'daily_reactions + bookmarks', approxRows: 2925, notes: 'DUAL SPLIT: is_liked=1 -> daily_reactions (love/heart), is_bookmarked=1 -> bookmarks.' },
     { oldTable: 'dailychapters', status: 'ALREADY MIGRATED', newTables: 'listen_logs', approxRows: 1737, notes: 'Already migrated separately. No action needed.' },
     // Verse Domain
     { oldTable: 'verses', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 3409, notes: 'Verses handled by daily_content.verse_reference in new schema. No standalone verse table needed.' },
