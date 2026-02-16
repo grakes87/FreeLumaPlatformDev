@@ -9,7 +9,11 @@ import {
   UserPlus,
   Layers,
   AlertTriangle,
+  Type,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
+import { FontFamilySection } from './FontFamilySection';
 
 interface SettingToggleProps {
   label: string;
@@ -142,6 +146,7 @@ export function AdminSettings() {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [fontSectionOpen, setFontSectionOpen] = useState(false);
 
   useEffect(() => {
     fetch('/api/platform-settings', { credentials: 'include' })
@@ -271,6 +276,24 @@ export function AdminSettings() {
           disabled={saving === 'mode_isolation_prayer'}
         />
       </SettingsGroup>
+
+      {/* Font Family Configuration */}
+      <div className="space-y-3">
+        <button
+          onClick={() => setFontSectionOpen(!fontSectionOpen)}
+          className="flex w-full items-center gap-2"
+        >
+          <Type className="h-5 w-5 text-text-muted dark:text-text-muted-dark" />
+          <h3 className="font-semibold text-text dark:text-text-dark">Font Family</h3>
+          <span className="ml-auto text-text-muted dark:text-text-muted-dark">
+            {fontSectionOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </span>
+        </button>
+        <p className="text-sm text-text-muted dark:text-text-muted-dark">
+          Configure font families for different text elements across the app.
+        </p>
+        {fontSectionOpen && <FontFamilySection />}
+      </div>
     </div>
   );
 }
