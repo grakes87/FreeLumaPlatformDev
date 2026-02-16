@@ -22,6 +22,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
     const status = url.searchParams.get('status');
     const hostId = url.searchParams.get('host_id');
     const categoryId = url.searchParams.get('category_id');
+    const q = url.searchParams.get('q');
     const cursor = url.searchParams.get('cursor');
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '20', 10), 100);
 
@@ -30,6 +31,10 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
 
     if (status) {
       where.status = status;
+    }
+
+    if (q && q.trim()) {
+      where.title = { [Op.like]: `%${q.trim()}%` };
     }
 
     if (hostId) {
@@ -56,7 +61,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
         'status', 'is_private', 'max_capacity', 'attendee_count',
         'host_id', 'category_id', 'series_id',
         'recording_url', 'actual_started_at', 'actual_ended_at',
-        'created_at',
+        'created_by_admin_id', 'created_at',
       ],
       include: [
         {
@@ -68,6 +73,12 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
           model: WorkshopCategory,
           as: 'category',
           attributes: ['id', 'name', 'slug'],
+        },
+        {
+          model: User,
+          as: 'createdByAdmin',
+          attributes: ['id', 'display_name', 'username'],
+          required: false,
         },
       ],
       order: [['id', 'DESC']],
@@ -92,9 +103,17 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
 });
 
 const adminActionSchema = z.object({
-  action: z.enum(['cancel_workshop', 'revoke_host', 'restore_host']),
+  action: z.enum(['cancel_workshop', 'revoke_host', 'restore_host', 'create_on_behalf']),
   workshopId: z.number().int().positive().optional(),
   userId: z.number().int().positive().optional(),
+  // Fields for create_on_behalf
+  host_id: z.number().int().positive().optional(),
+  title: z.string().min(3).max(200).optional(),
+  description: z.string().max(2000).optional(),
+  category_id: z.number().int().positive().nullable().optional(),
+  scheduled_at: z.string().optional(),
+  duration_minutes: z.number().int().min(15).max(480).optional(),
+  is_private: z.boolean().optional(),
 });
 
 /**
@@ -195,6 +214,56 @@ export const PUT = withAdmin(async (req: NextRequest, context: AuthContext) => {
         userId,
         can_host: newValue,
       });
+    }
+
+    if (action === 'create_on_behalf') {
+      const { host_id, title, description, category_id, scheduled_at, duration_minutes, is_private } = parsed.data;
+
+      if (!host_id || !title || !scheduled_at) {
+        return errorResponse('host_id, title, and scheduled_at are required');
+      }
+
+      const { User, Workshop } = await import('@/lib/db/models');
+
+      // Validate host exists and is active
+      const hostUser = await User.findByPk(host_id, { attributes: ['id', 'can_host', 'status', 'display_name', 'username'] });
+      if (!hostUser) return errorResponse('Host user not found', 404);
+      if (hostUser.status !== 'active') return errorResponse('Host user is not active');
+
+      // Auto-enable can_host if needed
+      if (!hostUser.can_host) {
+        await hostUser.update({ can_host: true });
+      }
+
+      // Create workshop on behalf of host
+      const workshop = await Workshop.create({
+        host_id,
+        title,
+        description: description || null,
+        category_id: category_id || null,
+        scheduled_at: new Date(scheduled_at),
+        duration_minutes: duration_minutes || null,
+        is_private: is_private || false,
+        created_by_admin_id: context.user.id,
+      });
+
+      // Notify host (non-fatal)
+      try {
+        const { createNotification } = await import('@/lib/notifications/create');
+        const { NotificationType, NotificationEntityType } = await import('@/lib/notifications/types');
+        await createNotification({
+          recipient_id: host_id,
+          actor_id: context.user.id,
+          type: NotificationType.WORKSHOP_UPDATED,
+          entity_type: NotificationEntityType.WORKSHOP,
+          entity_id: workshop.id,
+          preview_text: `Admin created a workshop for you: ${title}`,
+        });
+      } catch {
+        console.error('[Admin] Failed to send workshop creation notification');
+      }
+
+      return successResponse({ workshop, action: 'create_on_behalf' }, 201);
     }
 
     return errorResponse('Unknown action');

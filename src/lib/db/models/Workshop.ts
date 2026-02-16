@@ -22,6 +22,7 @@ export interface WorkshopAttributes {
   recording_resource_id: string | null;
   agora_channel: string | null;
   attendee_count: number;
+  created_by_admin_id: number | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -42,6 +43,7 @@ export interface WorkshopCreationAttributes extends Optional<WorkshopAttributes,
   | 'recording_resource_id'
   | 'agora_channel'
   | 'attendee_count'
+  | 'created_by_admin_id'
   | 'created_at'
   | 'updated_at'
 > {}
@@ -65,6 +67,7 @@ class Workshop extends Model<WorkshopAttributes, WorkshopCreationAttributes> imp
   declare recording_resource_id: string | null;
   declare agora_channel: string | null;
   declare attendee_count: number;
+  declare created_by_admin_id: number | null;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
 }
@@ -158,6 +161,14 @@ Workshop.init(
       type: DataTypes.INTEGER,
       defaultValue: 0,
       allowNull: false,
+    },
+    created_by_admin_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
     },
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE,

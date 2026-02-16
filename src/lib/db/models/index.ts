@@ -49,6 +49,7 @@ import { WorkshopAttendee } from './WorkshopAttendee';
 import { WorkshopChat } from './WorkshopChat';
 import { WorkshopNote } from './WorkshopNote';
 import { WorkshopInvite } from './WorkshopInvite';
+import { WorkshopBan } from './WorkshopBan';
 
 // ---- Associations ----
 
@@ -826,6 +827,12 @@ Workshop.belongsTo(User, {
   as: 'host',
 });
 
+// Workshop -> User (created by admin, nullable)
+Workshop.belongsTo(User, {
+  foreignKey: 'created_by_admin_id',
+  as: 'createdByAdmin',
+});
+
 // Workshop -> WorkshopAttendee (one-to-many)
 Workshop.hasMany(WorkshopAttendee, {
   foreignKey: 'workshop_id',
@@ -912,6 +919,38 @@ WorkshopInvite.belongsTo(User, {
   as: 'invitedBy',
 });
 
+// ---- Workshop Bans ----
+
+// User -> WorkshopBan (as host who issued bans)
+User.hasMany(WorkshopBan, {
+  foreignKey: 'host_id',
+  as: 'workshopBansIssued',
+});
+WorkshopBan.belongsTo(User, {
+  foreignKey: 'host_id',
+  as: 'host',
+});
+
+// User -> WorkshopBan (as banned user)
+User.hasMany(WorkshopBan, {
+  foreignKey: 'banned_user_id',
+  as: 'workshopBansReceived',
+});
+WorkshopBan.belongsTo(User, {
+  foreignKey: 'banned_user_id',
+  as: 'bannedUser',
+});
+
+// Workshop -> WorkshopBan (origin workshop)
+Workshop.hasMany(WorkshopBan, {
+  foreignKey: 'workshop_id',
+  as: 'bans',
+});
+WorkshopBan.belongsTo(Workshop, {
+  foreignKey: 'workshop_id',
+  as: 'workshop',
+});
+
 export {
   sequelize,
   User,
@@ -964,4 +1003,5 @@ export {
   WorkshopChat,
   WorkshopNote,
   WorkshopInvite,
+  WorkshopBan,
 };
