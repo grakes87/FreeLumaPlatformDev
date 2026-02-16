@@ -8,7 +8,9 @@ import {
   Settings,
   BarChart3,
   Users,
+  Key,
   Video,
+  BookOpen,
   ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -50,9 +52,19 @@ export function AdminNav({ pendingCount = 0 }: AdminNavProps) {
       icon: Users,
     },
     {
+      label: 'Activation Codes',
+      href: '/admin/activation-codes',
+      icon: Key,
+    },
+    {
       label: 'Videos',
       href: '/admin/videos',
       icon: Video,
+    },
+    {
+      label: 'Workshops',
+      href: '/admin/workshops',
+      icon: BookOpen,
     },
     {
       label: 'Analytics',
