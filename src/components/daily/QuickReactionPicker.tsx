@@ -15,6 +15,8 @@ interface QuickReactionPickerProps {
   placement?: 'above' | 'left';
   /** Currently selected reaction to highlight */
   selectedReaction?: ReactionType | null;
+  /** Reaction types to show (defaults to all REACTION_TYPES) */
+  reactionTypes?: readonly ReactionType[];
 }
 
 export function QuickReactionPicker({
@@ -24,6 +26,7 @@ export function QuickReactionPicker({
   anchorRect,
   placement = 'above',
   selectedReaction,
+  reactionTypes = REACTION_TYPES,
 }: QuickReactionPickerProps) {
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -79,7 +82,7 @@ export function QuickReactionPicker({
   return createPortal(
     <div ref={pickerRef} style={style}>
       <div className="flex gap-0.5 rounded-full bg-white px-2 py-1.5 shadow-[0_2px_12px_rgba(0,0,0,0.15)]">
-        {REACTION_TYPES.map((type) => (
+        {reactionTypes.map((type) => (
           <button
             key={type}
             type="button"

@@ -21,7 +21,7 @@ import { PostCommentSheet } from '@/components/social/PostCommentSheet';
 import { RepostButton } from '@/components/social/RepostButton';
 import { ReportModal } from '@/components/social/ReportModal';
 import { usePostReactions } from '@/hooks/usePostReactions';
-import { REACTION_EMOJI_MAP } from '@/lib/utils/constants';
+import { REACTION_EMOJI_MAP, PRAYER_REACTION_TYPES } from '@/lib/utils/constants';
 import type { PrayerItem } from '@/hooks/usePrayerWall';
 import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
@@ -436,6 +436,7 @@ export function PrayerCard({
         onSelect={toggleReaction}
         anchorRect={pickerAnchor}
         selectedReaction={userReaction}
+        reactionTypes={PRAYER_REACTION_TYPES}
       />
 
       {/* Comment bottom sheet */}

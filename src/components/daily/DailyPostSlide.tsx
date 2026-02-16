@@ -4,7 +4,7 @@ import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import { Heart, MessageCircle } from 'lucide-react';
 import type { DailyContentData } from '@/hooks/useDailyContent';
 import { useReactions } from '@/hooks/useReactions';
-import { REACTION_EMOJI_MAP } from '@/lib/utils/constants';
+import { REACTION_EMOJI_MAP, DAILY_REACTION_TYPES } from '@/lib/utils/constants';
 import type { ReactionType } from '@/lib/utils/constants';
 import { DateNavigator } from './DateNavigator';
 import { ShareButton } from './ShareButton';
@@ -258,6 +258,7 @@ export function DailyPostSlide({
         onSelect={handleReactionSelect}
         anchorRect={anchorRect}
         selectedReaction={userReaction}
+        reactionTypes={DAILY_REACTION_TYPES}
       />
 
       <CommentBottomSheet

@@ -47,6 +47,10 @@ export const REACTION_LABELS: Record<ReactionType, string> = {
   pray: 'Pray',
 };
 
+// Filtered subsets for contexts where haha is inappropriate
+export const PRAYER_REACTION_TYPES = REACTION_TYPES.filter(t => t !== 'haha');
+export const DAILY_REACTION_TYPES = REACTION_TYPES.filter(t => t !== 'haha');
+
 // ---- Comments ----
 
 export const COMMENT_MAX_LENGTH = 1000;

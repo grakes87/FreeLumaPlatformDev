@@ -4,7 +4,7 @@ import { useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils/cn';
 import {
-  REACTION_TYPES,
+  DAILY_REACTION_TYPES,
   REACTION_EMOJI_MAP,
   REACTION_LABELS,
 } from '@/lib/utils/constants';
@@ -61,7 +61,7 @@ export function ReactionPicker({
           React
         </h3>
         <div className="grid grid-cols-3 gap-2">
-          {REACTION_TYPES.map((type) => (
+          {DAILY_REACTION_TYPES.map((type) => (
             <button
               key={type}
               type="button"
