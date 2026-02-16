@@ -1053,9 +1053,9 @@ const USERS_MAPPING = {
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: 'users', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'direct copy (preserve IDs)', quality: '' },
     { oldCol: 'first_name', oldType: 'varchar(255)', newTable: 'users', newCol: 'display_name', newType: 'VARCHAR(100)', transform: 'merge with last_name: first_name + " " + last_name (trim if last_name empty)', quality: 'Some accounts have empty first_name' },
     { oldCol: 'last_name', oldType: 'varchar(255)', newTable: 'users', newCol: '(merged into display_name)', newType: '--', transform: 'merge with first_name (see above)', quality: 'Often empty for newer accounts' },
-    { oldCol: 'username', oldType: 'varchar(255)', newTable: 'users', newCol: 'username', newType: 'VARCHAR(30)', transform: 'direct copy', quality: 'First ~85 IDs are test accounts (test1234, shady123, etc.)' },
+    { oldCol: 'username', oldType: 'varchar(255)', newTable: 'users', newCol: 'username', newType: 'VARCHAR(30)', transform: 'direct copy. For IDs <= ~85 (test accounts like test1234, shady123): import but set status=deactivated', quality: 'First ~85 IDs are test accounts' },
     { oldCol: 'email', oldType: 'varchar(255)', newTable: 'users', newCol: 'email', newType: 'VARCHAR(255)', transform: 'direct copy', quality: 'Unique constraint' },
-    { oldCol: 'password', oldType: 'varchar(255)', newTable: 'users', newCol: 'password_hash', newType: 'VARCHAR(255)', transform: 'replace $2y$ prefix with $2b$ for bcrypt compat; FLAG plaintext passwords for forced reset', quality: 'HIGH: At least 1 plaintext password found (user_id=6). Most are $2y$10$ format' },
+    { oldCol: 'password', oldType: 'varchar(255)', newTable: 'users', newCol: 'password_hash', newType: 'VARCHAR(255)', transform: 'If starts with $2y$: replace prefix with $2b$ (identical algorithm, seamless). If plaintext: hash with bcrypt during import. All users log in with existing passwords unchanged.', quality: 'At least 1 plaintext password (user_id=6). Most are $2y$10$ format.' },
     { oldCol: 'profile_picture', oldType: 'varchar(255)', newTable: 'users', newCol: 'avatar_url', newType: 'VARCHAR(500)', transform: 'prefix with B2 storage URL path (MIG-08); handle "default.jpg" as NULL', quality: 'Mix of filenames: default.jpg, username.jpg, username.png' },
     { oldCol: 'city', oldType: 'varchar(255)', newTable: 'users', newCol: 'location', newType: 'VARCHAR(100)', transform: 'merge: city + ", " + state + ", " + country (filter empties)', quality: '' },
     { oldCol: 'state', oldType: 'varchar(255)', newTable: 'users', newCol: '(merged into location)', newType: '--', transform: 'merge with city and country (see above)', quality: '' },
@@ -1063,18 +1063,18 @@ const USERS_MAPPING = {
     { oldCol: 'posts_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT from posts table) -- no migration needed', quality: 'Denormalized counter' },
     { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: 'users', newCol: 'created_at', newType: 'DATE', transform: 'direct copy (preserve original registration date)', quality: '' },
     { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: 'users', newCol: 'updated_at', newType: 'DATE', transform: 'direct copy', quality: '' },
-    { oldCol: 'liked_posts', oldType: 'longtext (JSON)', newTable: 'post_reactions', newCol: 'post_id + user_id + reaction_type', newType: 'See post_reactions model', transform: 'parse JSON array of post IDs -> create PostReaction row per ID with reaction_type="like"', quality: 'LOW: JSON array may contain IDs of deleted posts (orphan check needed)' },
+    { oldCol: 'liked_posts', oldType: 'longtext (JSON)', newTable: 'post_reactions', newCol: 'post_id + user_id + reaction_type', newType: 'See post_reactions model', transform: 'Parse JSON array of post IDs (e.g. ["396","395"]) -> create post_reactions row per ID with reaction_type="love". Only 3 users have data (157 total likes, mix of FEED and PRAYER_WALL). 0 orphans — all IDs valid.', quality: '' },
     { oldCol: 'dob', oldType: 'date', newTable: 'users', newCol: 'date_of_birth', newType: 'DATEONLY', transform: 'rename; convert 0000-00-00 to NULL', quality: 'MEDIUM: Contains 0000-00-00 invalid dates for many users' },
-    { oldCol: 'phone', oldType: 'varchar(255)', newTable: '--', newCol: '--', newType: '--', transform: 'NEEDS DECISION: no phone column in new schema', quality: 'Some users have phone numbers stored' },
+    { oldCol: 'phone', oldType: 'varchar(255)', newTable: 'users', newCol: 'phone', newType: 'VARCHAR(20)', transform: 'direct copy; ADD COLUMN to new schema (new migration needed). Import existing values, NULL for users without phone.', quality: 'Some users have phone numbers stored' },
     { oldCol: 'followers_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT from follows table) -- no migration needed', quality: 'Denormalized counter' },
-    { oldCol: 'bookmark_setting', oldType: "varchar(255) DEFAULT 'FLP'", newTable: 'users', newCol: 'preferred_translation', newType: 'VARCHAR(10)', transform: 'rename; maps Bible translation preference (e.g. KJV, NIV, NIRV, FLP)', quality: 'NEEDS DECISION: also see bible_setting column -- which one maps?' },
-    { oldCol: 'bible_setting', oldType: "varchar(255) DEFAULT 'FLP'", newTable: '--', newCol: '--', newType: '--', transform: 'NEEDS DECISION: may duplicate bookmark_setting or carry different meaning', quality: 'Show sample values to user for decision' },
+    { oldCol: 'bookmark_setting', oldType: "varchar(255) DEFAULT 'FLP'", newTable: '--', newCol: '--', newType: '--', transform: 'DROP — bible_setting used instead for preferred_translation', quality: '' },
+    { oldCol: 'bible_setting', oldType: "varchar(255) DEFAULT 'FLP'", newTable: 'users', newCol: 'preferred_translation', newType: 'VARCHAR(10)', transform: 'rename: bible_setting -> preferred_translation (values: KJV, NIV, NIRV, FLP, etc.)', quality: '' },
     { oldCol: 'notification_preference', oldType: 'longtext (JSON)', newTable: 'user_settings', newCol: 'multiple columns', newType: 'See user_settings model', transform: 'parse JSON -> split into email_dm, email_follow, email_prayer, email_daily_reminder boolean settings', quality: '' },
     { oldCol: 'account_visibility', oldType: "enum('PUBLIC','PRIVATE')", newTable: 'users', newCol: 'profile_privacy', newType: "ENUM('public','private')", transform: 'lowercase: PUBLIC->public, PRIVATE->private', quality: '' },
     { oldCol: 'daily_post_notification_time', oldType: 'time', newTable: 'user_settings', newCol: 'daily_reminder_time', newType: 'STRING', transform: 'move to user_settings table; convert TIME to string HH:MM', quality: '' },
-    { oldCol: 'tile_category', oldType: 'varchar(255)', newTable: '--', newCol: '--', newType: '--', transform: 'NEEDS DECISION: relates to homescreen_tile_categories, no equivalent in new schema', quality: '' },
-    { oldCol: 'top_slide_preference', oldType: 'varchar(255)', newTable: '--', newCol: '--', newType: '--', transform: 'NEEDS DECISION: no equivalent in new schema', quality: '' },
-    { oldCol: 'comment_hidden', oldType: 'tinyint(1) NOT NULL DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'NEEDS DECISION: no direct equivalent in new schema', quality: '' },
+    { oldCol: 'tile_category', oldType: 'varchar(255)', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — old homescreen layout, not needed', quality: '' },
+    { oldCol: 'top_slide_preference', oldType: 'varchar(255)', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — old UI preference, not needed', quality: '' },
+    { oldCol: 'comment_hidden', oldType: 'tinyint(1) NOT NULL DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — not needed in new schema', quality: '' },
     { oldCol: 'country', oldType: "varchar(255) DEFAULT 'United States'", newTable: 'users', newCol: '(merged into location)', newType: '--', transform: 'merge with city and state (see location)', quality: '' },
     // New schema columns with no old source
     { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'google_id', newType: 'VARCHAR(255)', transform: 'COMPUTED in new schema -- default NULL, no migration needed', quality: '' },
@@ -1101,7 +1101,7 @@ const USERS_MAPPING = {
 
 const SETTINGS_MAPPING = {
   oldTable: 'settings',
-  status: 'MAPPED',
+  status: 'SKIP',
   newTables: ['platform_settings'],
   notes: 'Simple key-value settings table. Only 2 rows.',
   columns: [
@@ -1116,7 +1116,7 @@ const SETTINGS_MAPPING = {
 
 const SUBSCRIBEWEBPUSHES_MAPPING = {
   oldTable: 'subscribewebpushes',
-  status: 'MAPPED',
+  status: 'SKIP',
   newTables: ['push_subscriptions'],
   notes: 'Web push notification subscriptions. 78 rows.',
   columns: [
@@ -1201,12 +1201,12 @@ const POSTS_MAPPING = {
     { oldCol: 'text_content', oldType: 'text', newTable: 'posts', newCol: 'body', newType: 'TEXT', transform: 'rename; strip HTML tags (<p>, <span>, inline styles); decode HTML entities', quality: 'MEDIUM: Contains HTML markup with inline styles, empty <p></p> tags, and unicode escape sequences (U+1F64F)' },
     { oldCol: 'post_type', oldType: "enum('PRAYER_WALL','FEED')", newTable: 'posts', newCol: 'post_type', newType: "ENUM('text','prayer_request','testimony')", transform: "Map: FEED -> 'text', PRAYER_WALL -> 'prayer_request'. For PRAYER_WALL posts: also create prayer_requests row", quality: '' },
     { oldCol: 'media', oldType: 'longtext (JSON)', newTable: 'post_media', newCol: 'multiple rows', newType: 'See post_media model', transform: 'parse JSON array [{file_name, file_type}] -> create PostMedia row per item with media_type and media_url', quality: 'Mix of image and video. Some have [], some NULL. file_type is "image" or "video"' },
-    { oldCol: 'cover_media', oldType: 'int(11)', newTable: '--', newCol: '--', newType: '--', transform: 'NEEDS DECISION: appears to be index into media array for cover image. May map to post_media.display_order or is_cover flag', quality: 'Values: NULL, 0, 1. Meaning unclear -- 0 vs NULL distinction needed' },
+    { oldCol: 'cover_media', oldType: 'int(11)', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — index into media array for display ordering, not needed in new schema', quality: '' },
     { oldCol: 'likes_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT from post_reactions) -- no migration needed', quality: 'Denormalized counter' },
     { oldCol: 'comments_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT from post_comments) -- no migration needed', quality: 'Denormalized counter' },
     { oldCol: 'shares_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema -- no migration needed', quality: 'Denormalized counter' },
     { oldCol: 'is_updated', oldType: 'tinyint(1) DEFAULT 0', newTable: 'posts', newCol: 'edited', newType: 'BOOLEAN', transform: 'rename: is_updated -> edited', quality: '' },
-    { oldCol: 'is_deleted', oldType: 'tinyint(1) DEFAULT 0', newTable: 'posts', newCol: 'deleted_at', newType: 'DATE (paranoid)', transform: 'Convert: is_deleted=1 -> deleted_at=updatedAt timestamp; is_deleted=0 -> deleted_at=NULL', quality: '' },
+    { oldCol: 'is_deleted', oldType: 'tinyint(1) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'FILTER: skip rows where is_deleted=1 (do not import deleted posts)', quality: '' },
     { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: 'posts', newCol: 'created_at', newType: 'DATE', transform: 'rename', quality: '' },
     { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: 'posts', newCol: 'updated_at', newType: 'DATE', transform: 'rename', quality: '' },
     { oldCol: 'category_id', oldType: 'int(11)', newTable: 'posts', newCol: 'mode', newType: "ENUM('bible','positivity')", transform: "Map: category_id=1 (BIBLE) -> 'bible', category_id=2 (POSITIVITY) -> 'positivity'", quality: '' },
@@ -1234,7 +1234,7 @@ const COMMENTS_MAPPING = {
     { oldCol: 'parent_id', oldType: 'int(11) NOT NULL DEFAULT 0', newTable: 'post_comments', newCol: 'parent_id', newType: 'INTEGER (nullable)', transform: 'Convert: parent_id=0 -> parent_id=NULL (root comment); otherwise direct copy', quality: 'MEDIUM: Uses 0 instead of NULL for root-level comments' },
     { oldCol: 'text_content', oldType: 'text', newTable: 'post_comments', newCol: 'body', newType: 'TEXT', transform: 'rename: text_content -> body', quality: '' },
     { oldCol: 'likes_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT from post_comment_reactions) -- no migration needed', quality: 'Denormalized counter' },
-    { oldCol: 'is_deleted', oldType: 'tinyint(1) DEFAULT 0', newTable: 'post_comments', newCol: 'deleted_at', newType: 'DATE (paranoid)', transform: 'Convert: is_deleted=1 -> deleted_at=updatedAt; is_deleted=0 -> NULL', quality: '' },
+    { oldCol: 'is_deleted', oldType: 'tinyint(1) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'FILTER: skip rows where is_deleted=1 (do not import deleted comments)', quality: '' },
     { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: 'post_comments', newCol: 'created_at', newType: 'DATE', transform: 'rename', quality: '' },
     { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: 'post_comments', newCol: 'updated_at', newType: 'DATE', transform: 'rename', quality: '' },
     { oldCol: 'reply_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT of children) -- no migration needed', quality: 'Denormalized counter' },
@@ -1344,20 +1344,20 @@ const DAILYPOSTUSERS_MAPPING = {
 
 const DAILYPOSTUSERCOMMENTS_MAPPING = {
   oldTable: 'dailypostusercomments',
-  status: 'NEEDS DECISION',
-  newTables: ['(no comment reactions table exists yet)'],
-  notes: 'NEEDS DECISION: Likes on daily post COMMENTS (not on posts). 6,733 rows. Each row = user liked a comment. New schema daily_reactions targets daily_content only, not comments. Options: (a) create new daily_comment_reactions table, (b) skip — comment like counts are small and can start fresh, (c) extend daily_reactions with a nullable comment_id column.',
+  status: 'MAPPED',
+  newTables: ['daily_comment_reactions'],
+  notes: 'Likes on daily comments. 6,733 rows. Maps to NEW daily_comment_reactions table (needs migration). Only import rows where is_liked=1. Heart-only reactions (no reaction_type enum needed).',
   columns: [
-    { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
-    { oldCol: 'comment_id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'FK to dailypostcomments.id — would need daily_comments.id lookup', quality: '' },
-    { oldCol: 'user_id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
-    { oldCol: 'is_liked', oldType: 'tinyint(1) DEFAULT 0', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'Binary like flag. Some rows have is_liked=0 (unliked).', quality: 'Contains both liked and unliked states' },
-    { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
-    { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
+    { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: 'daily_comment_reactions', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'direct copy', quality: '' },
+    { oldCol: 'comment_id', oldType: 'int(11) NOT NULL', newTable: 'daily_comment_reactions', newCol: 'comment_id', newType: 'INTEGER', transform: 'rename: comment_id -> comment_id (FK to daily_comments.id). IDs should match since dailypostcomments.id maps 1:1 to daily_comments.id.', quality: '' },
+    { oldCol: 'user_id', oldType: 'int(11) NOT NULL', newTable: 'daily_comment_reactions', newCol: 'user_id', newType: 'INTEGER', transform: 'direct copy', quality: '' },
+    { oldCol: 'is_liked', oldType: 'tinyint(1) DEFAULT 0', newTable: 'daily_comment_reactions', newCol: '(n/a — heart only)', newType: 'no reaction_type column needed', transform: "FILTER: only import rows where is_liked=1. Table only supports heart reactions — no reaction_type enum. Skip is_liked=0 rows.", quality: '' },
+    { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: 'daily_comment_reactions', newCol: 'created_at', newType: 'DATE', transform: 'rename: camelCase -> snake_case', quality: '' },
+    { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: 'daily_comment_reactions', newCol: 'updated_at', newType: 'DATE', transform: 'rename: camelCase -> snake_case', quality: '' },
   ],
   relationships: [
-    { type: 'N:1', from: 'dailypostusercomments.comment_id', to: 'dailypostcomments.id', desc: 'The comment being liked', newEquiv: '(TBD) -> daily_comments.id' },
-    { type: 'N:1', from: 'dailypostusercomments.user_id', to: 'users.id', desc: 'User who liked', newEquiv: '(TBD) -> users.id' },
+    { type: 'N:1', from: 'dailypostusercomments.comment_id', to: 'dailypostcomments.id', desc: 'The comment being liked', newEquiv: 'daily_comment_reactions.comment_id -> daily_comments.id' },
+    { type: 'N:1', from: 'dailypostusercomments.user_id', to: 'users.id', desc: 'User who liked', newEquiv: 'daily_comment_reactions.user_id -> users.id' },
   ],
 };
 
@@ -1512,9 +1512,9 @@ const NOTES_MAPPING = {
 
 const NOTIFICATIONS_MAPPING = {
   oldTable: 'notifications',
-  status: 'MAPPED',
+  status: 'SKIP',
   newTables: ['notifications'],
-  notes: 'COMPLEX: Wide table with polymorphic context columns collapsed into entity_id + entity_type. ~28,480 rows. 18 columns in old schema -> 9 in new. Multiple nullable context columns (post_id, comment_id, daily_post_comment_id, chat_id, workshop_id, workshop_invitation_id) collapsed into single entity_id + entity_type pair.',
+  notes: 'SKIP — start fresh. Historical notifications not worth the complex 18->9 column transformation. 28,480 rows skipped.',
   columns: [
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: 'notifications', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'direct copy', quality: '' },
     { oldCol: 'user_id', oldType: 'int(11) NOT NULL', newTable: 'notifications', newCol: 'recipient_id', newType: 'INTEGER', transform: 'rename: user_id -> recipient_id', quality: '' },
@@ -1553,7 +1553,7 @@ const NOTIFICATIONS_MAPPING = {
 
 const USERVIDEOS_MAPPING = {
   oldTable: 'uservideos',
-  status: 'MAPPED',
+  status: 'ALREADY MIGRATED',
   newTables: ['videos'],
   notes: 'Daily video posts indexed by date. Only 4 videos. Simple rename mapping.',
   columns: [
@@ -1576,7 +1576,7 @@ const USERVIDEOS_MAPPING = {
 
 const USERVIDEORELATIONS_MAPPING = {
   oldTable: 'uservideorelations',
-  status: 'MAPPED',
+  status: 'ALREADY MIGRATED',
   newTables: ['video_progress'],
   notes: 'Video viewing progress records. ~1,159 rows. Tracks listen_time (seconds) and completion status per user per video.',
   columns: [
@@ -1641,8 +1641,8 @@ function getOverviewData() {
   return [
     // Users Domain
     { oldTable: 'users', status: 'MAPPED', newTables: 'users + user_settings', approxRows: 32319, notes: 'Split: profile to users, settings to user_settings. 30+ column transformations.' },
-    { oldTable: 'settings', status: 'MAPPED', newTables: 'platform_settings', approxRows: 2, notes: 'Simple key-value settings.' },
-    { oldTable: 'subscribewebpushes', status: 'MAPPED', newTables: 'push_subscriptions', approxRows: 78, notes: 'Web push notification subscriptions.' },
+    { oldTable: 'settings', status: 'SKIP', newTables: 'platform_settings', approxRows: 2, notes: 'Skip — old settings (UNDER_AGE_LIMIT, TILES_HIDE_FOR_GUEST) not needed in new platform.' },
+    { oldTable: 'subscribewebpushes', status: 'SKIP', newTables: 'push_subscriptions', approxRows: 78, notes: 'Skip — old push subscriptions invalid on new domain/service worker.' },
     // Categories Domain
     { oldTable: 'categories', status: 'MAPPED', newTables: 'categories', approxRows: 2, notes: 'Simple 1:1 mapping. BIBLE and POSITIVITY.' },
     { oldTable: 'category_user_relations', status: 'MAPPED', newTables: 'user_categories', approxRows: 44631, notes: 'Simple rename mapping.' },
@@ -1655,7 +1655,7 @@ function getOverviewData() {
     // Daily Content Domain
     { oldTable: 'dailyposts', status: 'ALREADY MIGRATED', newTables: 'daily_content', approxRows: 702, notes: 'Content already migrated separately. No action needed.' },
     { oldTable: 'dailypostcomments', status: 'MAPPED', newTables: 'daily_comments', approxRows: 872, notes: 'Comments on daily content. parent_id for replies. Requires daily_post_id -> daily_content_id lookup via date.' },
-    { oldTable: 'dailypostusercomments', status: 'NEEDS DECISION', newTables: '(no comment reactions table)', approxRows: 6733, notes: 'NEEDS DECISION: Likes on daily comments. No target table exists yet in new schema.' },
+    { oldTable: 'dailypostusercomments', status: 'MAPPED', newTables: 'daily_comment_reactions (NEW TABLE)', approxRows: 6733, notes: 'Likes on daily comments. CREATE new daily_comment_reactions table. Import is_liked=1 rows as love/heart.' },
     { oldTable: 'dailypostusers', status: 'MAPPED', newTables: 'daily_reactions + bookmarks', approxRows: 2925, notes: 'DUAL SPLIT: is_liked=1 -> daily_reactions (love/heart), is_bookmarked=1 -> bookmarks.' },
     { oldTable: 'dailychapters', status: 'ALREADY MIGRATED', newTables: 'listen_logs', approxRows: 1737, notes: 'Already migrated separately. No action needed.' },
     // Verse Domain
@@ -1666,12 +1666,12 @@ function getOverviewData() {
     // Chat Domain
     { oldTable: 'chats', status: 'MAPPED', newTables: 'conversations + conversation_participants + messages', approxRows: 286, notes: 'COMPLEX: flat chat -> grouped conversations + participants + messages.' },
     // Notes Domain
-    { oldTable: 'notes', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 7, notes: 'Only 7 rows, likely test data. No personal notes table in new schema.' },
+    { oldTable: 'notes', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 68, notes: '68 personal journal entries. No personal notes feature in new app — skip.' },
     // Notifications Domain
-    { oldTable: 'notifications', status: 'MAPPED', newTables: 'notifications', approxRows: 28480, notes: 'COMPLEX: 18 cols -> 9. Polymorphic context columns collapsed into entity_id + entity_type.' },
+    { oldTable: 'notifications', status: 'SKIP', newTables: 'notifications', approxRows: 28480, notes: 'Skip — start fresh. Historical notifications not worth the complex 18->9 column transformation.' },
     // Video Domain
-    { oldTable: 'uservideos', status: 'MAPPED', newTables: 'videos', approxRows: 4, notes: 'Daily video posts indexed by date. Only 4 videos.' },
-    { oldTable: 'uservideorelations', status: 'MAPPED', newTables: 'video_progress', approxRows: 1159, notes: 'Video viewing progress: listen_time + completion per user per video.' },
+    { oldTable: 'uservideos', status: 'ALREADY MIGRATED', newTables: 'videos', approxRows: 4, notes: 'Already imported. Videos handled differently in new system.' },
+    { oldTable: 'uservideorelations', status: 'ALREADY MIGRATED', newTables: 'video_progress', approxRows: 1159, notes: 'Already imported with uservideos.' },
   ];
 }
 
