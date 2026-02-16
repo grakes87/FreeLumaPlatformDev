@@ -6,25 +6,25 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Daily inspirational content delivery and faith-based community connection — users come back every day for their daily post and stay to engage with their community.
 
-**Current focus:** Phase 6 - Bug Fixes & Polish (In progress)
+**Current focus:** Phase 8 - Database Migration Mapping (In progress)
 
 ## Current Position
 
-Phase: 6 of 7 (Bug Fixes & Polish)
-Plan: 5 of 6 complete (01-05 done, 06 remaining)
+Phase: 8 of 8 (Database Migration Mapping)
+Plan: 1 of 3 complete (01 done, 02-03 remaining)
 Status: In progress
-Last activity: 2026-02-15 — Completed 06-01-PLAN.md
+Last activity: 2026-02-15 — Completed 08-01-PLAN.md
 
-Progress: [██████████████████████████████████████████████████████████████████████░░░] 71/73+ plans (97% of planned)
+Progress: [██████████████████████████████████████████████████████████████████████░░░░] 72/74+ plans (97% of planned)
 
-**Next Phases:** Phase 6 (finishing), Phase 7 (Migration & Launch), Phase 8 (Database Migration Mapping)
+**Next Plans:** 08-02 (remaining domain mappings), 08-03 (validation and review)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 71
+- Total plans completed: 72
 - Average duration: 4 min
-- Total execution time: 311 min
+- Total execution time: 318 min
 
 **By Phase:**
 
@@ -35,12 +35,12 @@ Progress: [███████████████████████
 | 03-real-time | 13/13 | 49 min | 4 min |
 | 04-enhanced-content | 14/14 | 58 min | 4 min |
 | 05-workshops | 14/14 | 49 min | 4 min |
-
 | 06-bug-fixes | 5/6 | 13 min | 3 min |
+| 08-database-migration-mapping | 1/3 | 7 min | 7 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-02 (2 min), 06-03 (2 min), 06-04 (2 min), 06-05 (2 min), 06-01 (5 min)
-- Trend: Stable (fast)
+- Last 5 plans: 06-03 (2 min), 06-04 (2 min), 06-05 (2 min), 06-01 (5 min), 08-01 (7 min)
+- Trend: Stable
 
 *Updated after each plan completion*
 
@@ -316,6 +316,9 @@ Recent decisions affecting current work:
 - **stopScreenShare ref pattern:** Ref-based stop function avoids circular useCallback dependency from track-ended handler
 - **Workshop state machine hook:** useWorkshopState manages loading/lobby/live/ended/error transitions with Socket.IO integration
 
+- **String-aware SQL parser:** Regex `[\s\S]*?;` fails on HTML content with `&nbsp;` inside SQL string literals; use findInsertStatements() with character-by-character semicolon scanning respecting quote state
+- **migration-mapping.xlsx not committed:** Generated artifact recreated by running `node scripts/generate-migration-mapping.mjs`
+
 ### Pending Todos
 
 None.
@@ -380,5 +383,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: Completed 06-01-PLAN.md (build fixes, guest scroll snap, B2 cache headers)
+Stopped at: Completed 08-01-PLAN.md (migration mapping script with SQL parser and Excel generator)
 Resume file: None
