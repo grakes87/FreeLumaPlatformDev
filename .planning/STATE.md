@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 9 of 9 (Platform Refinements & Admin Tools)
-Plan: 1 of 6 complete (01 done)
+Plan: 2 of 6 complete (01-02 done)
 Status: In progress
-Last activity: 2026-02-16 — Completed 09-01-PLAN.md
+Last activity: 2026-02-16 — Completed 09-02-PLAN.md
 
-Progress: [████████████████████████████████████████████████████████████████████████░░░░] 74/79 plans (94%)
+Progress: [█████████████████████████████████████████████████████████████████████████░░░] 75/79 plans (95%)
 
-**Next Plans:** 09-04, 09-05, 09-06
+**Next Plans:** 09-03, 09-04, 09-05, 09-06
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 74
+- Total plans completed: 75
 - Average duration: 4 min
 - Total execution time: 329 min
 
@@ -322,6 +322,10 @@ Recent decisions affecting current work:
 - **Old DB data is referentially clean:** Orphan detection found 0 orphan FK references across all 24 tables
 - **dailyposts is sparse index:** Old dailyposts table only has id + date string, no content columns; actual content managed externally
 
+- **Activation code never-expire:** All generated codes use expires_at=9999-12-31; no expiry management needed
+- **Activation code source tracking:** ENUM('generated','imported') distinguishes admin-created from legacy codes
+- **Imported codes keep dashes:** XXXX-XXXX-XXXX format preserved; code column widened to VARCHAR(16)
+
 ### Roadmap Evolution
 
 - Phase 9 added: Platform Refinements & Admin Tools (remove laugh reactions, repost views, admin font family, activation codes, video thumbnail regen, admin workshop creation)
@@ -391,5 +395,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-16
-Stopped at: Completed 09-01-PLAN.md (UX refinements: reactions, view badges, thumbnails)
+Stopped at: Completed 09-02-PLAN.md (activation code schema, API, and import)
 Resume file: None
