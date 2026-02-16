@@ -79,6 +79,7 @@ const COLORS = {
   lightBlue: 'FFD9E2F3',
   lightGreen: 'FFE2EFDA',
   lightYellow: 'FFFFF2CC',
+  lightOrange: 'FFFCE4D6',
   lightGray: 'FFD9D9D9',
   mediumGray: 'FFD6D6D6',
 };
@@ -484,6 +485,254 @@ function getAutoIncrement(sql, tableName) {
 }
 
 // ---------------------------------------------------------------------------
+// Section B2: Orphan Detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract all values of a specific column from INSERT statements.
+ * Returns a Set of values (as strings).
+ * For efficiency, uses a targeted parse that only extracts the column at the given index.
+ */
+function extractColumnValueSet(sql, tableName, columnIndex) {
+  const values = new Set();
+  const inserts = findInsertStatements(sql, tableName);
+
+  for (const { valuesBlock } of inserts) {
+    const tuples = extractTuples(valuesBlock);
+    for (const tuple of tuples) {
+      const parsed = parseTupleValues(tuple);
+      if (columnIndex < parsed.length) {
+        const val = parsed[columnIndex];
+        if (val !== null && val !== undefined && val !== '') {
+          values.add(String(val));
+        }
+      }
+    }
+  }
+
+  return values;
+}
+
+/**
+ * Get the column index for a given column name in a table's INSERT statements.
+ * Returns -1 if not found.
+ */
+function getColumnIndex(sql, tableName, columnName) {
+  const inserts = findInsertStatements(sql, tableName);
+  if (inserts.length === 0) return -1;
+  const idx = inserts[0].colList.indexOf(columnName);
+  return idx;
+}
+
+/**
+ * Orphan check definition: which FK columns to check for each table.
+ * Returns Array<{fkCol, refTable, refCol, refIdSet, note}>
+ */
+function getOrphanChecks(tableName) {
+  const checks = {
+    // Users domain -- users is the root, no FK checks needed
+    users: [],
+    settings: [],
+    subscribewebpushes: [
+      { fkCol: 'user', refTable: 'users', refCol: 'id', note: '' },
+    ],
+    // Categories domain
+    categories: [],
+    category_user_relations: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'category_id', refTable: 'categories', refCol: 'id', note: '' },
+    ],
+    homescreen_tile_categories: [],
+    // Social domain
+    posts: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'category_id', refTable: 'categories', refCol: 'id', note: '' },
+    ],
+    comments: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'post_id', refTable: 'posts', refCol: 'id', note: '' },
+    ],
+    usercomments: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'comment_id', refTable: 'comments', refCol: 'id', note: '' },
+    ],
+    follows: [
+      { fkCol: 'follower_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'following_id', refTable: 'users', refCol: 'id', note: '' },
+    ],
+    // Daily Content domain
+    dailyposts: [],
+    dailypostcomments: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'daily_post_id', refTable: 'dailyposts', refCol: 'id', note: '' },
+    ],
+    dailypostusercomments: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'comment_id', refTable: 'dailypostcomments', refCol: 'id', note: '' },
+    ],
+    dailypostusers: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'daily_post_id', refTable: 'dailyposts', refCol: 'id', note: '' },
+    ],
+    dailychapters: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+    ],
+    // Verse domain
+    verses: [],
+    verse_comments: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'verse_id', refTable: 'verses', refCol: 'id', note: '' },
+    ],
+    verse_likes: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'verse_name', refTable: 'verses', refCol: 'verse_name', note: 'String match, not ID match. Fragile join.' },
+    ],
+    verse_user_comments: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'comment_id', refTable: 'verse_comments', refCol: 'id', note: '' },
+    ],
+    // Chat domain
+    chats: [
+      { fkCol: 'sender_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'receiver_id', refTable: 'users', refCol: 'id', note: '' },
+    ],
+    // Notes domain
+    notes: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+    ],
+    // Notifications domain
+    notifications: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'action_done_by', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'post_id', refTable: 'posts', refCol: 'id', note: 'Uses 0 for no-post. Only check non-zero values.' },
+      { fkCol: 'comment_id', refTable: 'comments', refCol: 'id', note: 'Nullable' },
+      { fkCol: 'daily_post_comment_id', refTable: 'dailypostcomments', refCol: 'id', note: 'Nullable' },
+    ],
+    // Video domain
+    uservideos: [],
+    uservideorelations: [
+      { fkCol: 'user_id', refTable: 'users', refCol: 'id', note: '' },
+      { fkCol: 'uservideo_id', refTable: 'uservideos', refCol: 'id', note: '' },
+    ],
+  };
+
+  return checks[tableName] || [];
+}
+
+/**
+ * Run orphan detection across all tables.
+ * Returns Map<tableName, Array<{fkCol, refTable, orphanCount, sampleOrphanIds, note}>>
+ *
+ * Strategy: Build reference ID sets once, then check each child table's FK values.
+ */
+function detectOrphans(sql) {
+  console.log('\n--- Orphan Detection ---');
+
+  // Build reference ID sets for parent tables
+  // Key = "tableName.colName", Value = Set<string>
+  const idSets = new Map();
+
+  const refTablesToLoad = [
+    { table: 'users', col: 'id' },
+    { table: 'categories', col: 'id' },
+    { table: 'posts', col: 'id' },
+    { table: 'comments', col: 'id' },
+    { table: 'dailyposts', col: 'id' },
+    { table: 'dailypostcomments', col: 'id' },
+    { table: 'verses', col: 'id' },
+    { table: 'verses', col: 'verse_name' },
+    { table: 'verse_comments', col: 'id' },
+    { table: 'uservideos', col: 'id' },
+  ];
+
+  for (const { table, col } of refTablesToLoad) {
+    const key = `${table}.${col}`;
+    console.log(`  Loading reference IDs: ${key}...`);
+    const colIdx = getColumnIndex(sql, table, col);
+    if (colIdx === -1) {
+      console.log(`    WARNING: column ${col} not found in ${table} INSERT statements`);
+      idSets.set(key, new Set());
+      continue;
+    }
+    const idSet = extractColumnValueSet(sql, table, colIdx);
+    idSets.set(key, idSet);
+    console.log(`    Loaded ${idSet.size} values`);
+  }
+
+  // Run orphan checks for each table
+  const results = new Map();
+  let tablesWithOrphans = 0;
+
+  for (const tableName of ALL_TABLES) {
+    const checks = getOrphanChecks(tableName);
+    const tableResults = [];
+
+    for (const check of checks) {
+      const refKey = `${check.refTable}.${check.refCol}`;
+      const refSet = idSets.get(refKey);
+      if (!refSet) {
+        tableResults.push({
+          fkCol: check.fkCol,
+          refTable: `${check.refTable}.${check.refCol}`,
+          orphanCount: -1,
+          sampleOrphanIds: [],
+          note: 'Reference table not loaded',
+        });
+        continue;
+      }
+
+      // Get FK column index
+      const fkIdx = getColumnIndex(sql, tableName, check.fkCol);
+      if (fkIdx === -1) {
+        tableResults.push({
+          fkCol: check.fkCol,
+          refTable: `${check.refTable}.${check.refCol}`,
+          orphanCount: -1,
+          sampleOrphanIds: [],
+          note: `Column ${check.fkCol} not found in ${tableName}`,
+        });
+        continue;
+      }
+
+      // Extract FK values and check against reference set
+      const fkValues = extractColumnValueSet(sql, tableName, fkIdx);
+      const orphans = [];
+      for (const val of fkValues) {
+        // Skip 0 and NULL (not real references)
+        if (val === '0' || val === 'NULL' || val === '') continue;
+        if (!refSet.has(val)) {
+          orphans.push(val);
+        }
+      }
+
+      const sampleIds = orphans.slice(0, 5);
+      tableResults.push({
+        fkCol: check.fkCol,
+        refTable: `${check.refTable}.${check.refCol}`,
+        orphanCount: orphans.length,
+        sampleOrphanIds: sampleIds,
+        note: check.note || (orphans.length === 0 ? 'Clean' : `${orphans.length} distinct orphan values found`),
+      });
+    }
+
+    results.set(tableName, tableResults);
+    const hasOrphans = tableResults.some(r => r.orphanCount > 0);
+    if (hasOrphans) tablesWithOrphans++;
+
+    if (checks.length > 0) {
+      const orphanSummary = tableResults
+        .filter(r => r.orphanCount > 0)
+        .map(r => `${r.fkCol}: ${r.orphanCount} orphans`)
+        .join(', ');
+      console.log(`  ${tableName}: ${orphanSummary || 'No orphans'}`);
+    }
+  }
+
+  console.log(`\n  Tables with orphans: ${tablesWithOrphans}`);
+  return results;
+}
+
+// ---------------------------------------------------------------------------
 // Section C: Excel Framework
 // ---------------------------------------------------------------------------
 
@@ -602,7 +851,7 @@ function createOverviewSheet(workbook, tableSchemas, sql) {
 /**
  * Create a detailed table sheet with column mapping, relationships, and sample data.
  */
-function createTableSheet(workbook, tableName, config, sampleData, columnNames) {
+function createTableSheet(workbook, tableName, config, sampleData, columnNames, orphanResults = []) {
   // Sheet name max 31 chars in Excel
   const sheetName = tableName.length > 31 ? tableName.slice(0, 31) : tableName;
   const sheet = workbook.addWorksheet(sheetName);
@@ -701,6 +950,44 @@ function createTableSheet(workbook, tableName, config, sampleData, columnNames) 
         rel.desc,
         rel.newEquiv || '',
       ]);
+    }
+
+    sheet.addRow([]);
+  }
+
+  // Orphan detection section
+  {
+    const orphanHeaderRow = sheet.addRow(['ORPHAN DETECTION']);
+    sheet.mergeCells(`A${orphanHeaderRow.number}:I${orphanHeaderRow.number}`);
+    applySectionHeaderStyle(orphanHeaderRow, COLORS.lightOrange);
+
+    if (orphanResults.length === 0) {
+      sheet.addRow(['No foreign key checks applicable for this table']);
+    } else {
+      const orphanColHeaders = sheet.addRow([
+        'FK Column', 'References', 'Orphan Count', 'Sample Orphan IDs', 'Notes',
+      ]);
+      applyHeaderStyle(orphanColHeaders, COLORS.lightBlue, 'FF000000');
+
+      for (const result of orphanResults) {
+        const row = sheet.addRow([
+          result.fkCol,
+          result.refTable,
+          result.orphanCount === -1 ? 'N/A' : result.orphanCount,
+          result.sampleOrphanIds.length > 0 ? result.sampleOrphanIds.join(', ') : '--',
+          result.note,
+        ]);
+
+        // Highlight rows with orphans
+        if (result.orphanCount > 0) {
+          row.getCell(3).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: COLORS.lightYellow },
+          };
+          row.getCell(3).font = { bold: true };
+        }
+      }
     }
 
     sheet.addRow([]);
@@ -1452,10 +1739,14 @@ async function main() {
   console.log('Creating Overview sheet...');
   createOverviewSheet(workbook, tableSchemas, sql);
 
-  // 5. Create table sheets for each configured mapping
+  // 5. Run orphan detection
+  const orphanResults = detectOrphans(sql);
+
+  // 6. Create table sheets for each configured mapping
   const mappedTables = Object.keys(TABLE_MAPPINGS);
   let sheetsCreated = 0;
 
+  console.log('\nCreating table sheets...');
   for (const tableName of mappedTables) {
     const config = TABLE_MAPPINGS[tableName];
     const schema = tableSchemas.get(tableName);
@@ -1470,19 +1761,22 @@ async function main() {
 
     console.log(`  Columns: ${columnNames.length}, Sample rows: ${sampleRows.length}, Total rows: ${rowCount}${autoInc ? ` (AUTO_INCREMENT: ${autoInc})` : ''}`);
 
+    // Get orphan results for this table
+    const tableOrphanResults = orphanResults.get(tableName) || [];
+
     // Create sheet
-    createTableSheet(workbook, tableName, config, sampleRows, columnNames);
+    createTableSheet(workbook, tableName, config, sampleRows, columnNames, tableOrphanResults);
     sheetsCreated++;
   }
 
-  // 6. Write Excel file
+  // 7. Write Excel file
   console.log(`\nWriting ${OUTPUT_PATH}...`);
   await workbook.xlsx.writeFile(OUTPUT_PATH);
 
   const stats = fs.statSync(OUTPUT_PATH);
   console.log(`  File size: ${(stats.size / 1024).toFixed(1)} KB`);
 
-  // 7. Summary
+  // 8. Summary
   const needsDecisionCount = Object.values(TABLE_MAPPINGS).filter(m => m.status === 'NEEDS DECISION').length;
   console.log('\n=== Summary ===');
   console.log(`  Total tables catalogued: ${ALL_TABLES.length} (non-workshop) + ${EXCLUDED_TABLES.length} (excluded) = ${ALL_TABLES.length + EXCLUDED_TABLES.length} total`);
@@ -1497,6 +1791,12 @@ async function main() {
     const needs = statuses.filter(s => s === 'NEEDS DECISION').length;
     console.log(`    ${group.name}: ${group.tables.length} tables (${mapped} mapped, ${needs} needs decision)`);
   }
+  // Orphan summary
+  let tablesWithOrphansCount = 0;
+  for (const [tableName, results] of orphanResults) {
+    if (results.some(r => r.orphanCount > 0)) tablesWithOrphansCount++;
+  }
+  console.log(`  Tables with orphans detected: ${tablesWithOrphansCount}`);
   console.log(`\n  Output: ${OUTPUT_PATH}`);
   console.log('  Done!');
 }
