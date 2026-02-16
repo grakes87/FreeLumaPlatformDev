@@ -19,6 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: Workshops** - Live video workshops via Agora SDK (v2 deferred)
 - [ ] **Phase 6: Bug Fixes & Polish** - Fix accumulated bugs and UX issues across all phases
 - [ ] **Phase 7: Migration & Launch** - Data migration, production deployment, user switchover
+- [ ] **Phase 8: Database Migration Mapping** - Deep-dive old DB schema, map all tables/columns to new DB, produce Excel mapping with sample data
 
 ## Phase Details
 
@@ -289,10 +290,32 @@ Plans:
 - [ ] 07-01: TBD during phase planning
 - [ ] 07-02: TBD during phase planning
 
+### Phase 8: Database Migration Mapping
+**Goal**: Deep-dive into old platform database (Old Database/main free luma database.sql), map every table and column to the new FreeLuma schema, identify gaps and transformations needed, and produce an Excel spreadsheet documenting all mappings with sample data. Workshop tables from the old DB are excluded (rebuilt fresh in Phase 5).
+
+**Depends on**: Phase 6 (all features built and bug-free before mapping)
+
+**Requirements**: MIG-01 through MIG-10 (shared with Phase 7)
+
+**Success Criteria** (what must be TRUE):
+  1. Every table in old database catalogued with column names, types, and relationships
+  2. Old table relationships (FKs, implicit joins) fully documented
+  3. Each old table/column mapped to corresponding new schema table/column (or marked as deprecated/dropped)
+  4. Transformation rules documented for each mapped field (type conversion, rename, merge, split)
+  5. Sample data extracted for each old table to validate mapping accuracy
+  6. Excel/CSV spreadsheet delivered with: Old Table, Old Column, Old Type, New Table, New Column, New Type, Transformation, Sample Old Value, Expected New Value
+  7. Workshop-related old tables explicitly marked as "skip — rebuilt in Phase 5"
+  8. Unmapped/orphaned old data identified and flagged for user decision
+
+**Plans**: TBD
+
+Plans:
+- [ ] 08-01: TBD during phase planning
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 **Parallel Opportunities:**
 - Phase 3 (Real-Time) and Phase 4 (Enhanced Content) are mostly independent and can be partially parallelized after Phase 2 completes
@@ -306,6 +329,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 5. Workshops | 14/14 | Complete | 2026-02-14 |
 | 6. Bug Fixes & Polish | 0/6 | Planned | - |
 | 7. Migration & Launch | 0/TBD | Not started | - |
+| 8. Database Migration Mapping | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-11*
@@ -314,4 +338,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 *Phase 3 planned: 2026-02-13 (13 plans in 4 waves)*
 *Phase 4 planned: 2026-02-13 (14 plans in 4 waves)*
 *Phase 5 planned: 2026-02-14 (14 plans in 6 waves)*
-*Depth: Comprehensive (7 phases covering 165 v1 requirements + v2 workshop requirements)*
+*Phase 8 added: 2026-02-15 (Database Migration Mapping)*
+*Depth: Comprehensive (8 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping)*
