@@ -1053,11 +1053,11 @@ const USERS_MAPPING = {
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: 'users', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'direct copy (preserve IDs)', quality: '' },
     { oldCol: 'first_name', oldType: 'varchar(255)', newTable: 'users', newCol: 'display_name', newType: 'VARCHAR(100)', transform: 'merge with last_name: first_name + " " + last_name (trim if last_name empty)', quality: 'Some accounts have empty first_name' },
     { oldCol: 'last_name', oldType: 'varchar(255)', newTable: 'users', newCol: '(merged into display_name)', newType: '--', transform: 'merge with first_name (see above)', quality: 'Often empty for newer accounts' },
-    { oldCol: 'username', oldType: 'varchar(255)', newTable: 'users', newCol: 'username', newType: 'VARCHAR(30)', transform: 'direct copy. For IDs <= ~85 (test accounts like test1234, shady123): import but set status=deactivated', quality: 'First ~85 IDs are test accounts' },
+    { oldCol: 'username', oldType: 'varchar(255)', newTable: 'users', newCol: 'username', newType: 'VARCHAR(30)', transform: 'direct copy. For IDs 1-85 (test accounts like test1234, shady123): import but set status=deactivated', quality: 'First ~85 IDs are test accounts' },
     { oldCol: 'email', oldType: 'varchar(255)', newTable: 'users', newCol: 'email', newType: 'VARCHAR(255)', transform: 'direct copy', quality: 'Unique constraint' },
     { oldCol: 'password', oldType: 'varchar(255)', newTable: 'users', newCol: 'password_hash', newType: 'VARCHAR(255)', transform: 'If starts with $2y$: replace prefix with $2b$ (identical algorithm, seamless). If plaintext: hash with bcrypt during import. All users log in with existing passwords unchanged.', quality: 'At least 1 plaintext password (user_id=6). Most are $2y$10$ format.' },
     { oldCol: 'profile_picture', oldType: 'varchar(255)', newTable: 'users', newCol: 'avatar_url', newType: 'VARCHAR(500)', transform: 'Import local filename as-is; handle "default.jpg" as NULL. POST-MIGRATION: separate script uploads files to B2 and updates avatar_url to full B2 URLs.', quality: 'Mix of filenames: default.jpg, username.jpg, username.png' },
-    { oldCol: 'city', oldType: 'varchar(255)', newTable: 'users', newCol: 'location', newType: 'VARCHAR(100)', transform: 'merge: city + ", " + state + ", " + country (filter empties)', quality: '' },
+    { oldCol: 'city', oldType: 'varchar(255)', newTable: 'users', newCol: 'location', newType: 'STRING(200)', transform: 'merge: city + ", " + state + ", " + country (filter empties)', quality: '' },
     { oldCol: 'state', oldType: 'varchar(255)', newTable: 'users', newCol: '(merged into location)', newType: '--', transform: 'merge with city and country (see above)', quality: '' },
     { oldCol: 'followings_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT from follows table) -- no migration needed', quality: 'Denormalized counter' },
     { oldCol: 'posts_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT from posts table) -- no migration needed', quality: 'Denormalized counter' },
@@ -1069,9 +1069,9 @@ const USERS_MAPPING = {
     { oldCol: 'followers_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT from follows table) -- no migration needed', quality: 'Denormalized counter' },
     { oldCol: 'bookmark_setting', oldType: "varchar(255) DEFAULT 'FLP'", newTable: '--', newCol: '--', newType: '--', transform: 'DROP — bible_setting used instead for preferred_translation', quality: '' },
     { oldCol: 'bible_setting', oldType: "varchar(255) DEFAULT 'FLP'", newTable: 'users', newCol: 'preferred_translation', newType: 'VARCHAR(10)', transform: "rename: bible_setting -> preferred_translation. Map FLP -> 'KJV' (FLP no longer available). All other values (KJV, NIV, NIRV, etc.) direct copy.", quality: '' },
-    { oldCol: 'notification_preference', oldType: 'longtext (JSON)', newTable: 'user_settings', newCol: 'multiple columns', newType: 'See user_settings model', transform: 'parse JSON -> split into email_dm, email_follow, email_prayer, email_daily_reminder boolean settings', quality: '' },
+    { oldCol: 'notification_preference', oldType: 'longtext (JSON)', newTable: 'user_settings', newCol: 'multiple columns', newType: 'See user_settings model', transform: 'SKIP — old data is push notification type arrays, not email settings. All imported users get default user_settings values.', quality: '' },
     { oldCol: 'account_visibility', oldType: "enum('PUBLIC','PRIVATE')", newTable: 'users', newCol: 'profile_privacy', newType: "ENUM('public','private')", transform: 'lowercase: PUBLIC->public, PRIVATE->private', quality: '' },
-    { oldCol: 'daily_post_notification_time', oldType: 'time', newTable: 'user_settings', newCol: 'daily_reminder_time', newType: 'STRING', transform: 'move to user_settings table; convert TIME to string HH:MM', quality: '' },
+    { oldCol: 'daily_post_notification_time', oldType: 'time', newTable: 'user_settings', newCol: 'daily_reminder_time', newType: 'STRING', transform: 'Import to user_settings.daily_reminder_time. Convert TIME to HH:MM string format.', quality: '' },
     { oldCol: 'tile_category', oldType: 'varchar(255)', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — old homescreen layout, not needed', quality: '' },
     { oldCol: 'top_slide_preference', oldType: 'varchar(255)', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — old UI preference, not needed', quality: '' },
     { oldCol: 'comment_hidden', oldType: 'tinyint(1) NOT NULL DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — not needed in new schema', quality: '' },
@@ -1080,14 +1080,15 @@ const USERS_MAPPING = {
     { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'google_id', newType: 'VARCHAR(255)', transform: 'COMPUTED in new schema -- default NULL, no migration needed', quality: '' },
     { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'apple_id', newType: 'VARCHAR(255)', transform: 'COMPUTED in new schema -- default NULL, no migration needed', quality: '' },
     { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'avatar_color', newType: 'CHAR(7)', transform: 'COMPUTED in new schema -- generate random hex color', quality: '' },
-    { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'bio', newType: 'TEXT', transform: 'COMPUTED in new schema -- default NULL (old schema has no bio column)', quality: '' },
+    { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'bio', newType: 'STRING(150)', transform: 'COMPUTED in new schema -- default NULL (old schema has no bio column)', quality: '' },
     { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'mode', newType: "ENUM('bible','positivity')", transform: "derive from category_user_relations: if user has BIBLE category -> 'bible', POSITIVITY -> 'positivity', default 'bible'", quality: '' },
     { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'timezone', newType: 'VARCHAR(50)', transform: "default 'America/New_York'", quality: '' },
-    { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'language', newType: 'VARCHAR(5)', transform: "default 'en'", quality: '' },
+    { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'language', newType: "ENUM('en','es')", transform: "default 'en'", quality: '' },
     { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'email_verified', newType: 'BOOLEAN', transform: 'default true for migrated users', quality: '' },
     { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'onboarding_complete', newType: 'BOOLEAN', transform: 'default true for migrated users', quality: '' },
-    { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'status', newType: "ENUM('active','deactivated','deleted')", transform: "default 'active'", quality: '' },
-    { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'role', newType: "ENUM('user','moderator')", transform: "default 'user'", quality: '' },
+    { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'status', newType: "ENUM('active','deactivated','pending_deletion','banned')", transform: "default 'active'", quality: '' },
+    { oldCol: '(new)', oldType: '--', newTable: 'users', newCol: 'role', newType: "ENUM('user','moderator','admin')", transform: "default 'user'", quality: '' },
+    { oldCol: '(filter)', oldType: '--', newTable: '--', newCol: '--', newType: '--', transform: 'FILTER: Skip users with username > 30 characters (14 users affected). Their content becomes orphaned.', quality: '' },
   ],
   relationships: [
     { type: '1:N', from: 'users.id', to: 'category_user_relations.user_id', desc: 'User category preferences', newEquiv: 'users.id -> user_categories.user_id' },
@@ -1137,9 +1138,9 @@ const SUBSCRIBEWEBPUSHES_MAPPING = {
 
 const CATEGORIES_MAPPING = {
   oldTable: 'categories',
-  status: 'MAPPED',
+  status: 'SKIP',
   newTables: ['categories'],
-  notes: 'Simple 1:1 mapping. Only 2 rows (BIBLE, POSITIVITY).',
+  notes: 'SKIP: Bible/Positivity now handled by users.mode enum. New categories table is for workshops. Old category data used only to derive users.mode field.',
   columns: [
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: 'categories', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'direct copy', quality: '' },
     { oldCol: 'category_name', oldType: 'varchar(255) NOT NULL', newTable: 'categories', newCol: 'name', newType: 'VARCHAR(100)', transform: 'rename: category_name -> name', quality: '' },
@@ -1154,9 +1155,9 @@ const CATEGORIES_MAPPING = {
 
 const CATEGORY_USER_RELATIONS_MAPPING = {
   oldTable: 'category_user_relations',
-  status: 'MAPPED',
+  status: 'SKIP',
   newTables: ['user_categories'],
-  notes: 'Simple rename mapping. ~44,631 rows.',
+  notes: 'SKIP: Used only to derive users.mode field during user import. Not imported as user_categories.',
   columns: [
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: 'user_categories', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'direct copy', quality: '' },
     { oldCol: 'user_id', oldType: 'int(11) NOT NULL', newTable: 'user_categories', newCol: 'user_id', newType: 'INTEGER', transform: 'direct copy', quality: '' },
@@ -1199,8 +1200,8 @@ const POSTS_MAPPING = {
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: 'posts', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'direct copy (preserve IDs)', quality: '' },
     { oldCol: 'user_id', oldType: 'int(11) NOT NULL', newTable: 'posts', newCol: 'user_id', newType: 'INTEGER', transform: 'direct copy', quality: '' },
     { oldCol: 'text_content', oldType: 'text', newTable: 'posts', newCol: 'body', newType: 'TEXT', transform: 'rename; strip HTML tags (<p>, <span>, inline styles); decode HTML entities', quality: 'MEDIUM: Contains HTML markup with inline styles, empty <p></p> tags, and unicode escape sequences (U+1F64F)' },
-    { oldCol: 'post_type', oldType: "enum('PRAYER_WALL','FEED')", newTable: 'posts', newCol: 'post_type', newType: "ENUM('text','prayer_request','testimony')", transform: "Map: FEED -> 'text', PRAYER_WALL -> 'prayer_request'. For PRAYER_WALL posts: also create prayer_requests row", quality: '' },
-    { oldCol: 'media', oldType: 'longtext (JSON)', newTable: 'post_media', newCol: 'multiple rows', newType: 'See post_media model', transform: 'Parse JSON array [{file_name, file_type}] -> create post_media row per item. Import local filenames as-is. POST-MIGRATION: separate script uploads files to B2 and updates media_url to full B2 URLs.', quality: 'Mix of image and video. Some have [], some NULL. file_type is "image" or "video"' },
+    { oldCol: 'post_type', oldType: "enum('PRAYER_WALL','FEED')", newTable: 'posts', newCol: 'post_type', newType: "ENUM('text','prayer_request')", transform: "Map: FEED -> 'text', PRAYER_WALL -> 'prayer_request'. For PRAYER_WALL posts: also create prayer_requests row", quality: '' },
+    { oldCol: 'media', oldType: 'longtext (JSON)', newTable: 'post_media', newCol: 'multiple rows', newType: 'See post_media model', transform: 'Parse JSON array [{file_name, file_type}] -> create post_media row per item. Import local filenames as-is. POST-MIGRATION: separate script uploads files to B2 and updates url to full B2 URLs.', quality: 'Mix of image and video. Some have [], some NULL. file_type is "image" or "video"' },
     { oldCol: 'cover_media', oldType: 'int(11)', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — index into media array for display ordering, not needed in new schema', quality: '' },
     { oldCol: 'likes_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT from post_reactions) -- no migration needed', quality: 'Denormalized counter' },
     { oldCol: 'comments_count', oldType: 'int(11) DEFAULT 0', newTable: '--', newCol: '--', newType: '--', transform: 'COMPUTED in new schema (COUNT from post_comments) -- no migration needed', quality: 'Denormalized counter' },
@@ -1210,6 +1211,7 @@ const POSTS_MAPPING = {
     { oldCol: 'createdAt', oldType: 'datetime NOT NULL', newTable: 'posts', newCol: 'created_at', newType: 'DATE', transform: 'rename', quality: '' },
     { oldCol: 'updatedAt', oldType: 'datetime NOT NULL', newTable: 'posts', newCol: 'updated_at', newType: 'DATE', transform: 'rename', quality: '' },
     { oldCol: 'category_id', oldType: 'int(11)', newTable: 'posts', newCol: 'mode', newType: "ENUM('bible','positivity')", transform: "Map: category_id=1 (BIBLE) -> 'bible', category_id=2 (POSITIVITY) -> 'positivity'", quality: '' },
+    { oldCol: '(new)', oldType: '--', newTable: 'posts', newCol: 'visibility', newType: "ENUM('public','followers')", transform: "default 'public' for all imported posts", quality: '' },
     // For PRAYER_WALL posts, also create prayer_requests row
     { oldCol: '(derived)', oldType: '--', newTable: 'prayer_requests', newCol: 'post_id', newType: 'INTEGER', transform: "For PRAYER_WALL posts only: create prayer_requests row with post_id, status='active', privacy='public'. Anonymity is on Post model (is_anonymous=false default).", quality: '' },
   ],
@@ -1297,7 +1299,7 @@ const DAILYPOSTCOMMENTS_MAPPING = {
   oldTable: 'dailypostcomments',
   status: 'MAPPED',
   newTables: ['daily_comments'],
-  notes: 'Comments on daily content. 872 rows. Hierarchical (parent_id for replies). Map daily_post_id to daily_content_id via dailyposts.daily_post_name -> daily_content.post_date date lookup.',
+  notes: 'Comments on daily content. 4,586 rows. Hierarchical (parent_id for replies). Map daily_post_id to daily_content_id via dailyposts.daily_post_name -> daily_content.post_date date lookup.',
   columns: [
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: 'daily_comments', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'direct copy', quality: '' },
     { oldCol: 'daily_post_id', oldType: 'int(11) NOT NULL', newTable: 'daily_comments', newCol: 'daily_content_id', newType: 'INTEGER', transform: 'LOOKUP: old dailyposts.id -> dailyposts.daily_post_name (date string) -> match daily_content.post_date -> daily_content.id', quality: 'Requires cross-table ID resolution' },
@@ -1325,7 +1327,7 @@ const DAILYPOSTUSERS_MAPPING = {
   oldTable: 'dailypostusers',
   status: 'MAPPED',
   newTables: ['daily_reactions', 'bookmarks'],
-  notes: 'DUAL SPLIT: User interactions with daily posts. 2,925 rows. Each row has is_liked + is_bookmarked flags. Splits into daily_reactions (likes as love/heart) and bookmarks. A single old row can produce BOTH a reaction AND a bookmark.',
+  notes: 'DUAL SPLIT: User interactions with daily posts. 23,685 rows. Each row has is_liked + is_bookmarked flags. Splits into daily_reactions (likes as love/heart) and bookmarks. A single old row can produce BOTH a reaction AND a bookmark.',
   columns: [
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '--', newCol: '--', newType: '--', transform: 'DROP — new IDs auto-generated for each split target', quality: '' },
     { oldCol: 'daily_post_id', oldType: 'int(11) NOT NULL', newTable: 'daily_reactions / bookmarks', newCol: 'daily_content_id', newType: 'INTEGER', transform: 'LOOKUP: old dailyposts.id -> dailyposts.daily_post_name -> match daily_content.post_date -> daily_content.id', quality: 'Requires cross-table ID resolution' },
@@ -1470,8 +1472,11 @@ const CHATS_MAPPING = {
     { oldCol: '(derived)', oldType: '--', newTable: 'conversations', newCol: 'id', newType: 'INTEGER AUTO_INCREMENT', transform: 'Generate 1 row per unique (min(sender,receiver), max(sender,receiver)) pair', quality: '' },
     { oldCol: '(derived)', oldType: '--', newTable: 'conversations', newCol: 'type', newType: "ENUM('direct','group')", transform: "Always 'direct' for migrated chats", quality: '' },
     { oldCol: '(derived)', oldType: '--', newTable: 'conversations', newCol: 'created_at', newType: 'DATE', transform: 'earliest createdAt from chats in this conversation', quality: '' },
+    { oldCol: '(derived)', oldType: '--', newTable: 'conversations', newCol: 'creator_id', newType: 'INTEGER', transform: 'Set to sender_id of the first (earliest) message in the conversation', quality: '' },
+    { oldCol: '(derived)', oldType: '--', newTable: 'conversations', newCol: 'last_message_id', newType: 'INTEGER', transform: 'ID of the most recent message in the conversation', quality: '' },
+    { oldCol: '(derived)', oldType: '--', newTable: 'conversations', newCol: 'last_message_at', newType: 'DATE', transform: 'Timestamp of the most recent message in the conversation', quality: '' },
     // New schema: conversation_participants derived from grouping
-    { oldCol: '(derived)', oldType: '--', newTable: 'conversation_participants', newCol: 'conversation_id + user_id + role + last_read_at', newType: 'See model', transform: "2 rows per conversation (one per user). role='member'. last_read_at = latest is_seen=1 message timestamp for that user, or NULL.", quality: '' },
+    { oldCol: '(derived)', oldType: '--', newTable: 'conversation_participants', newCol: 'conversation_id + user_id + role + last_read_at', newType: 'See model', transform: "2 rows per conversation (one per user). role='member'. last_read_at = latest is_seen=1 message timestamp for that user, or NULL. joined_at = conversation created_at (earliest message timestamp).", quality: '' },
     // New schema: messages.conversation_id
     { oldCol: '(derived)', oldType: '--', newTable: 'messages', newCol: 'conversation_id', newType: 'INTEGER', transform: 'Assign from conversation grouping step', quality: '' },
   ],
@@ -1489,7 +1494,7 @@ const NOTES_MAPPING = {
   oldTable: 'notes',
   status: 'SKIP',
   newTables: ['(no equivalent in new schema)'],
-  notes: 'SKIP: Only 7 personal journal/voice notes — likely test data. No personal notes table in new schema.',
+  notes: 'SKIP: 68 personal journal/voice notes. No personal notes table in new schema.',
   columns: [
     { oldCol: 'id', oldType: 'int(11) NOT NULL', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION', quality: '' },
     { oldCol: 'title', oldType: 'varchar(255)', newTable: '(TBD)', newCol: '(TBD)', newType: '(TBD)', transform: 'NEEDS DECISION: mostly "Voice Note" titles', quality: 'Generic titles like "Voice Note"' },
@@ -1644,8 +1649,8 @@ function getOverviewData() {
     { oldTable: 'settings', status: 'SKIP', newTables: 'platform_settings', approxRows: 2, notes: 'Skip — old settings (UNDER_AGE_LIMIT, TILES_HIDE_FOR_GUEST) not needed in new platform.' },
     { oldTable: 'subscribewebpushes', status: 'SKIP', newTables: 'push_subscriptions', approxRows: 78, notes: 'Skip — old push subscriptions invalid on new domain/service worker.' },
     // Categories Domain
-    { oldTable: 'categories', status: 'MAPPED', newTables: 'categories', approxRows: 2, notes: 'Simple 1:1 mapping. BIBLE and POSITIVITY.' },
-    { oldTable: 'category_user_relations', status: 'MAPPED', newTables: 'user_categories', approxRows: 44631, notes: 'Simple rename mapping.' },
+    { oldTable: 'categories', status: 'SKIP', newTables: 'categories', approxRows: 2, notes: 'SKIP: Bible/Positivity now handled by users.mode enum. New categories table is for workshops.' },
+    { oldTable: 'category_user_relations', status: 'SKIP', newTables: 'user_categories', approxRows: 44631, notes: 'SKIP: Used only to derive users.mode field during user import.' },
     { oldTable: 'homescreen_tile_categories', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 10, notes: 'No equivalent table in new schema. Old homescreen tiles not carried over.' },
     // Social Domain
     { oldTable: 'posts', status: 'MAPPED', newTables: 'posts + post_media + prayer_requests', approxRows: 42, notes: 'COMPLEX: Type split FEED/PRAYER_WALL. WARNING: Only ~42 rows in dump, AUTO_INCREMENT=1230.' },
@@ -1654,9 +1659,9 @@ function getOverviewData() {
     { oldTable: 'follows', status: 'MAPPED', newTables: 'follows', approxRows: 1194, notes: 'Social graph follows.' },
     // Daily Content Domain
     { oldTable: 'dailyposts', status: 'ALREADY MIGRATED', newTables: 'daily_content', approxRows: 702, notes: 'Content already migrated separately. No action needed.' },
-    { oldTable: 'dailypostcomments', status: 'MAPPED', newTables: 'daily_comments', approxRows: 872, notes: 'Comments on daily content. parent_id for replies. Requires daily_post_id -> daily_content_id lookup via date.' },
+    { oldTable: 'dailypostcomments', status: 'MAPPED', newTables: 'daily_comments', approxRows: 4586, notes: 'Comments on daily content. parent_id for replies. Requires daily_post_id -> daily_content_id lookup via date.' },
     { oldTable: 'dailypostusercomments', status: 'MAPPED', newTables: 'daily_comment_reactions (NEW TABLE)', approxRows: 6733, notes: 'Likes on daily comments. CREATE new daily_comment_reactions table. Import is_liked=1 rows as love/heart.' },
-    { oldTable: 'dailypostusers', status: 'MAPPED', newTables: 'daily_reactions + bookmarks', approxRows: 2925, notes: 'DUAL SPLIT: is_liked=1 -> daily_reactions (love/heart), is_bookmarked=1 -> bookmarks.' },
+    { oldTable: 'dailypostusers', status: 'MAPPED', newTables: 'daily_reactions + bookmarks', approxRows: 23685, notes: 'DUAL SPLIT: is_liked=1 -> daily_reactions (love/heart), is_bookmarked=1 -> bookmarks.' },
     { oldTable: 'dailychapters', status: 'ALREADY MIGRATED', newTables: 'listen_logs', approxRows: 1737, notes: 'Already migrated separately. No action needed.' },
     // Verse Domain
     { oldTable: 'verses', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 3409, notes: 'Verses handled by daily_content.verse_reference in new schema. No standalone verse table needed.' },
@@ -1664,9 +1669,9 @@ function getOverviewData() {
     { oldTable: 'verse_likes', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 3716, notes: 'No equivalent. Verse interactions superseded by daily_reactions.' },
     { oldTable: 'verse_user_comments', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 1, notes: 'No equivalent. Only 1 row.' },
     // Chat Domain
-    { oldTable: 'chats', status: 'MAPPED', newTables: 'conversations + conversation_participants + messages', approxRows: 286, notes: 'COMPLEX: flat chat -> grouped conversations + participants + messages.' },
+    { oldTable: 'chats', status: 'MAPPED', newTables: 'conversations + conversation_participants + messages + message_media + message_status', approxRows: 286, notes: 'COMPLEX: flat chat -> grouped conversations + participants + messages.' },
     // Notes Domain
-    { oldTable: 'notes', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 68, notes: '68 personal journal entries. No personal notes feature in new app — skip.' },
+    { oldTable: 'notes', status: 'SKIP', newTables: '(no equivalent in new schema)', approxRows: 68, notes: '68 personal journal/voice notes. No personal notes feature in new app — skip.' },
     // Notifications Domain
     { oldTable: 'notifications', status: 'SKIP', newTables: 'notifications', approxRows: 28480, notes: 'Skip — start fresh. Historical notifications not worth the complex 18->9 column transformation.' },
     // Video Domain
