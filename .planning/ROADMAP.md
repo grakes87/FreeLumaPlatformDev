@@ -237,7 +237,7 @@ Plans:
 - [ ] 05-14-PLAN.md — Host dashboard + nav integration + admin management
 
 ### Phase 6: Bug Fixes & Polish
-**Goal**: Fix accumulated bugs, TypeScript errors, UI inconsistencies, and UX issues discovered across Phases 1–5 — the platform compiles cleanly, all pages render without runtime errors, and key user flows work end-to-end.
+**Goal**: Fix accumulated bugs, TypeScript errors, UI inconsistencies, and UX issues discovered across Phases 1-5 — the platform compiles cleanly, all pages render without runtime errors, and key user flows work end-to-end.
 
 **Depends on**: Phase 5 (all features built)
 
@@ -307,10 +307,12 @@ Plans:
   7. Workshop-related old tables explicitly marked as "skip — rebuilt in Phase 5"
   8. Unmapped/orphaned old data identified and flagged for user decision
 
-**Plans**: TBD
+**Plans**: 3 plans in 3 waves
 
 Plans:
-- [ ] 08-01: TBD during phase planning
+- [ ] 08-01-PLAN.md — SQL parser + Excel framework + Users/Categories/Social domain mappings (10 tables)
+- [ ] 08-02-PLAN.md — Daily Content/Verse/Chat/Notes/Notifications/Video domain mappings + orphan detection (14 tables)
+- [ ] 08-03-PLAN.md — Human verification checkpoint for spreadsheet review and NEEDS DECISION items
 
 ## Progress
 
@@ -329,7 +331,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 5. Workshops | 14/14 | Complete | 2026-02-14 |
 | 6. Bug Fixes & Polish | 0/6 | Planned | - |
 | 7. Migration & Launch | 0/TBD | Not started | - |
-| 8. Database Migration Mapping | 0/TBD | Not started | - |
+| 8. Database Migration Mapping | 0/3 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-11*
@@ -339,4 +341,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 *Phase 4 planned: 2026-02-13 (14 plans in 4 waves)*
 *Phase 5 planned: 2026-02-14 (14 plans in 6 waves)*
 *Phase 8 added: 2026-02-15 (Database Migration Mapping)*
+*Phase 8 planned: 2026-02-15 (3 plans in 3 waves)*
 *Depth: Comprehensive (8 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping)*
