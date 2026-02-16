@@ -11,20 +11,20 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 8 of 8 (Database Migration Mapping)
-Plan: 1 of 3 complete (01 done, 02-03 remaining)
+Plan: 2 of 3 complete (01-02 done, 03 remaining)
 Status: In progress
-Last activity: 2026-02-15 — Completed 08-01-PLAN.md
+Last activity: 2026-02-15 — Completed 08-02-PLAN.md
 
-Progress: [██████████████████████████████████████████████████████████████████████░░░░] 72/74+ plans (97% of planned)
+Progress: [█████████████████████████████████████████████████████████████████████████░░] 73/74+ plans (99% of planned)
 
-**Next Plans:** 08-02 (remaining domain mappings), 08-03 (validation and review)
+**Next Plans:** 08-03 (validation and review)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 72
+- Total plans completed: 73
 - Average duration: 4 min
-- Total execution time: 318 min
+- Total execution time: 325 min
 
 **By Phase:**
 
@@ -36,10 +36,10 @@ Progress: [███████████████████████
 | 04-enhanced-content | 14/14 | 58 min | 4 min |
 | 05-workshops | 14/14 | 49 min | 4 min |
 | 06-bug-fixes | 5/6 | 13 min | 3 min |
-| 08-database-migration-mapping | 1/3 | 7 min | 7 min |
+| 08-database-migration-mapping | 2/3 | 14 min | 7 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-03 (2 min), 06-04 (2 min), 06-05 (2 min), 06-01 (5 min), 08-01 (7 min)
+- Last 5 plans: 06-04 (2 min), 06-05 (2 min), 06-01 (5 min), 08-01 (7 min), 08-02 (7 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -317,7 +317,9 @@ Recent decisions affecting current work:
 - **Workshop state machine hook:** useWorkshopState manages loading/lobby/live/ended/error transitions with Socket.IO integration
 
 - **String-aware SQL parser:** Regex `[\s\S]*?;` fails on HTML content with `&nbsp;` inside SQL string literals; use findInsertStatements() with character-by-character semicolon scanning respecting quote state
-- **migration-mapping.xlsx not committed:** Generated artifact recreated by running `node scripts/generate-migration-mapping.mjs`
+- **migration-mapping.xlsx committed:** Complete 25-sheet Excel deliverable with all 24 non-workshop table mappings + orphan detection
+- **Old DB data is referentially clean:** Orphan detection found 0 orphan FK references across all 24 tables
+- **dailyposts is sparse index:** Old dailyposts table only has id + date string, no content columns; actual content managed externally
 
 ### Pending Todos
 
@@ -383,5 +385,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: Completed 08-01-PLAN.md (migration mapping script with SQL parser and Excel generator)
+Stopped at: Completed 08-02-PLAN.md (complete migration mapping with orphan detection)
 Resume file: None
