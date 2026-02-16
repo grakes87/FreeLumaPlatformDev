@@ -18,6 +18,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const SQL_DUMP_PATH = path.join(PROJECT_ROOT, 'Old Database', 'Main Free Luma Database.sql');
 const PRE_MIGRATION_PATH = path.join(PROJECT_ROOT, 'Old Database', 'freeluma_dev_pre_migration_2026-02-16.sql');
+const ACTIVATION_CODES_PATH = path.join(PROJECT_ROOT, 'Old Code', 'FreeLumaDev-new', 'free-luma-api', 'public', 'uploads', 'activation_codes.txt');
 
 // Parse CLI args
 const args = process.argv.slice(2);
@@ -46,6 +47,7 @@ const stats = {
   daily_reactions: { imported: 0, skipped: 0 },
   bookmarks: { imported: 0, skipped: 0 },
   daily_comment_reactions: { imported: 0, skipped: 0 },
+  activation_codes: { imported: 0, skipped: 0 },
 };
 
 // ─── SQL Parser ──────────────────────────────────────────────────────────────
@@ -333,6 +335,14 @@ async function importUsers(conn, sqlContent) {
     }
   }
   console.log(`  Deduplicated ${dupFixed} usernames`);
+
+  // Reserve 'freeluma' username for admin — rename any imported user who has it
+  for (const u of validUsers) {
+    if (u.username.toLowerCase() === 'freeluma') {
+      u.username = `freeluma_old${u.id}`;
+      console.log(`  Reserved 'freeluma' for admin — renamed user ${u.id} to '${u.username}'`);
+    }
+  }
 
   // Batch insert users
   const userBatches = chunk(validUsers, BATCH_SIZE);
@@ -1308,12 +1318,12 @@ async function seedAdminAndTestUser(conn) {
     await conn.query(
       `INSERT INTO users (id, email, password_hash, display_name, username, avatar_color, mode,
         timezone, preferred_translation, language, email_verified, onboarding_complete,
-        is_admin, role, can_host, status, created_at, updated_at)
+        is_admin, is_verified, role, can_host, status, created_at, updated_at)
       VALUES
-        (?, 'admin@freeluma.com', ?, 'Admin', 'fl_admin', '#6366F1', 'bible',
-          'America/New_York', 'KJV', 'en', 1, 1, 1, 'admin', 1, 'active', ?, ?),
+        (?, 'admin@freeluma.com', ?, 'Free Luma', 'freeluma', '#6366F1', 'bible',
+          'America/New_York', 'KJV', 'en', 1, 1, 1, 1, 'admin', 1, 'active', ?, ?),
         (?, 'testuser@freeluma.com', ?, 'Test User', 'fl_testuser', '#6366F1', 'bible',
-          'America/New_York', 'KJV', 'en', 1, 1, 0, 'user', 1, 'active', ?, ?)`,
+          'America/New_York', 'KJV', 'en', 1, 1, 0, 0, 'user', 1, 'active', ?, ?)`,
       [adminId, adminHash, now, now, testUserId, testHash, now, now]
     );
 
@@ -1328,7 +1338,7 @@ async function seedAdminAndTestUser(conn) {
     );
   }
 
-  console.log(`  Admin: ID ${adminId} (admin@freeluma.com / fl_admin / admin123)`);
+  console.log(`  Admin: ID ${adminId} (admin@freeluma.com / freeluma / admin123 / verified)`);
   console.log(`  Test:  ID ${testUserId} (testuser@freeluma.com / fl_testuser / test123)`);
 }
 
@@ -1634,6 +1644,71 @@ async function reimportSeedPosts(conn) {
   console.log('  Seed post re-import complete.');
 }
 
+// ─── Import: Activation Codes from Legacy Text File ─────────────────────────
+
+async function importActivationCodes(conn) {
+  console.log('\n=== IMPORTING ACTIVATION CODES ===');
+
+  if (!fs.existsSync(ACTIVATION_CODES_PATH)) {
+    console.log('  WARNING: Activation codes file not found, skipping.');
+    console.log(`  Expected: ${ACTIVATION_CODES_PATH}`);
+    return;
+  }
+
+  const content = fs.readFileSync(ACTIVATION_CODES_PATH, 'utf8');
+  const lines = content.split('\n').filter(l => l.trim());
+  console.log(`  Parsed ${lines.length} lines from activation_codes.txt`);
+
+  const codeValues = [];
+  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+  for (const line of lines) {
+    // Format: "19401 - 7216-7538-2454"
+    const dashIdx = line.indexOf(' - ');
+    if (dashIdx === -1) {
+      stats.activation_codes.skipped++;
+      continue;
+    }
+    const code = line.substring(dashIdx + 3).trim();
+    if (!code || code.length < 10) {
+      stats.activation_codes.skipped++;
+      continue;
+    }
+
+    codeValues.push([
+      code,          // code (XXXX-XXXX-XXXX, 14 chars with dashes)
+      0,             // used = false
+      null,          // used_by
+      null,          // used_at
+      null,          // mode_hint
+      '9999-12-31 00:00:00', // expires_at (never expire)
+      null,          // created_by
+      'imported',    // source
+      now,           // created_at
+      now,           // updated_at
+    ]);
+  }
+
+  console.log(`  Valid codes to import: ${codeValues.length}`);
+
+  if (codeValues.length > 0 && !DRY_RUN) {
+    let inserted = 0;
+    for (const batch of chunk(codeValues, BATCH_SIZE)) {
+      const [result] = await conn.query(
+        `INSERT IGNORE INTO activation_codes (code, used, used_by, used_at, mode_hint,
+          expires_at, created_by, source, created_at, updated_at)
+        VALUES ?`,
+        [batch]
+      );
+      inserted += result.affectedRows;
+    }
+    stats.activation_codes.imported = inserted;
+    stats.activation_codes.skipped += codeValues.length - inserted;
+  }
+
+  console.log(`  Imported ${stats.activation_codes.imported} activation codes (${stats.activation_codes.skipped} skipped as duplicates or invalid)`);
+}
+
 // ─── Utility ─────────────────────────────────────────────────────────────────
 
 function chunk(arr, size) {
@@ -1746,6 +1821,11 @@ async function main() {
       await importDailyCommentReactions(conn, sqlContent, importedUserIds, dailyCommentIdMap);
     }
 
+    // 11. Activation codes from legacy text file
+    if (!ONLY_TABLE || ONLY_TABLE === 'activation_codes') {
+      await importActivationCodes(conn);
+    }
+
     // Re-enable FK checks
     await conn.query('SET FOREIGN_KEY_CHECKS = 1');
 
@@ -1780,7 +1860,7 @@ async function main() {
         'post_reactions', 'post_comments', 'post_comment_reactions', 'follows',
         'conversations', 'conversation_participants', 'messages', 'message_media',
         'message_status', 'daily_comments', 'daily_reactions', 'bookmarks',
-        'daily_comment_reactions'
+        'daily_comment_reactions', 'activation_codes'
       ];
       for (const t of tables) {
         try {
