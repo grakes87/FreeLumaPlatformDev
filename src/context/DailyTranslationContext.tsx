@@ -56,6 +56,8 @@ export function DailyTranslationProvider({ children }: { children: ReactNode }) 
       if (user?.preferred_translation && codes.includes(user.preferred_translation)) {
         return user.preferred_translation;
       }
+      // Default to KJV for guests (most common Bible translation with audio)
+      if (codes.includes('KJV')) return 'KJV';
       return codes.length > 0 ? codes[0] : null;
     });
   }, [user?.preferred_translation]);

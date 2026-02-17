@@ -165,6 +165,7 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
   const showVerseByCategory = isBibleMode && verseMode === 'verse_by_category';
 
   // Toggle scroll snap on the container based on mode
+  const prevShowVerseByCategoryRef = useRef(showVerseByCategory);
   useEffect(() => {
     const container = getScrollContainer();
     if (!container) return;
@@ -174,7 +175,17 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
     } else {
       container.style.scrollSnapType = 'y mandatory';
       container.style.overflowY = 'auto';
+
+      // Switching BACK from verse-by-category → daily verse:
+      // reset scroll to top and activeIndex to avoid stale snap position
+      if (prevShowVerseByCategoryRef.current) {
+        setActiveIndex(0);
+        requestAnimationFrame(() => {
+          container.scrollTo({ top: 0, behavior: 'instant' });
+        });
+      }
     }
+    prevShowVerseByCategoryRef.current = showVerseByCategory;
     return () => {
       container.style.scrollSnapType = 'y mandatory';
       container.style.overflowY = 'auto';
@@ -203,11 +214,13 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
     <div className="bg-[#0a0a0f] relative">
       {/* VerseModeToggle is now rendered in TopBar, not here */}
 
-      {/* Daily Verse mode (standard DailyFeed scroll) */}
+      {/* Daily Verse mode (standard DailyFeed scroll)
+         IMPORTANT: This div must stay in document flow (no absolute positioning)
+         even when hidden, so scroll-snap layout is stable when switching modes. */}
       <div
         className={cn(
           'transition-opacity duration-300',
-          showVerseByCategory ? 'opacity-0 pointer-events-none absolute inset-0' : 'opacity-100'
+          showVerseByCategory ? 'opacity-0 pointer-events-none' : 'opacity-100'
         )}
       >
         <div
@@ -264,11 +277,11 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
         </div>
       </div>
 
-      {/* Verse by Category mode */}
+      {/* Verse by Category mode — always absolute overlay */}
       <div
         className={cn(
-          'transition-opacity duration-300',
-          showVerseByCategory ? 'opacity-100' : 'opacity-0 pointer-events-none absolute inset-0'
+          'absolute inset-0 transition-opacity duration-300',
+          showVerseByCategory ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none'
         )}
       >
         {showVerseByCategory && (

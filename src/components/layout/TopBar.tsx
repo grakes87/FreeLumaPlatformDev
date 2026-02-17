@@ -41,7 +41,7 @@ export function TopBar({ transparent = false }: TopBarProps) {
   const hasUnreadMessages = useChatUnreadBadge();
   const dailyTranslation = useDailyTranslation();
 
-  const isDailyTab = pathname === '/' || pathname.startsWith('/daily/');
+  const isDailyTab = pathname === '/' || pathname.startsWith('/daily/') || pathname === '/bible' || pathname === '/positivity';
   const showTranslationSelector = isDailyTab
     && dailyTranslation
     && dailyTranslation.availableTranslations.length > 0;

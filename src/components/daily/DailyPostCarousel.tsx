@@ -196,6 +196,8 @@ function CarouselSwiper({
     <Swiper
       modules={[Pagination, Keyboard]}
       slidesPerView={1}
+      observer
+      observeParents
       pagination={{
         clickable: true,
         bulletClass: 'swiper-pagination-bullet !bg-white/50 !opacity-100',
