@@ -433,5 +433,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 12-02-PLAN.md (NPM deps + verse selection)
+Stopped at: Completed 12-03-PLAN.md (Core pipeline libraries: text gen, TTS, SRT)
 Resume file: None
