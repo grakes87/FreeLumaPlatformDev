@@ -23,6 +23,9 @@ import {
   Send,
   ShieldBan,
   BarChart3,
+  MessageSquare,
+  Presentation,
+  Play,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils/cn';
@@ -62,6 +65,9 @@ interface Settings {
   email_dm_notifications: boolean;
   email_follow_notifications: boolean;
   email_prayer_notifications: boolean;
+  email_reaction_comment_notifications: boolean;
+  email_workshop_notifications: boolean;
+  email_new_video_notifications: boolean;
   email_daily_reminder: boolean;
 }
 
@@ -573,6 +579,33 @@ export default function SettingsPage() {
           label="Prayer Notifications"
           checked={settings?.email_prayer_notifications ?? true}
           onChange={(val) => saveSettings({ email_prayer_notifications: val })}
+        />
+
+        <Divider />
+
+        <ToggleRow
+          icon={MessageSquare}
+          label="Reactions & Comments"
+          checked={settings?.email_reaction_comment_notifications ?? true}
+          onChange={(val) => saveSettings({ email_reaction_comment_notifications: val })}
+        />
+
+        <Divider />
+
+        <ToggleRow
+          icon={Presentation}
+          label="Workshop Events"
+          checked={settings?.email_workshop_notifications ?? true}
+          onChange={(val) => saveSettings({ email_workshop_notifications: val })}
+        />
+
+        <Divider />
+
+        <ToggleRow
+          icon={Play}
+          label="New Videos"
+          checked={settings?.email_new_video_notifications ?? true}
+          onChange={(val) => saveSettings({ email_new_video_notifications: val })}
         />
 
         <Divider />
