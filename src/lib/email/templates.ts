@@ -676,6 +676,65 @@ export function workshopStartedEmail(params: WorkshopEmailParams): { html: strin
   return { html: baseTemplate(content, footer), subject, headers };
 }
 
+// ---- New video broadcast template ----
+
+export interface NewVideoEmailParams {
+  recipientName: string;
+  videoTitle: string;
+  videoDescription: string;
+  videoThumbnailUrl: string | null;
+  videoUrl: string;
+  trackingId?: string;
+  unsubscribeUrl?: string;
+}
+
+export function newVideoEmail(params: NewVideoEmailParams): { html: string; subject: string; headers: Record<string, string> } {
+  const { recipientName, videoTitle, videoDescription, videoUrl, videoThumbnailUrl, trackingId, unsubscribeUrl } = params;
+
+  const subject = `New video: ${videoTitle} - ${BRAND_NAME}`;
+
+  const truncatedDescription = videoDescription.length > 150
+    ? videoDescription.slice(0, 147) + '...'
+    : videoDescription;
+
+  const thumbnailHtml = videoThumbnailUrl
+    ? `<img src="${videoThumbnailUrl}" alt="${videoTitle}" style="max-width:100%;border-radius:8px;margin-bottom:12px;display:block;" />`
+    : '';
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">New Video Available</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${recipientName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      A new video has been added to the ${BRAND_NAME} library:
+    </p>
+    <div style="padding:16px;background:#f9fafb;border-radius:8px;margin:0 0 16px;">
+      ${thumbnailHtml}
+      <p style="margin:0 0 4px;font-size:18px;font-weight:700;color:#18181b;line-height:1.4;">
+        ${videoTitle}
+      </p>
+      <p style="margin:0;font-size:14px;color:#71717a;line-height:1.5;">
+        ${truncatedDescription}
+      </p>
+    </div>
+    ${actionButton(videoUrl, 'Watch Now')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
+      Enjoy the latest content from the community.
+    </p>
+  `;
+
+  const footer = notificationFooter({ trackingId, unsubscribeUrl, category: 'New Video' });
+
+  const headers: Record<string, string> = {};
+  if (unsubscribeUrl) {
+    headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  return { html: baseTemplate(content, footer), subject, headers };
+}
+
 // ---- Daily reminder template ----
 
 export interface DailyReminderEmailParams {
