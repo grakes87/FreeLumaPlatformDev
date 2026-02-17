@@ -190,3 +190,36 @@ export function withModerator(handler: ModeratorHandler) {
     return handler(req, { ...context, isAdmin: dbUser.is_admin } as ModeratorContext);
   });
 }
+
+/**
+ * Creator middleware: wraps withAuth and checks the user has an active
+ * LumaShortCreator profile. Passes the creator instance in context.
+ */
+export interface CreatorContext extends AuthContext {
+  creator: import('@/lib/db/models/LumaShortCreator').LumaShortCreatorAttributes;
+}
+
+type CreatorHandler = (
+  req: NextRequest,
+  context: CreatorContext
+) => Promise<NextResponse>;
+
+export function withCreator(handler: CreatorHandler) {
+  return withAuth(async (req: NextRequest, context: AuthContext) => {
+    // Lazy-import to avoid circular dependency at module init
+    const { LumaShortCreator } = await import('@/lib/db/models');
+
+    const creator = await LumaShortCreator.findOne({
+      where: { user_id: context.user.id, active: true },
+    });
+
+    if (!creator) {
+      return NextResponse.json(
+        { error: 'Creator profile not found' },
+        { status: 403 }
+      );
+    }
+
+    return handler(req, { ...context, creator } as CreatorContext);
+  });
+}
