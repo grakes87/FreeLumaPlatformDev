@@ -7,6 +7,7 @@ import {
   followRequestEmail,
   prayerResponseEmail,
   dailyReminderEmail,
+  reactionCommentBatchEmail,
 } from './templates';
 
 const APP_URL = 'https://freeluma.com';
@@ -273,6 +274,151 @@ export async function processDMEmailBatch(): Promise<void> {
       });
     } catch (err) {
       console.error(`[Email Queue] DM batch error for conversation ${batch.conversation_id}:`, err);
+    }
+  }
+}
+
+/**
+ * Process batched reaction/comment email notifications.
+ * Called by cron every 15 minutes.
+ *
+ * Finds users with unread reaction/comment notifications from the last 24 hours
+ * (but older than 15 minutes to allow time for the user to see them in-app).
+ * Groups by recipient and sends a single digest email per user.
+ */
+export async function processReactionCommentBatch(): Promise<void> {
+  const { sequelize, User, UserSetting, EmailLog } = await import('@/lib/db/models');
+  const { presenceManager } = await import('@/lib/socket/presence');
+
+  const cutoffTime = new Date(Date.now() - DM_BATCH_DELAY_MINUTES * 60 * 1000);
+  const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  // Find recipients with unread reaction/comment notifications
+  const recipientBatches = await sequelize.query<{
+    recipient_id: number;
+    notification_count: number;
+  }>(`
+    SELECT
+      n.recipient_id,
+      COUNT(*) AS notification_count
+    FROM notifications n
+    WHERE n.is_read = FALSE
+      AND n.type IN ('reaction', 'comment')
+      AND n.created_at <= :cutoffTime
+      AND n.created_at >= :windowStart
+    GROUP BY n.recipient_id
+  `, {
+    replacements: { cutoffTime, windowStart },
+    type: 'SELECT' as never,
+  }) as Array<{
+    recipient_id: number;
+    notification_count: number;
+  }>;
+
+  for (const batch of recipientBatches) {
+    try {
+      // Skip if recipient is online
+      if (presenceManager.isOnline(batch.recipient_id)) continue;
+
+      // Check if we already sent a reaction_comment_batch email recently (last 30 min)
+      const recentEmailSent = await EmailLog.count({
+        where: {
+          recipient_id: batch.recipient_id,
+          email_type: 'reaction_comment_batch',
+          created_at: { [Op.gte]: new Date(Date.now() - 30 * 60 * 1000) },
+        },
+      });
+      if (recentEmailSent > 0) continue;
+
+      // Get recipient info and settings
+      const recipient = await User.findByPk(batch.recipient_id, {
+        attributes: ['id', 'email', 'display_name'],
+        include: [{
+          model: UserSetting,
+          as: 'settings',
+          attributes: ['email_reaction_comment_notifications', 'quiet_hours_start', 'quiet_hours_end', 'reminder_timezone'],
+        }],
+      });
+
+      if (!recipient) continue;
+      const settings = (recipient as unknown as { settings: { email_reaction_comment_notifications: boolean; quiet_hours_start: string | null; quiet_hours_end: string | null; reminder_timezone: string | null } | null }).settings;
+      if (!settings?.email_reaction_comment_notifications) continue;
+
+      // Load the actual notifications with actor info
+      const notifications = await sequelize.query<{
+        type: string;
+        entity_type: string;
+        entity_id: number;
+        preview_text: string | null;
+        actor_name: string;
+      }>(`
+        SELECT n.type, n.entity_type, n.entity_id, n.preview_text,
+               u.display_name AS actor_name
+        FROM notifications n
+        JOIN users u ON u.id = n.actor_id
+        WHERE n.recipient_id = :recipientId
+          AND n.is_read = FALSE
+          AND n.type IN ('reaction', 'comment')
+          AND n.created_at >= :windowStart
+        ORDER BY n.created_at DESC
+        LIMIT 10
+      `, {
+        replacements: { recipientId: batch.recipient_id, windowStart },
+        type: 'SELECT' as never,
+      }) as Array<{
+        type: string;
+        entity_type: string;
+        entity_id: number;
+        preview_text: string | null;
+        actor_name: string;
+      }>;
+
+      if (notifications.length === 0) continue;
+
+      // Map notifications to template items
+      const items = notifications.map(n => {
+        let itemType: 'reaction' | 'comment' | 'reply';
+        if (n.type === 'reaction') {
+          itemType = 'reaction';
+        } else if (n.entity_type === 'comment') {
+          itemType = 'reply';
+        } else {
+          itemType = 'comment';
+        }
+
+        return {
+          type: itemType,
+          actorName: n.actor_name,
+          contentPreview: n.preview_text || 'your content',
+          contentUrl: `${APP_URL}/feed/${n.entity_id}`,
+        };
+      });
+
+      // Build and send email
+      const trackingId = generateTrackingId();
+      const unsubscribeUrl = await generateUnsubscribeUrl(batch.recipient_id, 'reaction_comment');
+
+      const { html, subject, headers } = reactionCommentBatchEmail({
+        recipientName: recipient.display_name,
+        items,
+        trackingId,
+        unsubscribeUrl,
+      });
+
+      await sendNotificationEmail({
+        userId: batch.recipient_id,
+        userEmail: recipient.email,
+        emailType: 'reaction_comment_batch',
+        subject,
+        html,
+        headers,
+        trackingId,
+        quietStart: settings.quiet_hours_start,
+        quietEnd: settings.quiet_hours_end,
+        reminderTimezone: settings.reminder_timezone,
+      });
+    } catch (err) {
+      console.error(`[Email Queue] Reaction/comment batch error for user ${batch.recipient_id}:`, err);
     }
   }
 }

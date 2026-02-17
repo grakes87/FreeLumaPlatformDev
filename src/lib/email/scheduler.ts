@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import {
   processDMEmailBatch,
+  processReactionCommentBatch,
   processDailyReminders,
   cleanupOldNotifications,
 } from './queue';
@@ -24,6 +25,15 @@ export function initEmailScheduler(): void {
       await processDMEmailBatch();
     } catch (err) {
       console.error('[Email Scheduler] DM batch error:', err);
+    }
+  });
+
+  // Every 15 minutes: process batched reaction/comment email notifications
+  cron.schedule('*/15 * * * *', async () => {
+    try {
+      await processReactionCommentBatch();
+    } catch (err) {
+      console.error('[Email Scheduler] Reaction/comment batch error:', err);
     }
   });
 
