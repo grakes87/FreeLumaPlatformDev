@@ -1,5 +1,6 @@
 import { Op } from 'sequelize';
 import type { DailyContentStatus } from '@/lib/db/models/DailyContent';
+import { notifyCreatorAssignment } from '@/lib/content-pipeline/notifications';
 
 /**
  * Auto-assign daily content for a given month to eligible creators
@@ -73,6 +74,7 @@ export async function autoAssignMonth(
   // Round-robin assignment
   let assigned = 0;
   let creatorIndex = 0;
+  const newAssignmentCounts = new Map<number, number>();
 
   for (const day of unassigned) {
     // Find next creator with available capacity
@@ -87,6 +89,7 @@ export async function autoAssignMonth(
         // Assign this day to this creator
         await day.update({ creator_id: creator.id, status: 'assigned' });
         assignmentCounts.set(creator.id, currentCount + 1);
+        newAssignmentCounts.set(creator.id, (newAssignmentCounts.get(creator.id) || 0) + 1);
         assigned++;
         found = true;
         creatorIndex = (creatorIndex + 1) % creators.length;
@@ -101,6 +104,11 @@ export async function autoAssignMonth(
       // All creators at capacity
       break;
     }
+  }
+
+  // Fire-and-forget: notify each creator who received new assignments
+  for (const [creatorId, count] of newAssignmentCounts) {
+    notifyCreatorAssignment(creatorId, month, mode, count);
   }
 
   return { assigned, skipped: unassigned.length - assigned };

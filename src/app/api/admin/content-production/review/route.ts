@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAdmin, type AuthContext } from '@/lib/auth/middleware';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
+import { notifyCreatorRejection } from '@/lib/content-pipeline/notifications';
 
 const reviewSchema = z.object({
   daily_content_id: z.number().int().positive(),
@@ -77,6 +78,9 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
           status: 'rejected',
           rejection_note: rejection_note!,
         });
+
+        // Fire-and-forget: notify creator of rejection
+        notifyCreatorRejection(daily_content_id);
         break;
       }
 
