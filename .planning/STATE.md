@@ -6,23 +6,23 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Daily inspirational content delivery and faith-based community connection — users come back every day for their daily post and stay to engage with their community.
 
-**Current focus:** Phase 10 - Email System Setup with SendGrid (COMPLETE)
+**Current focus:** Phase 11 - Verse by Category System
 
 ## Current Position
 
-Phase: 10 of 10 (Email System Setup with SendGrid)
-Plan: 5 of 5 complete (01, 02, 03, 04, 05 done)
-Status: Phase complete
-Last activity: 2026-02-17 — Completed 10-05-PLAN.md (Application email wiring)
+Phase: 11 of 11 (Verse by Category System)
+Plan: 1 of 7 complete (01 done)
+Status: In progress
+Last activity: 2026-02-17 — Completed 11-01-PLAN.md (Database schema and models)
 
-Progress: [█████████████████████████████████████████████████████████████████████████████████████] 85/85 plans (100%)
+Progress: [██████████████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░░] 86/92 plans (93%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 85
+- Total plans completed: 86
 - Average duration: 4 min
-- Total execution time: 358 min
+- Total execution time: 362 min
 
 **By Phase:**
 
@@ -37,9 +37,10 @@ Progress: [███████████████████████
 | 08-database-migration-mapping | 2/3 | 14 min | 7 min |
 | 09-platform-refinements | 6/6 | 21 min | 4 min |
 | 10-email-system-sendgrid | 5/5 | 12 min | 2 min |
+| 11-verse-by-category-system | 1/7 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 10-01 (4 min), 10-02 (2 min), 10-03 (2 min), 10-04 (2 min), 10-05 (2 min)
+- Last 5 plans: 10-03 (2 min), 10-04 (2 min), 10-05 (2 min), 11-01 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -342,6 +343,11 @@ Recent decisions affecting current work:
 - **Email dispatch from createNotification:** Workshop, follow, and prayer emails dispatched centrally via dynamic import after Socket.IO push
 - **Follow/prayer emails wired in createNotification:** processFollowRequestEmail and processPrayerResponseEmail were orphaned; wired in createNotification since no other callers existed
 
+- **Verse reaction ENUM no haha:** Verse category reactions use 5-value ENUM (like, love, wow, sad, pray) excluding haha for faith-focused content
+- **Verse comment reaction append-only:** VerseCategoryCommentReaction uses updatedAt:false; likes toggled via create/delete, not update
+- **User verse_mode default daily_verse:** Backward compatible default; existing users see current daily verse flow until opting into category mode
+- **Verse category media nullable FK:** verse_category_media.category_id uses ON DELETE SET NULL so media persists if category deleted
+
 ### Roadmap Evolution
 
 - Phase 9 added: Platform Refinements & Admin Tools (remove laugh reactions, repost views, admin font family, activation codes, video thumbnail regen, admin workshop creation)
@@ -413,5 +419,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 10-05-PLAN.md (Application email wiring) -- Phase 10 COMPLETE, all 85 plans done
+Stopped at: Completed 11-01-PLAN.md (Database schema and models)
 Resume file: None
