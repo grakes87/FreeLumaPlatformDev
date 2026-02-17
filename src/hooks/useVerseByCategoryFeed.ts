@@ -93,6 +93,7 @@ export function useVerseByCategoryFeed() {
 
   const abortRef = useRef<AbortController | null>(null);
   const initializedRef = useRef(false);
+  const prefetchedBgRef = useRef<string | null>(null);
 
   // Fetch categories list
   const fetchCategories = useCallback(async () => {
@@ -153,6 +154,23 @@ export function useVerseByCategoryFeed() {
       if (payload.verse?.id) {
         addRecentVerseId(payload.verse.id);
       }
+
+      // Prefetch next background image so the next swipe is instant
+      const prefetchParams = new URLSearchParams();
+      prefetchParams.set('category_id', String(categoryId));
+      prefetchParams.set('exclude', getRecentVerseIds().join(','));
+      prefetchParams.set('bg_only', '1');
+      fetch(`/api/verse-by-category/prefetch-bg?${prefetchParams}`, { credentials: 'include' })
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => {
+          const url = d?.data?.background_url ?? d?.background_url;
+          if (url) {
+            prefetchedBgRef.current = url;
+            const img = new Image();
+            img.src = url;
+          }
+        })
+        .catch(() => {});
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       const message = err instanceof Error ? err.message : 'Failed to fetch verse';

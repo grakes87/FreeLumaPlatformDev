@@ -147,31 +147,36 @@ export function DailyPostSlide({
       )}
 
       {/* Dark overlay for text readability */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/20" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/40" />
 
-      {/* Content overlay — sized to dynamic viewport so content stays visible */}
+      {/* Content overlay — fades in with the background video */}
       <div
-        className="absolute inset-x-0 top-0 z-10 flex flex-col items-center justify-between px-6"
+        className={
+          'absolute inset-x-0 top-0 z-10 flex flex-col items-center justify-between px-6 transition-opacity duration-700 ' +
+          (videoReady ? 'opacity-100' : 'opacity-0')
+        }
         style={{
           height: '100svh',
           paddingTop: 'calc(3.5rem + env(safe-area-inset-top, 0px) + 0.5rem)',
           paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 2.5rem)',
         }}
       >
-        {/* Top area: Date navigator */}
-        <div className="flex w-full flex-col items-center gap-3">
-          {feedMode ? (
-            <FeedDateLabel date={content.post_date} mode={content.mode} />
-          ) : (
-            <DateNavigator currentDate={content.post_date} />
-          )}
-        </div>
+        {/* Top spacer (keeps vertical centering balanced) */}
+        <div />
 
-        {/* Center: Verse/quote text */}
+        {/* Center: Labels + Verse grouped together */}
         <div className="flex max-w-lg flex-col items-center gap-4 text-center">
+          {/* Date / type label directly above verse */}
+          <div className="flex w-full flex-col items-center gap-3">
+            {feedMode ? (
+              <FeedDateLabel date={content.post_date} mode={content.mode} />
+            ) : (
+              <DateNavigator currentDate={content.post_date} />
+            )}
+          </div>
           <p
             className={
-              'fl-font-daily-verse text-xl leading-relaxed font-light tracking-wide text-white drop-shadow-lg sm:text-2xl md:text-3xl ' +
+              'fl-font-daily-verse text-2xl leading-relaxed font-light tracking-wide text-white drop-shadow-lg sm:text-3xl md:text-4xl ' +
               (content.mode === 'bible' ? 'font-serif italic' : 'font-sans')
             }
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}

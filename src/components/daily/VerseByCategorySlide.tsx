@@ -6,6 +6,7 @@ import { useVerseCategoryReactions } from '@/hooks/useVerseCategoryReactions';
 import { REACTION_EMOJI_MAP, DAILY_REACTION_TYPES } from '@/lib/utils/constants';
 import type { ReactionType } from '@/lib/utils/constants';
 import type { VerseData } from '@/hooks/useVerseByCategoryFeed';
+import { cn } from '@/lib/utils/cn';
 import { ShareButton } from './ShareButton';
 import { ReactionBar } from './ReactionBar';
 import { ReactionPicker } from './ReactionPicker';
@@ -94,7 +95,13 @@ export function VerseByCategorySlide({
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [showQuickPicker, setShowQuickPicker] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [bgLoaded, setBgLoaded] = useState(false);
   const reactionBarRef = useRef<HTMLDivElement>(null);
+
+  // Reset fade state when background changes
+  useEffect(() => {
+    setBgLoaded(false);
+  }, [backgroundUrl]);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
 
   // Local comment count delta for badge
@@ -135,22 +142,30 @@ export function VerseByCategorySlide({
       {/* Background layer -- dark base */}
       <div className="absolute inset-0 bg-[#0a0a0f]" />
 
-      {/* Background image */}
+      {/* Background image with fade-in */}
       {backgroundUrl && (
         <img
+          key={backgroundUrl}
           src={backgroundUrl}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover"
+          className={cn(
+            'absolute inset-0 h-full w-full object-cover transition-opacity duration-700',
+            bgLoaded ? 'opacity-100' : 'opacity-0'
+          )}
           draggable={false}
+          onLoad={() => setBgLoaded(true)}
         />
       )}
 
       {/* Dark overlay for text readability */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/20" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/40" />
 
-      {/* Content overlay */}
+      {/* Content overlay — fades in with the background image */}
       <div
-        className="absolute inset-x-0 top-0 z-10 flex flex-col items-center justify-between px-6"
+        className={cn(
+          'absolute inset-x-0 top-0 z-10 flex flex-col items-center justify-between px-6 transition-opacity duration-700',
+          bgLoaded || !backgroundUrl ? 'opacity-100' : 'opacity-0'
+        )}
         style={{
           height: '100svh',
           paddingTop: 'calc(3.5rem + env(safe-area-inset-top, 0px) + 0.5rem)',
@@ -173,7 +188,7 @@ export function VerseByCategorySlide({
           </div>
 
           <p
-            className="fl-font-daily-verse text-xl leading-relaxed font-light tracking-wide text-white drop-shadow-lg font-serif italic sm:text-2xl md:text-3xl"
+            className="fl-font-daily-verse text-2xl leading-relaxed font-light tracking-wide text-white drop-shadow-lg font-serif italic sm:text-3xl md:text-4xl"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}
           >
             &ldquo;{displayText}&rdquo;
