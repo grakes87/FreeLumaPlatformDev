@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 11 of 11 (Verse by Category System)
-Plan: 6 of 7 complete (01, 02, 03, 04, 05, 07 done)
-Status: In progress
-Last activity: 2026-02-17 — Completed 11-07-PLAN.md (Admin verse categories UI)
+Plan: 7 of 7 complete (01, 02, 03, 04, 05, 06, 07 done)
+Status: Phase complete
+Last activity: 2026-02-17 — Completed 11-06-PLAN.md (Daily tab + settings integration)
 
-Progress: [████████████████████████████████████████████████████████████████████████████████████████████░░░░░░░] 91/92 plans (99%)
+Progress: [████████████████████████████████████████████████████████████████████████████████████████████████████] 92/92 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 91
+- Total plans completed: 92
 - Average duration: 4 min
-- Total execution time: 395 min
+- Total execution time: 400 min
 
 **By Phase:**
 
@@ -37,10 +37,10 @@ Progress: [███████████████████████
 | 08-database-migration-mapping | 2/3 | 14 min | 7 min |
 | 09-platform-refinements | 6/6 | 21 min | 4 min |
 | 10-email-system-sendgrid | 5/5 | 12 min | 2 min |
-| 11-verse-by-category-system | 6/7 | 37 min | 6 min |
+| 11-verse-by-category-system | 7/7 | 42 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 11-02 (7 min), 11-03 (7 min), 11-04 (6 min), 11-05 (6 min), 11-07 (7 min)
+- Last 5 plans: 11-03 (7 min), 11-04 (6 min), 11-05 (6 min), 11-06 (5 min), 11-07 (7 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -356,6 +356,9 @@ Recent decisions affecting current work:
 - **Initial data props to reaction hook:** useVerseCategoryReactions accepts initialUserReaction/initialCounts/initialTotal from parent API response to avoid extra GET on mount
 - **Separate VerseCategoryCommentThread:** Dedicated comment thread component for verse content (not reusing CommentThread) due to different API endpoints
 - **localStorage verse recent tracking:** MAX_RECENT=10 exclusion list in localStorage prevents showing same verse repeatedly
+- **VerseModeToggle fixed below TopBar:** Toggle positioned at z-30, below safe area + TopBar height, only visible for bible-mode users
+- **Verse-by-category disables scroll snap:** Container scroll snap set to 'none' and overflow 'hidden' when in verse-by-category mode
+- **CategorySelector top-24 clearance:** Bumped from top-16 to top-24 to clear VerseModeToggle overlay
 
 ### Roadmap Evolution
 
@@ -428,5 +431,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 11-07-PLAN.md (Admin verse categories UI)
+Stopped at: Completed 11-06-PLAN.md (Daily tab + settings integration) -- All 92 plans complete
 Resume file: None
