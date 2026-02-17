@@ -11,6 +11,7 @@ import {
   Key,
   Video,
   BookOpen,
+  BookMarked,
   ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -65,6 +66,11 @@ export function AdminNav({ pendingCount = 0 }: AdminNavProps) {
       label: 'Workshops',
       href: '/admin/workshops',
       icon: BookOpen,
+    },
+    {
+      label: 'Verse Categories',
+      href: '/admin/verse-categories',
+      icon: BookMarked,
     },
     {
       label: 'Analytics',
