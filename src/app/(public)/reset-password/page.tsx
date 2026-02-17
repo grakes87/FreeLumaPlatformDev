@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -34,15 +34,40 @@ function ResetPasswordForm() {
 
   const [serverError, setServerError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [confirmTouched, setConfirmTouched] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    watch,
+    setError,
+    clearErrors,
   } = useForm<ResetPasswordInput>({
     resolver: zodResolver(resetPasswordSchema),
+    mode: 'onTouched',
     defaultValues: { password: '', confirmPassword: '' },
   });
+
+  const password = watch('password', '');
+  const confirmPassword = watch('confirmPassword', '');
+
+  // Live password-match validation
+  useEffect(() => {
+    if (!confirmTouched || !confirmPassword) return;
+    if (confirmPassword !== password) {
+      setError('confirmPassword', { type: 'validate', message: 'Passwords do not match' });
+    } else {
+      clearErrors('confirmPassword');
+    }
+  }, [confirmPassword, password, confirmTouched, setError, clearErrors]);
+
+  const passwordRequirements = [
+    { label: 'At least 8 characters', met: password.length >= 8 },
+    { label: 'One uppercase letter', met: /[A-Z]/.test(password) },
+    { label: 'One lowercase letter', met: /[a-z]/.test(password) },
+    { label: 'One number', met: /[0-9]/.test(password) },
+  ];
 
   if (!token) {
     return (
@@ -140,18 +165,53 @@ function ResetPasswordForm() {
 
       <Card padding="lg">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <Input
-            {...register('password')}
-            label="New Password"
-            type="password"
-            placeholder="Enter your new password"
-            error={errors.password?.message}
-            autoComplete="new-password"
-            autoFocus
-          />
+          <div>
+            <Input
+              {...register('password')}
+              label="New Password"
+              type="password"
+              placeholder="Enter your new password"
+              error={errors.password?.message}
+              autoComplete="new-password"
+              autoFocus
+            />
+            <div className="mt-2 space-y-1">
+              {passwordRequirements.map((req) => (
+                <div key={req.label} className="flex items-center gap-2 text-xs">
+                  <span
+                    className={
+                      req.met
+                        ? 'text-green-500'
+                        : 'text-text-muted dark:text-text-muted-dark'
+                    }
+                  >
+                    {req.met ? '\u2713' : '\u2022'}
+                  </span>
+                  <span
+                    className={
+                      req.met
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-text-muted dark:text-text-muted-dark'
+                    }
+                  >
+                    {req.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <Input
-            {...register('confirmPassword')}
+            {...(() => {
+              const reg = register('confirmPassword');
+              return {
+                ...reg,
+                onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
+                  reg.onBlur(e);
+                  setConfirmTouched(true);
+                },
+              };
+            })()}
             label="Confirm Password"
             type="password"
             placeholder="Confirm your new password"

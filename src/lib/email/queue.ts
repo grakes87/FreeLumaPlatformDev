@@ -397,7 +397,7 @@ export async function processReactionCommentBatch(): Promise<void> {
           type: itemType,
           actorName: n.actor_name,
           contentPreview: n.preview_text || 'your content',
-          contentUrl: `${APP_URL}/feed/${n.entity_id}`,
+          contentUrl: `${APP_URL}/post/${n.entity_id}`,
         };
       });
 
