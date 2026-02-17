@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 11 of 11 (Verse by Category System)
-Plan: 4 of 7 complete (01, 02, 03, 04 done)
+Plan: 5 of 7 complete (01, 02, 03, 04, 05 done)
 Status: In progress
-Last activity: 2026-02-17 — Completed 11-04-PLAN.md (Verse category import script)
+Last activity: 2026-02-17 — Completed 11-05-PLAN.md (Client hooks and UI components)
 
-Progress: [█████████████████████████████████████████████████████████████████████████████████████████░░░░░░░░░░] 89/92 plans (97%)
+Progress: [██████████████████████████████████████████████████████████████████████████████████████████░░░░░░░░░] 90/92 plans (98%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 89
+- Total plans completed: 90
 - Average duration: 4 min
-- Total execution time: 382 min
+- Total execution time: 388 min
 
 **By Phase:**
 
@@ -37,10 +37,10 @@ Progress: [███████████████████████
 | 08-database-migration-mapping | 2/3 | 14 min | 7 min |
 | 09-platform-refinements | 6/6 | 21 min | 4 min |
 | 10-email-system-sendgrid | 5/5 | 12 min | 2 min |
-| 11-verse-by-category-system | 4/7 | 24 min | 6 min |
+| 11-verse-by-category-system | 5/7 | 30 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 11-01 (4 min), 11-02 (7 min), 11-03 (7 min), 11-04 (6 min)
+- Last 5 plans: 11-01 (4 min), 11-02 (7 min), 11-03 (7 min), 11-04 (6 min), 11-05 (6 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -353,6 +353,9 @@ Recent decisions affecting current work:
 - **Verse auto-fetch from BibleTranslation table:** Iterates active bible_translations DB rows rather than hardcoded BIBLE_API_IDS for maintainability
 - **AI verse generation review-first flow:** POST /admin/verse-generation returns suggestions only; saving happens via separate POST /verses endpoint after admin review
 - **Media delete DB-only:** DELETE /admin/verse-categories/[id]/media removes DB record; B2 storage cleanup is admin responsibility
+- **Initial data props to reaction hook:** useVerseCategoryReactions accepts initialUserReaction/initialCounts/initialTotal from parent API response to avoid extra GET on mount
+- **Separate VerseCategoryCommentThread:** Dedicated comment thread component for verse content (not reusing CommentThread) due to different API endpoints
+- **localStorage verse recent tracking:** MAX_RECENT=10 exclusion list in localStorage prevents showing same verse repeatedly
 
 ### Roadmap Evolution
 
@@ -425,5 +428,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 11-04-PLAN.md (Verse category import script)
+Stopped at: Completed 11-05-PLAN.md (Client hooks and UI components)
 Resume file: None
