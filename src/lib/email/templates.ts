@@ -449,6 +449,235 @@ export function reactionCommentBatchEmail(params: ReactionCommentBatchEmailParam
   return { html: baseTemplate(content, footer), subject, headers };
 }
 
+// ---- Workshop lifecycle templates ----
+
+export interface WorkshopEmailParams {
+  recipientName: string;
+  workshopTitle: string;
+  workshopUrl: string;
+  hostName: string;
+  scheduledAt?: string;
+  trackingId?: string;
+  unsubscribeUrl?: string;
+}
+
+export function workshopReminderEmail(params: WorkshopEmailParams): { html: string; subject: string; headers: Record<string, string> } {
+  const { recipientName, workshopTitle, workshopUrl, hostName, scheduledAt, trackingId, unsubscribeUrl } = params;
+
+  const subject = `Reminder: ${workshopTitle} starts in 1 hour`;
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Workshop Reminder</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${recipientName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Your workshop <strong>${workshopTitle}</strong> hosted by <strong>${hostName}</strong> is starting soon at <strong>${scheduledAt}</strong>.
+    </p>
+    <div style="padding:16px;background:#f5f3ff;border-radius:8px;border-left:3px solid #8b5cf6;margin:0 0 16px;">
+      <p style="margin:0;font-size:14px;color:#52525b;line-height:1.5;">
+        Make sure you&rsquo;re ready to join when the session begins.
+      </p>
+    </div>
+    ${actionButton(workshopUrl, 'Join Workshop')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
+      We look forward to seeing you there.
+    </p>
+  `;
+
+  const footer = notificationFooter({ trackingId, unsubscribeUrl, category: 'Workshop' });
+
+  const headers: Record<string, string> = {};
+  if (unsubscribeUrl) {
+    headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  return { html: baseTemplate(content, footer), subject, headers };
+}
+
+export function workshopCancelledEmail(params: WorkshopEmailParams): { html: string; subject: string; headers: Record<string, string> } {
+  const { recipientName, workshopTitle, hostName, trackingId, unsubscribeUrl } = params;
+
+  const subject = `${workshopTitle} has been cancelled`;
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Workshop Cancelled</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${recipientName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      The workshop <strong>${workshopTitle}</strong> hosted by <strong>${hostName}</strong> has been cancelled.
+    </p>
+    <div style="padding:16px;background:#fef2f2;border-radius:8px;border-left:3px solid #ef4444;margin:0 0 16px;">
+      <p style="margin:0;font-size:14px;color:#991b1b;line-height:1.5;">
+        This workshop will no longer take place. We apologize for any inconvenience.
+      </p>
+    </div>
+    ${actionButton(`${APP_URL}/workshops`, 'Browse Workshops')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
+      Check out other upcoming workshops in the community.
+    </p>
+  `;
+
+  const footer = notificationFooter({ trackingId, unsubscribeUrl, category: 'Workshop' });
+
+  const headers: Record<string, string> = {};
+  if (unsubscribeUrl) {
+    headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  return { html: baseTemplate(content, footer), subject, headers };
+}
+
+export function workshopInviteEmail(params: WorkshopEmailParams): { html: string; subject: string; headers: Record<string, string> } {
+  const { recipientName, workshopTitle, workshopUrl, hostName, scheduledAt, trackingId, unsubscribeUrl } = params;
+
+  const subject = `You're invited to ${workshopTitle}`;
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Workshop Invitation</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${recipientName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      <strong>${hostName}</strong> has invited you to their workshop <strong>${workshopTitle}</strong> scheduled for <strong>${scheduledAt}</strong>.
+    </p>
+    <div style="padding:16px;background:#f0fdfa;border-radius:8px;border-left:3px solid ${BRAND_COLOR};margin:0 0 16px;">
+      <p style="margin:0;font-size:14px;color:#52525b;line-height:1.5;">
+        Join the workshop to learn, grow, and connect with the community.
+      </p>
+    </div>
+    ${actionButton(workshopUrl, 'View Workshop')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
+      RSVP to secure your spot.
+    </p>
+  `;
+
+  const footer = notificationFooter({ trackingId, unsubscribeUrl, category: 'Workshop' });
+
+  const headers: Record<string, string> = {};
+  if (unsubscribeUrl) {
+    headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  return { html: baseTemplate(content, footer), subject, headers };
+}
+
+export interface WorkshopRecordingEmailParams extends WorkshopEmailParams {
+  recordingUrl?: string;
+}
+
+export function workshopRecordingEmail(params: WorkshopRecordingEmailParams): { html: string; subject: string; headers: Record<string, string> } {
+  const { recipientName, workshopTitle, workshopUrl, trackingId, unsubscribeUrl, recordingUrl } = params;
+
+  const subject = `Recording available: ${workshopTitle}`;
+  const targetUrl = recordingUrl || workshopUrl;
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Workshop Recording</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${recipientName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      The recording from <strong>${workshopTitle}</strong> is now available to watch.
+    </p>
+    <div style="padding:16px;background:#f0fdfa;border-radius:8px;border-left:3px solid ${BRAND_COLOR};margin:0 0 16px;">
+      <p style="margin:0;font-size:14px;color:#52525b;line-height:1.5;">
+        Watch at your own pace and revisit the key moments.
+      </p>
+    </div>
+    ${actionButton(targetUrl, 'Watch Recording')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
+      Available to watch anytime.
+    </p>
+  `;
+
+  const footer = notificationFooter({ trackingId, unsubscribeUrl, category: 'Workshop' });
+
+  const headers: Record<string, string> = {};
+  if (unsubscribeUrl) {
+    headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  return { html: baseTemplate(content, footer), subject, headers };
+}
+
+export function workshopUpdatedEmail(params: WorkshopEmailParams): { html: string; subject: string; headers: Record<string, string> } {
+  const { recipientName, workshopTitle, workshopUrl, hostName, scheduledAt, trackingId, unsubscribeUrl } = params;
+
+  const subject = `${workshopTitle} has been updated`;
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Workshop Updated</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${recipientName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      The workshop <strong>${workshopTitle}</strong> by <strong>${hostName}</strong> has been updated. The workshop is now scheduled for <strong>${scheduledAt}</strong>.
+    </p>
+    <div style="padding:16px;background:#fffbeb;border-radius:8px;border-left:3px solid #f59e0b;margin:0 0 16px;">
+      <p style="margin:0;font-size:14px;color:#92400e;line-height:1.5;">
+        Please review the updated details to stay informed.
+      </p>
+    </div>
+    ${actionButton(workshopUrl, 'View Details')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
+      Check the latest schedule and details.
+    </p>
+  `;
+
+  const footer = notificationFooter({ trackingId, unsubscribeUrl, category: 'Workshop' });
+
+  const headers: Record<string, string> = {};
+  if (unsubscribeUrl) {
+    headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  return { html: baseTemplate(content, footer), subject, headers };
+}
+
+export function workshopStartedEmail(params: WorkshopEmailParams): { html: string; subject: string; headers: Record<string, string> } {
+  const { recipientName, workshopTitle, workshopUrl, hostName, trackingId, unsubscribeUrl } = params;
+
+  const subject = `${workshopTitle} is live now!`;
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Workshop Live Now</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${recipientName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      <strong>${workshopTitle}</strong> hosted by <strong>${hostName}</strong> has just started! Join now to participate.
+    </p>
+    <div style="padding:16px;background:#f0fdf4;border-radius:8px;border-left:3px solid #22c55e;margin:0 0 16px;">
+      <p style="margin:0;font-size:14px;color:#166534;line-height:1.5;">
+        The session is live and waiting for you.
+      </p>
+    </div>
+    ${actionButton(workshopUrl, 'Join Now')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
+      Don&rsquo;t miss out on this live session.
+    </p>
+  `;
+
+  const footer = notificationFooter({ trackingId, unsubscribeUrl, category: 'Workshop' });
+
+  const headers: Record<string, string> = {};
+  if (unsubscribeUrl) {
+    headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  return { html: baseTemplate(content, footer), subject, headers };
+}
+
+// ---- Daily reminder template ----
+
 export interface DailyReminderEmailParams {
   recipientName: string;
   verseText: string;
