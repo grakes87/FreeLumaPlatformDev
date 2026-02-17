@@ -14,6 +14,7 @@ import {
   workshopRecordingEmail,
   workshopUpdatedEmail,
   workshopStartedEmail,
+  newVideoEmail,
 } from './templates';
 
 const APP_URL = 'https://freeluma.com';
@@ -803,4 +804,161 @@ export async function processWorkshopEmail(
       console.error(`[Email Queue] Workshop email (${workshopEmailType}) error for user ${recipientId}:`, err);
     }
   }
+}
+
+// ---- Video broadcast ----
+
+/** Chunk size for video broadcast processing */
+const VIDEO_BROADCAST_CHUNK_SIZE = 100;
+
+/**
+ * Process pending video broadcast emails in chunks.
+ * Called by cron every 5 minutes.
+ *
+ * Uses PlatformSetting 'pending_video_broadcast' as a lightweight queue
+ * with a cursor (lastProcessedUserId) to track progress across cron ticks.
+ * Processes 100 users per tick.
+ */
+export async function processVideoBroadcast(): Promise<void> {
+  const { PlatformSetting, Video, EmailLog, sequelize } = await import('@/lib/db/models');
+
+  // Check for pending broadcast
+  const pendingValue = await PlatformSetting.get('pending_video_broadcast');
+  if (!pendingValue) return;
+
+  let broadcastData: { videoId: number; lastProcessedUserId: number };
+  try {
+    broadcastData = JSON.parse(pendingValue);
+  } catch {
+    console.error('[Email Queue] Invalid pending_video_broadcast JSON, clearing');
+    await PlatformSetting.destroy({ where: { key: 'pending_video_broadcast' } });
+    return;
+  }
+
+  const { videoId, lastProcessedUserId } = broadcastData;
+
+  // Load the video
+  const video = await Video.findByPk(videoId, {
+    attributes: ['id', 'title', 'description', 'thumbnail_url'],
+    raw: true,
+  });
+
+  if (!video) {
+    console.error(`[Email Queue] Video ${videoId} not found, clearing broadcast`);
+    await PlatformSetting.destroy({ where: { key: 'pending_video_broadcast' } });
+    return;
+  }
+
+  // Duplicate prevention: if this is a fresh broadcast (cursor at 0),
+  // check if we already sent new_video emails for this video
+  if (lastProcessedUserId === 0) {
+    const existingCount = await EmailLog.count({
+      where: {
+        email_type: 'new_video',
+        subject: { [Op.like]: `%${video.title}%` },
+      },
+    });
+    if (existingCount > 0) {
+      console.log(`[Email Queue] Video broadcast already sent for "${video.title}", clearing`);
+      await PlatformSetting.destroy({ where: { key: 'pending_video_broadcast' } });
+      return;
+    }
+  }
+
+  // Load a chunk of eligible users
+  const users = await sequelize.query<{
+    id: number;
+    email: string;
+    display_name: string;
+  }>(`
+    SELECT u.id, u.email, u.display_name
+    FROM users u
+    JOIN user_settings us ON us.user_id = u.id
+    WHERE u.id > :lastProcessedUserId
+      AND u.status = 'active'
+      AND us.email_new_video_notifications = TRUE
+    ORDER BY u.id ASC
+    LIMIT :chunkSize
+  `, {
+    replacements: {
+      lastProcessedUserId,
+      chunkSize: VIDEO_BROADCAST_CHUNK_SIZE,
+    },
+    type: 'SELECT' as never,
+  }) as Array<{
+    id: number;
+    email: string;
+    display_name: string;
+  }>;
+
+  let processedCount = 0;
+  let lastId = lastProcessedUserId;
+
+  for (const user of users) {
+    try {
+      const trackingId = generateTrackingId();
+      const unsubscribeUrl = await generateUnsubscribeUrl(user.id, 'new_video');
+
+      const videoDescription = video.description
+        ? (video.description.length > 150 ? video.description.slice(0, 147) + '...' : video.description)
+        : '';
+
+      const { html, subject, headers } = newVideoEmail({
+        recipientName: user.display_name,
+        videoTitle: video.title,
+        videoDescription,
+        videoThumbnailUrl: video.thumbnail_url,
+        videoUrl: `${APP_URL}/watch/${videoId}`,
+        trackingId,
+        unsubscribeUrl,
+      });
+
+      await sendNotificationEmail({
+        userId: user.id,
+        userEmail: user.email,
+        emailType: 'new_video',
+        subject,
+        html,
+        headers,
+        trackingId,
+        quietStart: null,
+        quietEnd: null,
+        reminderTimezone: null,
+      });
+
+      processedCount++;
+      lastId = user.id;
+    } catch (err) {
+      console.error(`[Email Queue] Video broadcast error for user ${user.id}:`, err);
+      lastId = user.id;
+    }
+  }
+
+  // Update cursor or clear if done
+  if (users.length >= VIDEO_BROADCAST_CHUNK_SIZE) {
+    // More users to process -- update the cursor
+    await PlatformSetting.set(
+      'pending_video_broadcast',
+      JSON.stringify({ videoId, lastProcessedUserId: lastId })
+    );
+  } else {
+    // Broadcast complete -- clear the setting
+    await PlatformSetting.destroy({ where: { key: 'pending_video_broadcast' } });
+  }
+
+  console.log(`[Email Queue] Video broadcast: processed ${processedCount} users for video ${videoId}`);
+}
+
+/**
+ * Trigger a video broadcast email to all eligible users.
+ * Sets the PlatformSetting queue entry that the cron will pick up.
+ *
+ * Call this when a new video is published.
+ */
+export async function triggerVideoBroadcast(videoId: number): Promise<void> {
+  const { PlatformSetting } = await import('@/lib/db/models');
+  await PlatformSetting.set(
+    'pending_video_broadcast',
+    JSON.stringify({ videoId, lastProcessedUserId: 0 })
+  );
 }

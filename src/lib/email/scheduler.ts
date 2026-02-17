@@ -4,6 +4,7 @@ import {
   processReactionCommentBatch,
   processDailyReminders,
   cleanupOldNotifications,
+  processVideoBroadcast,
 } from './queue';
 
 let initialized = false;
@@ -25,6 +26,15 @@ export function initEmailScheduler(): void {
       await processDMEmailBatch();
     } catch (err) {
       console.error('[Email Scheduler] DM batch error:', err);
+    }
+  });
+
+  // Every 5 minutes: process pending video broadcast emails (chunked)
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      await processVideoBroadcast();
+    } catch (err) {
+      console.error('[Email Scheduler] Video broadcast error:', err);
     }
   });
 
