@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { detectTimezone } from '@/lib/utils/timezone';
 import { LANGUAGES } from '@/lib/utils/constants';
 import type { DailyContentData } from './useDailyContent';
 
@@ -10,6 +9,11 @@ function getLanguageCookie(): string {
   const match = document.cookie.match(/(?:^|; )preferred_language=([a-z]{2})/);
   const val = match?.[1] ?? 'en';
   return (LANGUAGES as readonly string[]).includes(val) ? val : 'en';
+}
+
+function getLocalDate(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
 interface DailyFeedResponse {
@@ -21,7 +25,7 @@ interface DailyFeedResponse {
 /** Max days to keep in memory. Older entries are trimmed from front when exceeded. */
 const MAX_DAYS_IN_MEMORY = 30;
 
-export function useDailyFeed(mode?: string) {
+export function useDailyFeed(mode?: string, language?: string) {
   const [days, setDays] = useState<DailyContentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,22 +39,21 @@ export function useDailyFeed(mode?: string) {
   /** How many items were trimmed from the front on the last append. Component reads this to adjust scroll. */
   const frontTrimRef = useRef(0);
 
+  const effectiveMode = mode || 'bible';
+  const effectiveLanguage = language || getLanguageCookie();
+
   const fetchPage = useCallback(
     async (pageCursor: string | null, isRefresh: boolean) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
 
-      const tz = detectTimezone();
       const params = new URLSearchParams();
-      params.set('timezone', tz);
+      params.set('mode', effectiveMode);
+      params.set('language', effectiveLanguage);
+      params.set('date', getLocalDate());
       params.set('limit', '5');
       if (pageCursor) params.set('cursor', pageCursor);
-
-      // Include language cookie for guest users
-      const lang = getLanguageCookie();
-      if (lang !== 'en') params.set('language', lang);
-      if (mode) params.set('mode', mode);
 
       try {
         if (isRefresh) {
@@ -106,7 +109,7 @@ export function useDailyFeed(mode?: string) {
         setRefreshing(false);
       }
     },
-    [mode]
+    [effectiveMode, effectiveLanguage]
   );
 
   // Fetch first page on mount

@@ -16,9 +16,12 @@ function getScrollContainer() {
 }
 
 export function DailyFeed({ mode }: { mode?: string } = {}) {
-  const { days, loading, refreshing, hasMore, fetchNextPage, refresh, frontTrimRef } = useDailyFeed(mode);
   const dailyTranslation = useDailyTranslation();
   const { user, refreshUser } = useAuth();
+  const { days, loading, refreshing, hasMore, fetchNextPage, refresh, frontTrimRef } = useDailyFeed(
+    user?.mode || mode,
+    user?.language,
+  );
 
   // Verse mode state -- only relevant for bible-mode users
   const isBibleMode = user?.mode === 'bible';

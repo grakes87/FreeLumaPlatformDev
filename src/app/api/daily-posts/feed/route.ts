@@ -1,54 +1,24 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { Op } from 'sequelize';
-import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middleware';
-import { BibleTranslation, DailyContent, DailyContentTranslation, User } from '@/lib/db/models';
-import { getUserLocalDate } from '@/lib/utils/timezone';
-import { successResponse, serverError } from '@/lib/utils/api';
-import { LANGUAGES } from '@/lib/utils/constants';
+import { BibleTranslation, DailyContent, DailyContentTranslation } from '@/lib/db/models';
 
 /**
- * GET /api/daily-posts/feed?cursor=YYYY-MM-DD&limit=5&timezone=...
+ * GET /api/daily-posts/feed?mode=bible&language=en&date=2026-02-17&cursor=YYYY-MM-DD&limit=5
  *
  * Returns a paginated list of daily content for vertical scroll feed.
  * Ordered by post_date DESC (today first, older days below).
+ *
+ * Edge-cacheable: response varies only by query params (mode, language, date, cursor, limit).
+ * Cloudflare caches at the edge for 14 days — one DB query per unique param combo.
  */
-export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAuthContext) => {
+export async function GET(req: NextRequest) {
   try {
-    let mode = 'bible';
-    let language = 'en';
-    let timezone = 'UTC';
-
-    if (context.user) {
-      const user = await User.findByPk(context.user.id, {
-        attributes: ['id', 'mode', 'timezone', 'language'],
-      });
-      if (user) {
-        mode = user.mode;
-        language = user.language;
-        timezone = user.timezone;
-      }
-    }
-
-    // Guest language from cookie + mode override for landing pages
-    if (!context.user) {
-      const langCookie = req.cookies.get('preferred_language')?.value;
-      if (langCookie && (LANGUAGES as readonly string[]).includes(langCookie)) {
-        language = langCookie;
-      }
-      const modeParam = new URL(req.url).searchParams.get('mode');
-      if (modeParam === 'positivity' || modeParam === 'bible') {
-        mode = modeParam;
-      }
-    }
-
     const url = new URL(req.url);
-    const timezoneParam = url.searchParams.get('timezone');
-    if (timezoneParam) timezone = timezoneParam;
-
+    const mode = url.searchParams.get('mode') || 'bible';
+    const language = url.searchParams.get('language') || 'en';
+    const today = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
     const cursor = url.searchParams.get('cursor');
     const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '5', 10), 1), 20);
-
-    const today = getUserLocalDate(timezone);
 
     // Build date filter: post_date <= today (or < cursor for pagination)
     const dateFilter = cursor
@@ -136,12 +106,19 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
       ? items[items.length - 1].post_date
       : null;
 
-    return successResponse({
-      days,
-      next_cursor: nextCursor,
-      has_more: hasMore,
-    });
+    return NextResponse.json(
+      { days, next_cursor: nextCursor, has_more: hasMore },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=1209600, stale-while-revalidate=86400',
+        },
+      }
+    );
   } catch (error) {
-    return serverError(error, 'Failed to fetch daily feed');
+    console.error('[Server Error] Failed to fetch daily feed:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch daily feed' },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } }
+    );
   }
-});
+}

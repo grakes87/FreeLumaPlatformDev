@@ -73,6 +73,12 @@ export function LumaShortSlide({ content, isActive = true }: LumaShortSlideProps
           playsInline
           preload="metadata"
           onCanPlay={handleCanPlay}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onEnded={() => {
+            setIsPlaying(false);
+            setHasStarted(false);
+          }}
           className={
             'absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ' +
             (videoReady ? 'opacity-100' : 'opacity-0')
@@ -122,8 +128,8 @@ export function LumaShortSlide({ content, isActive = true }: LumaShortSlideProps
         aria-label={isPlaying ? 'Pause video' : 'Play video'}
       />
 
-      {/* Play button overlay (before first play) */}
-      {!hasStarted && (
+      {/* Play button overlay (before first play, after video loads) */}
+      {!hasStarted && videoReady && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/90 shadow-xl">
             <Play className="h-9 w-9 translate-x-0.5 text-gray-900" fill="currentColor" />
