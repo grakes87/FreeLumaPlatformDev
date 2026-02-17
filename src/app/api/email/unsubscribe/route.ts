@@ -3,7 +3,7 @@ import { jwtVerify } from 'jose';
 
 const BRAND_COLOR = '#62BEBA';
 const BRAND_NAME = 'Free Luma';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const APP_URL = 'https://freeluma.com';
 
 /**
  * Valid email categories that can be unsubscribed from.
@@ -14,6 +14,9 @@ const CATEGORY_TO_SETTING: Record<string, string> = {
   follow: 'email_follow_notifications',
   prayer: 'email_prayer_notifications',
   daily_reminder: 'email_daily_reminder',
+  reaction_comment: 'email_reaction_comment_notifications',
+  workshop: 'email_workshop_notifications',
+  new_video: 'email_new_video_notifications',
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -21,6 +24,9 @@ const CATEGORY_LABELS: Record<string, string> = {
   follow: 'Follow Request',
   prayer: 'Prayer Response',
   daily_reminder: 'Daily Reminder',
+  reaction_comment: 'Reaction & Comment',
+  workshop: 'Workshop',
+  new_video: 'New Video',
 };
 
 function getSecret(): Uint8Array {

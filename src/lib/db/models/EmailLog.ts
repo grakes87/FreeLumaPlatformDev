@@ -4,7 +4,7 @@ import { sequelize } from '../index';
 export interface EmailLogAttributes {
   id: number;
   recipient_id: number;
-  email_type: 'dm_batch' | 'follow_request' | 'prayer_response' | 'daily_reminder';
+  email_type: 'dm_batch' | 'follow_request' | 'prayer_response' | 'daily_reminder' | 'reaction_comment_batch' | 'workshop_reminder' | 'workshop_cancelled' | 'workshop_invite' | 'workshop_recording' | 'workshop_updated' | 'workshop_started' | 'new_video';
   subject: string;
   status: 'queued' | 'sent' | 'bounced' | 'opened';
   sent_at: Date | null;
@@ -53,7 +53,7 @@ EmailLog.init(
       },
     },
     email_type: {
-      type: DataTypes.ENUM('dm_batch', 'follow_request', 'prayer_response', 'daily_reminder'),
+      type: DataTypes.ENUM('dm_batch', 'follow_request', 'prayer_response', 'daily_reminder', 'reaction_comment_batch', 'workshop_reminder', 'workshop_cancelled', 'workshop_invite', 'workshop_recording', 'workshop_updated', 'workshop_started', 'new_video'),
       allowNull: false,
     },
     subject: {

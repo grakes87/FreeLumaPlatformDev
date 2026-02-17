@@ -22,6 +22,9 @@ const updateSettingsSchema = z.object({
   email_follow_notifications: z.boolean().optional(),
   email_prayer_notifications: z.boolean().optional(),
   email_daily_reminder: z.boolean().optional(),
+  email_reaction_comment_notifications: z.boolean().optional(),
+  email_workshop_notifications: z.boolean().optional(),
+  email_new_video_notifications: z.boolean().optional(),
 });
 
 export const GET = withAuth(
@@ -64,6 +67,9 @@ export const GET = withAuth(
           email_follow_notifications: settings.email_follow_notifications,
           email_prayer_notifications: settings.email_prayer_notifications,
           email_daily_reminder: settings.email_daily_reminder,
+          email_reaction_comment_notifications: settings.email_reaction_comment_notifications,
+          email_workshop_notifications: settings.email_workshop_notifications,
+          email_new_video_notifications: settings.email_new_video_notifications,
           // From User
           mode: user.mode,
           language: user.language,
@@ -110,6 +116,9 @@ export const PUT = withAuth(
         email_follow_notifications: boolean;
         email_prayer_notifications: boolean;
         email_daily_reminder: boolean;
+        email_reaction_comment_notifications: boolean;
+        email_workshop_notifications: boolean;
+        email_new_video_notifications: boolean;
       }> = {};
 
       const userFields: Partial<{
@@ -129,6 +138,9 @@ export const PUT = withAuth(
       if (data.email_follow_notifications !== undefined) settingFields.email_follow_notifications = data.email_follow_notifications;
       if (data.email_prayer_notifications !== undefined) settingFields.email_prayer_notifications = data.email_prayer_notifications;
       if (data.email_daily_reminder !== undefined) settingFields.email_daily_reminder = data.email_daily_reminder;
+      if (data.email_reaction_comment_notifications !== undefined) settingFields.email_reaction_comment_notifications = data.email_reaction_comment_notifications;
+      if (data.email_workshop_notifications !== undefined) settingFields.email_workshop_notifications = data.email_workshop_notifications;
+      if (data.email_new_video_notifications !== undefined) settingFields.email_new_video_notifications = data.email_new_video_notifications;
 
       if (data.mode !== undefined) userFields.mode = data.mode;
       if (data.language !== undefined) userFields.language = data.language;
@@ -179,6 +191,9 @@ export const PUT = withAuth(
           email_follow_notifications: settings?.email_follow_notifications ?? true,
           email_prayer_notifications: settings?.email_prayer_notifications ?? true,
           email_daily_reminder: settings?.email_daily_reminder ?? true,
+          email_reaction_comment_notifications: settings?.email_reaction_comment_notifications ?? true,
+          email_workshop_notifications: settings?.email_workshop_notifications ?? true,
+          email_new_video_notifications: settings?.email_new_video_notifications ?? true,
           mode: user?.mode || 'bible',
           language: user?.language || 'en',
           preferred_translation: user?.preferred_translation || 'KJV',

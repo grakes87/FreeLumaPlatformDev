@@ -108,7 +108,7 @@ async function isRateLimited(userId: number): Promise<boolean> {
 async function sendNotificationEmail(params: {
   userId: number;
   userEmail: string;
-  emailType: 'dm_batch' | 'follow_request' | 'prayer_response' | 'daily_reminder';
+  emailType: 'dm_batch' | 'follow_request' | 'prayer_response' | 'daily_reminder' | 'reaction_comment_batch' | 'workshop_reminder' | 'workshop_cancelled' | 'workshop_invite' | 'workshop_recording' | 'workshop_updated' | 'workshop_started' | 'new_video';
   subject: string;
   html: string;
   headers?: Record<string, string>;

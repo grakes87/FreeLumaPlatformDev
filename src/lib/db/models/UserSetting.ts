@@ -15,6 +15,9 @@ export interface UserSettingAttributes {
   email_follow_notifications: boolean;
   email_prayer_notifications: boolean;
   email_daily_reminder: boolean;
+  email_reaction_comment_notifications: boolean;
+  email_workshop_notifications: boolean;
+  email_new_video_notifications: boolean;
   reminder_timezone: string | null;
   created_at: Date;
   updated_at: Date;
@@ -33,6 +36,9 @@ export interface UserSettingCreationAttributes extends Optional<UserSettingAttri
   | 'email_follow_notifications'
   | 'email_prayer_notifications'
   | 'email_daily_reminder'
+  | 'email_reaction_comment_notifications'
+  | 'email_workshop_notifications'
+  | 'email_new_video_notifications'
   | 'reminder_timezone'
   | 'created_at'
   | 'updated_at'
@@ -52,6 +58,9 @@ class UserSetting extends Model<UserSettingAttributes, UserSettingCreationAttrib
   declare email_follow_notifications: boolean;
   declare email_prayer_notifications: boolean;
   declare email_daily_reminder: boolean;
+  declare email_reaction_comment_notifications: boolean;
+  declare email_workshop_notifications: boolean;
+  declare email_new_video_notifications: boolean;
   declare reminder_timezone: string | null;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
@@ -122,6 +131,21 @@ UserSetting.init(
       defaultValue: true,
     },
     email_daily_reminder: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    email_reaction_comment_notifications: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    email_workshop_notifications: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    email_new_video_notifications: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
