@@ -13,6 +13,22 @@ interface CategorySelectorProps {
   onToggle: () => void;
 }
 
+/** Slug-based gradient map so each category gets a distinct, thematic circle color */
+const CATEGORY_GRADIENTS: Record<string, string> = {
+  'hope-encouragement': 'from-yellow-400 to-amber-500',
+  'anxiety-stress': 'from-teal-400 to-cyan-600',
+  'faith-trust': 'from-blue-500 to-indigo-600',
+  'healing-strength': 'from-emerald-400 to-green-600',
+  'love-relationships': 'from-pink-400 to-rose-500',
+  'gratitude-thanksgiving': 'from-orange-400 to-amber-600',
+  'forgiveness-mercy': 'from-violet-400 to-purple-600',
+  'peace-comfort': 'from-sky-400 to-blue-500',
+  'wisdom-guidance': 'from-amber-400 to-yellow-600',
+  'courage-overcoming-fear': 'from-red-500 to-rose-700',
+};
+
+const DEFAULT_GRADIENT = 'from-amber-600/90 to-rose-500/90';
+
 /** Renders the circle icon for a category — gradient bg + white icon PNG or Sparkles for "All" */
 function CategoryIcon({
   category,
@@ -26,6 +42,9 @@ function CategoryIcon({
   const isAll = category.id === 'all';
   const dim = size === 'sm' ? 'h-8 w-8' : 'h-14 w-14';
   const iconDim = size === 'sm' ? 'h-4 w-4' : 'h-7 w-7';
+  const gradient = isAll
+    ? 'from-blue-500 to-purple-500'
+    : CATEGORY_GRADIENTS[category.slug] || DEFAULT_GRADIENT;
 
   return (
     <div
@@ -39,10 +58,8 @@ function CategoryIcon({
     >
       <div
         className={cn(
-          'flex h-full w-full items-center justify-center',
-          isAll
-            ? 'bg-gradient-to-br from-blue-500 to-purple-500'
-            : 'bg-gradient-to-br from-amber-600/90 to-rose-500/90'
+          'flex h-full w-full items-center justify-center bg-gradient-to-br',
+          gradient,
         )}
       >
         {isAll ? (
@@ -85,7 +102,7 @@ export function CategorySelector({
   // Collapsed view: pill button + labels below
   if (collapsed) {
     return (
-      <div className="absolute top-20 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4">
+      <div className="absolute top-20 left-0 right-0 z-30 flex flex-col items-center gap-2 px-4">
         <button
           type="button"
           onClick={onToggle}
@@ -108,11 +125,11 @@ export function CategorySelector({
     <>
       {/* Invisible backdrop to close on outside click */}
       <div
-        className="fixed inset-0 z-10"
+        className="fixed inset-0 z-30"
         onClick={onToggle}
         aria-hidden="true"
       />
-      <div className="absolute top-20 left-0 right-0 z-20 px-4 transition-all duration-200">
+      <div className="absolute top-20 left-0 right-0 z-40 px-4 transition-all duration-200">
         <div className="rounded-2xl bg-black/40 p-4 backdrop-blur-xl">
           {/* Header with collapse button */}
           <div className="mb-3 flex items-center justify-between">
