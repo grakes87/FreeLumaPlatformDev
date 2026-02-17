@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withAuth, type AuthContext } from '@/lib/auth/middleware';
+import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middleware';
 import { DailyContent, DailyContentTranslation } from '@/lib/db/models';
 import { fetchVerseFromBibleApi } from '@/lib/bible-api';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
@@ -16,7 +16,7 @@ import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
  * 4. If bible.api fails: Return 404
  * 5. For positivity mode: Return 400 (translations don't apply to quotes)
  */
-export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
+export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAuthContext) => {
   try {
     const url = new URL(req.url);
     const dailyContentIdStr = url.searchParams.get('daily_content_id');

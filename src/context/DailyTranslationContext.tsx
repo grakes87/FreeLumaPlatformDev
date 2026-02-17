@@ -32,14 +32,19 @@ export function DailyTranslationProvider({ children }: { children: ReactNode }) 
     userManuallyPickedRef.current = true;
     setActiveTranslationState(code);
 
-    // Persist to user profile (fire-and-forget)
-    fetch('/api/settings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ preferred_translation: code }),
-    }).catch(() => {});
-  }, []);
+    if (user) {
+      // Persist to user profile (fire-and-forget)
+      fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ preferred_translation: code }),
+      }).catch(() => {});
+    } else {
+      // Guest: persist to localStorage
+      try { localStorage.setItem('preferred_translation', code); } catch {}
+    }
+  }, [user]);
 
   const registerTranslations = useCallback((codes: string[], names: Record<string, string>) => {
     setAvailableTranslations((prev) => {
@@ -56,7 +61,14 @@ export function DailyTranslationProvider({ children }: { children: ReactNode }) 
       if (user?.preferred_translation && codes.includes(user.preferred_translation)) {
         return user.preferred_translation;
       }
-      // Default to KJV for guests (most common Bible translation with audio)
+      // Guest: check localStorage for saved preference
+      if (!user) {
+        try {
+          const stored = localStorage.getItem('preferred_translation');
+          if (stored && codes.includes(stored)) return stored;
+        } catch {}
+      }
+      // Default to KJV (most common Bible translation with audio)
       if (codes.includes('KJV')) return 'KJV';
       return codes.length > 0 ? codes[0] : null;
     });

@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server';
-import { withAuth, type AuthContext } from '@/lib/auth/middleware';
+import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middleware';
 import { VerseCategory } from '@/lib/db/models';
 import { successResponse, serverError } from '@/lib/utils/api';
 import { literal } from 'sequelize';
 
-export const GET = withAuth(
-  async (_req: NextRequest, _context: AuthContext) => {
+export const GET = withOptionalAuth(
+  async (_req: NextRequest, _context: OptionalAuthContext) => {
     try {
       const categories = await VerseCategory.findAll({
         where: { active: true },

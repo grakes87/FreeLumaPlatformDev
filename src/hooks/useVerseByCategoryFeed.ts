@@ -187,15 +187,20 @@ export function useVerseByCategoryFeed() {
       setActiveCategoryId(id);
       fetchVerse(id);
 
-      // Fire-and-forget persist category preference
-      fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ verse_category_id: id === 'all' ? null : id }),
-      }).catch(() => {});
+      if (user) {
+        // Fire-and-forget persist category preference
+        fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ verse_category_id: id === 'all' ? null : id }),
+        }).catch(() => {});
+      } else {
+        // Guest: persist to localStorage
+        try { localStorage.setItem('verse_category_id', String(id)); } catch {}
+      }
     },
-    [fetchVerse]
+    [fetchVerse, user]
   );
 
   // Get translated text for a given translation code, fallback to KJV (content_text)
@@ -217,10 +222,20 @@ export function useVerseByCategoryFeed() {
 
     const init = async () => {
       await fetchCategories();
-      // Use user's saved category or default to 'all'
+      // Use user's saved category, or guest localStorage, or default to 'all'
+      let initialCategory: number | 'all' = 'all';
       const savedCategoryId = (user as Record<string, unknown> | null)?.verse_category_id;
-      const initialCategory: number | 'all' =
-        typeof savedCategoryId === 'number' ? savedCategoryId : 'all';
+      if (typeof savedCategoryId === 'number') {
+        initialCategory = savedCategoryId;
+      } else if (!user) {
+        try {
+          const stored = localStorage.getItem('verse_category_id');
+          if (stored && stored !== 'all') {
+            const parsed = parseInt(stored, 10);
+            if (!isNaN(parsed)) initialCategory = parsed;
+          }
+        } catch {}
+      }
       setActiveCategoryId(initialCategory);
       await fetchVerse(initialCategory);
     };

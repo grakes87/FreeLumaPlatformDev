@@ -23,11 +23,20 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
     user?.language,
   );
 
-  // Verse mode state -- only relevant for bible-mode users
-  const isBibleMode = user?.mode === 'bible';
-  const [verseMode, setVerseMode] = useState<VerseMode>(
-    (isBibleMode && user?.verse_mode === 'verse_by_category') ? 'verse_by_category' : 'daily_verse'
-  );
+  // Verse mode state -- bible-mode users and guests (default mode is bible)
+  const effectiveMode = user?.mode || mode || 'bible';
+  const isBibleMode = effectiveMode === 'bible';
+  const [verseMode, setVerseMode] = useState<VerseMode>(() => {
+    if (isBibleMode && user?.verse_mode === 'verse_by_category') return 'verse_by_category';
+    // Guest: check localStorage for saved verse mode
+    if (!user && isBibleMode) {
+      try {
+        const stored = localStorage.getItem('verse_mode');
+        if (stored === 'verse_by_category') return 'verse_by_category';
+      } catch {}
+    }
+    return 'daily_verse';
+  });
 
   // Sync verseMode if user data loads after mount
   useEffect(() => {

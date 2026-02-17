@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
-import { withAuth, type AuthContext } from '@/lib/auth/middleware';
+import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middleware';
 import {
-  User,
   VerseCategoryContent,
   VerseCategoryContentTranslation,
   VerseCategory,
@@ -13,26 +12,12 @@ import {
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 import { Op, fn, col } from 'sequelize';
 
-export const GET = withAuth(
-  async (req: NextRequest, context: AuthContext) => {
+export const GET = withOptionalAuth(
+  async (req: NextRequest, context: OptionalAuthContext) => {
     try {
-      // Fetch user to check mode and verse_mode
-      const user = await User.findByPk(context.user.id, {
-        attributes: ['id', 'mode', 'verse_mode'],
-      });
-
-      if (!user) {
-        return errorResponse('User not found', 404);
-      }
-
-      if (user.mode !== 'bible') {
-        return errorResponse('Verse by category is only available in Bible mode', 403);
-      }
-
       const { searchParams } = new URL(req.url);
       const categoryIdParam = searchParams.get('category_id');
       const excludeParam = searchParams.get('exclude');
-      const translationParam = searchParams.get('translation');
 
       // Build WHERE clause for verse
       const where: Record<string, unknown> = {};
@@ -111,14 +96,18 @@ export const GET = withAuth(
         order: sequelize.random(),
       });
 
-      // Get user's existing reaction on this verse
-      const existingReaction = await VerseCategoryReaction.findOne({
-        where: {
-          user_id: context.user.id,
-          verse_category_content_id: verse.id,
-        },
-        attributes: ['reaction_type'],
-      });
+      // Get user's existing reaction on this verse (authenticated only)
+      let existingReaction = null;
+      if (context.user) {
+        const reaction = await VerseCategoryReaction.findOne({
+          where: {
+            user_id: context.user.id,
+            verse_category_content_id: verse.id,
+          },
+          attributes: ['reaction_type'],
+        });
+        existingReaction = reaction?.reaction_type ?? null;
+      }
 
       // Get comment count for this verse
       const commentCount = await VerseCategoryComment.count({
@@ -146,10 +135,12 @@ export const GET = withAuth(
 
       const verseJSON = verse.toJSON() as unknown as Record<string, unknown>;
 
-      // Fire-and-forget trackActivity for verse engagement (uses daily_view activity type)
-      import('@/lib/streaks/tracker').then(({ trackActivity }) => {
-        trackActivity(context.user.id, 'daily_view').catch(() => {});
-      });
+      // Fire-and-forget trackActivity for verse engagement (authenticated only)
+      if (context.user) {
+        import('@/lib/streaks/tracker').then(({ trackActivity }) => {
+          trackActivity(context.user!.id, 'daily_view').catch(() => {});
+        });
+      }
 
       return successResponse({
         verse: {
@@ -162,7 +153,7 @@ export const GET = withAuth(
           translations: verseJSON.translations,
         },
         background_url: media?.media_url ?? null,
-        user_reaction: existingReaction?.reaction_type ?? null,
+        user_reaction: existingReaction,
         reaction_counts: reactionCounts,
         reaction_total: totalReactions,
         comment_count: commentCount,

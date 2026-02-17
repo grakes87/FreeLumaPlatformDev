@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withAuth, type AuthContext } from '@/lib/auth/middleware';
+import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middleware';
 import { successResponse, serverError } from '@/lib/utils/api';
 
 /**
@@ -7,8 +7,8 @@ import { successResponse, serverError } from '@/lib/utils/api';
  * Lightweight endpoint that returns only a random background media URL.
  * Used by the client to preload the next image in the browser cache.
  */
-export const GET = withAuth(
-  async (req: NextRequest, _context: AuthContext) => {
+export const GET = withOptionalAuth(
+  async (req: NextRequest, _context: OptionalAuthContext) => {
     try {
       const { VerseCategoryMedia, sequelize } = await import('@/lib/db/models');
       const { Op } = await import('sequelize');

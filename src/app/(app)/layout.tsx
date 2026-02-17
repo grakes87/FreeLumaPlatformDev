@@ -6,9 +6,11 @@ import Link from 'next/link';
 import { AuthProvider } from '@/context/AuthContext';
 import { SocketProvider } from '@/context/SocketContext';
 import { NotificationProvider } from '@/context/NotificationContext';
+import { DailyTranslationProvider } from '@/context/DailyTranslationContext';
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { AppShell } from '@/components/layout/AppShell';
+import { TopBar } from '@/components/layout/TopBar';
 import { FontLoader } from '@/components/layout/FontLoader';
 
 // Suppress React 19 pointer capture error on unmounting elements during navigation
@@ -100,39 +102,43 @@ function GuestDailyWrapper({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-black">
-      {/* Daily post content (full screen, scroll snap matches authenticated AppShell) */}
-      <main
-        id="immersive-scroll"
-        className="h-full overflow-y-auto"
-        style={{ scrollSnapType: 'y mandatory', overscrollBehaviorY: 'contain' }}
-      >
-        {children}
-      </main>
+    <DailyTranslationProvider>
+      <div className="fixed inset-0 overflow-hidden bg-black">
+        <TopBar transparent />
 
-      {/* Sign up / Sign in CTA overlay at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-black/90 via-black/70 to-transparent pb-6 pt-16 px-6">
-        <div className="mx-auto max-w-sm text-center">
-          <p className="mb-4 text-sm text-white/80">
-            Join Free Luma for the full experience
-          </p>
-          <div className="flex gap-3">
-            <Link
-              href={signupHref}
-              className="flex-1 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-primary-dark"
-            >
-              Sign Up
-            </Link>
-            <Link
-              href={loginHref}
-              className="flex-1 rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              Sign In
-            </Link>
+        {/* Daily post content (full screen, scroll snap matches authenticated AppShell) */}
+        <main
+          id="immersive-scroll"
+          className="h-full overflow-y-auto"
+          style={{ scrollSnapType: 'y mandatory', overscrollBehaviorY: 'contain' }}
+        >
+          {children}
+        </main>
+
+        {/* Sign up / Sign in CTA overlay at bottom */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-black/90 via-black/70 to-transparent pb-6 pt-16 px-6">
+          <div className="mx-auto max-w-sm text-center">
+            <p className="mb-4 text-sm text-white/80">
+              Join Free Luma for the full experience
+            </p>
+            <div className="flex gap-3">
+              <Link
+                href={signupHref}
+                className="flex-1 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-primary-dark"
+              >
+                Sign Up
+              </Link>
+              <Link
+                href={loginHref}
+                className="flex-1 rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+              >
+                Sign In
+              </Link>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </DailyTranslationProvider>
   );
 }
 

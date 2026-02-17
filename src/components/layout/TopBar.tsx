@@ -46,12 +46,19 @@ export function TopBar({ transparent = false }: TopBarProps) {
     && dailyTranslation
     && dailyTranslation.availableTranslations.length > 0;
 
-  // Verse mode toggle -- bible-mode users on daily tab
-  const isBibleMode = user?.mode === 'bible';
-  const showVerseModeToggle = isDailyTab && isBibleMode && isAuthenticated;
-  const [verseMode, setVerseMode] = useState<VerseMode>(
-    (user?.verse_mode as VerseMode) || 'daily_verse'
-  );
+  // Verse mode toggle -- bible-mode users on daily tab, or guests on bible routes
+  const guestOnBibleRoute = !isAuthenticated && (pathname === '/' || pathname.startsWith('/daily/') || pathname === '/bible');
+  const isBibleMode = user?.mode === 'bible' || guestOnBibleRoute;
+  const showVerseModeToggle = isDailyTab && isBibleMode;
+  const [verseMode, setVerseMode] = useState<VerseMode>(() => {
+    if (user?.verse_mode) return user.verse_mode as VerseMode;
+    // Guest: check localStorage
+    try {
+      const stored = localStorage.getItem('verse_mode');
+      if (stored === 'verse_by_category') return 'verse_by_category';
+    } catch {}
+    return 'daily_verse';
+  });
 
   // Sync if user data loads after mount
   useEffect(() => {
@@ -62,16 +69,21 @@ export function TopBar({ transparent = false }: TopBarProps) {
 
   const handleVerseModeChange = useCallback((newMode: VerseMode) => {
     setVerseMode(newMode);
-    // Persist to API + update auth context
-    fetch('/api/settings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ verse_mode: newMode }),
-    }).catch(() => {});
+    if (isAuthenticated) {
+      // Persist to API + update auth context
+      fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ verse_mode: newMode }),
+      }).catch(() => {});
+    } else {
+      // Guest: persist to localStorage
+      try { localStorage.setItem('verse_mode', newMode); } catch {}
+    }
     // Dispatch custom event so DailyFeed can react
     window.dispatchEvent(new CustomEvent('verse-mode-change', { detail: newMode }));
-  }, []);
+  }, [isAuthenticated]);
 
   const logoSrc = transparent || resolvedTheme === 'dark'
     ? '/logo-white.png'
@@ -204,24 +216,26 @@ export function TopBar({ transparent = false }: TopBarProps) {
 
       {/* Right: Chat + Language selector + Notification bell */}
       <div className="flex items-center gap-1">
-        {/* Chat icon */}
-        <Link
-          href="/chat"
-          className={cn(
-            'relative rounded-lg p-2 transition-colors',
-            transparent
-              ? 'text-white/90 hover:text-white'
-              : 'text-text hover:text-primary dark:text-text-dark dark:hover:text-primary'
-          )}
-          aria-label="Messages"
-          onClick={() => { setShowLangMenu(false); setShowNotifications(false); }}
-        >
-          <MessageCircle className="h-6 w-6" />
-          {/* Unread chat badge (red dot) */}
-          {hasUnreadMessages && (
-            <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-surface dark:ring-surface-dark" />
-          )}
-        </Link>
+        {/* Chat icon — only for authenticated users */}
+        {isAuthenticated && (
+          <Link
+            href="/chat"
+            className={cn(
+              'relative rounded-lg p-2 transition-colors',
+              transparent
+                ? 'text-white/90 hover:text-white'
+                : 'text-text hover:text-primary dark:text-text-dark dark:hover:text-primary'
+            )}
+            aria-label="Messages"
+            onClick={() => { setShowLangMenu(false); setShowNotifications(false); }}
+          >
+            <MessageCircle className="h-6 w-6" />
+            {/* Unread chat badge (red dot) */}
+            {hasUnreadMessages && (
+              <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-surface dark:ring-surface-dark" />
+            )}
+          </Link>
+        )}
 
         {/* Language selector — only for guests (not logged in) */}
         {!isAuthenticated && (
@@ -274,32 +288,34 @@ export function TopBar({ transparent = false }: TopBarProps) {
           </div>
         )}
 
-        {/* Notifications */}
-        <div ref={notifRef} className="relative">
-          <button
-            type="button"
-            onClick={() => { setShowNotifications((prev) => !prev); setShowLangMenu(false); }}
-            className={cn(
-              'relative rounded-lg p-2 transition-colors',
-              transparent
-                ? 'text-white/90 hover:text-white'
-                : 'text-text hover:text-primary dark:text-text-dark dark:hover:text-primary'
-            )}
-            aria-label="Notifications"
-          >
-            <Bell className="h-6 w-6" />
-            {/* Unread badge (red dot) */}
-            {unreadCount > 0 && (
-              <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-surface dark:ring-surface-dark" />
-            )}
-          </button>
+        {/* Notifications — only for authenticated users */}
+        {isAuthenticated && (
+          <div ref={notifRef} className="relative">
+            <button
+              type="button"
+              onClick={() => { setShowNotifications((prev) => !prev); setShowLangMenu(false); }}
+              className={cn(
+                'relative rounded-lg p-2 transition-colors',
+                transparent
+                  ? 'text-white/90 hover:text-white'
+                  : 'text-text hover:text-primary dark:text-text-dark dark:hover:text-primary'
+              )}
+              aria-label="Notifications"
+            >
+              <Bell className="h-6 w-6" />
+              {/* Unread badge (red dot) */}
+              {unreadCount > 0 && (
+                <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-surface dark:ring-surface-dark" />
+              )}
+            </button>
 
-          {/* Notification dropdown */}
-          <NotificationDropdown
-            isOpen={showNotifications}
-            onClose={() => setShowNotifications(false)}
-          />
-        </div>
+            {/* Notification dropdown */}
+            <NotificationDropdown
+              isOpen={showNotifications}
+              onClose={() => setShowNotifications(false)}
+            />
+          </div>
+        )}
       </div>
     </header>
   );
