@@ -22,6 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 8: Database Migration Mapping** - Deep-dive old DB schema, map all tables/columns to new DB, produce Excel mapping with sample data
 - [ ] **Phase 9: Platform Refinements & Admin Tools** - Remove laugh reactions from prayer/daily, repost views, admin font family control, activation codes, video thumbnail regen, admin workshop creation
 - [ ] **Phase 10: Email System Setup with SendGrid** - Configure SendGrid as email provider, migrate from SMTP to SendGrid API, wire up all transactional and notification emails
+- [ ] **Phase 11: Verse by Category System** - Add verse-by-category mode to daily content tab with category selector, new DB tables (verse_category_content/translations/media), media upload from CategoryPhotos.zip to B2, profile settings integration (daily verse vs verse-by-category), random verse display per category on refresh, dedicated reactions/comments, and old DB versebycategory data migration
 
 ## Phase Details
 
@@ -367,10 +368,36 @@ Plans:
 - [ ] 10-04-PLAN.md — New video broadcast email template + chunked cron processor
 - [ ] 10-05-PLAN.md — Settings UI (3 new toggles) + video broadcast trigger + workshop email dispatch wiring
 
+### Phase 11: Verse by Category System
+**Goal**: Add a "Verse by Category" alternative to the daily verse experience — bible-mode users can choose between daily verse (default) or verse-by-category in profile settings, with category-specific Bible verses displayed randomly on each page refresh. Includes new database tables mirroring daily_content/translations schema, category media (photos/videos) uploaded to B2 from CategoryPhotos.zip, old DB versebycategory data migration, category selector UI on the daily tab, dedicated reactions/comments (separate from daily content), and profile settings for verse mode and selected category.
+
+**Depends on**: Phase 10 (all prior phases complete)
+
+**Requirements**: None (feature enhancement phase)
+
+**Success Criteria** (what must be TRUE):
+  1. Bible-mode users can toggle between "Daily Verse" and "Verse by Category" in profile settings (default: Daily Verse)
+  2. verse_category_content and verse_category_content_translations tables created matching daily_content schema pattern
+  3. verse_category_media table created for category background images/videos
+  4. All CategoryPhotos.zip images uploaded to Backblaze B2 and catalogued in verse_category_media
+  5. Old DB versebycategory data migrated into new verse_category_content tables with all bible translations
+  6. When "Verse by Category" selected, daily tab shows circle category selector and random verse from selected category
+  7. Each page refresh displays a different random verse for the selected category
+  8. No slide swiping or vertical scroll to next verse (single verse display per refresh)
+  9. Reactions and comments on category verses stored separately (not mixed with daily content)
+  10. Selected verse category persisted in profile settings and synced to daily tab
+  11. Verse category setting only visible in profile settings when "Verse by Category" mode is active
+  12. Share functionality available on category verse display
+
+**Plans**: 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 11 to break down)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11
 
 **Parallel Opportunities:**
 - Phase 3 (Real-Time) and Phase 4 (Enhanced Content) are mostly independent and can be partially parallelized after Phase 2 completes
@@ -387,6 +414,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 8. Database Migration Mapping | 0/3 | Planned | - |
 | 9. Platform Refinements & Admin Tools | 6/6 | Complete | 2026-02-16 |
 | 10. Email System Setup with SendGrid | 5/5 | Complete | 2026-02-16 |
+| 11. Verse by Category System | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-11*
@@ -403,4 +431,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 *Phase 10 added: 2026-02-16 (Email System Setup with SendGrid)*
 *Phase 10 planned: 2026-02-16 (5 plans in 3 waves)*
 *Phase 10 executed: 2026-02-16 (5 plans in 3 waves, 12 min)*
-*Depth: Comprehensive (10 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure)*
+*Phase 11 added: 2026-02-16 (Verse by Category System)*
+*Depth: Comprehensive (11 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category)*

@@ -346,6 +346,7 @@ Recent decisions affecting current work:
 
 - Phase 9 added: Platform Refinements & Admin Tools (remove laugh reactions, repost views, admin font family, activation codes, video thumbnail regen, admin workshop creation)
 - Phase 10 added: Email System Setup with SendGrid (configure SendGrid API, migrate from SMTP, wire up all transactional and notification emails)
+- Phase 11 added: Verse by Category System (verse-by-category mode for daily tab, new DB tables, category media upload, old DB migration, profile settings, dedicated reactions/comments)
 - 09-01: QuickReactionPicker made configurable via reactionTypes prop (shared component serves daily/prayer/post contexts with different reaction sets)
 
 ### Pending Todos
