@@ -23,6 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 9: Platform Refinements & Admin Tools** - Remove laugh reactions from prayer/daily, repost views, admin font family control, activation codes, video thumbnail regen, admin workshop creation
 - [ ] **Phase 10: Email System Setup with SendGrid** - Configure SendGrid as email provider, migrate from SMTP to SendGrid API, wire up all transactional and notification emails
 - [ ] **Phase 11: Verse by Category System** - Add verse-by-category mode to daily content tab with category selector, new DB tables (verse_category_content/translations/media), media upload from CategoryPhotos.zip to B2, profile settings integration (daily verse vs verse-by-category), random verse display per category on refresh, dedicated reactions/comments, and old DB versebycategory data migration
+- [ ] **Phase 12: Content Production Platform** - Creator management (LumaShortCreator), daily content generation pipeline (bible verse selection, positivity quotes, multi-translation fetch, TTS via ElevenLabs/Murf, SRT generation, background video prompts, 45s camera scripts), auto-assignment to creators, admin content management UI (unassigned/assigned/pending/completed/background tabs), HeyGen AI video integration for Spanish content, and content approval workflow
 
 ## Phase Details
 
@@ -400,10 +401,56 @@ Plans:
 - [ ] 11-06-PLAN.md — Daily tab integration (VerseModeToggle, conditional rendering) + profile settings (verse mode selector, category dropdown)
 - [ ] 11-07-PLAN.md — Admin UI: verse categories management page (categories, verses, media tabs) + AI generation workflow + admin nav link
 
+### Phase 12: Content Production Platform
+**Goal**: End-to-end daily content production pipeline — admin can generate bible verses and positivity content for any month with multi-translation support, TTS audio (ElevenLabs for English, Murf for Spanish), SRT subtitles, background video prompts, and 45-second camera scripts. Creators (human and AI) are managed in a LumaShortCreator registry and auto-assigned daily content scripts based on language, mode, and capacity. Admin content management UI provides 5-tab workflow (unassigned, assigned, pending, completed, background videos) split by bible/positivity mode, with per-item and bulk regeneration, reassignment, HeyGen AI video generation for Spanish content, and approval workflow.
+
+**Depends on**: Phase 11 (all prior phases complete)
+
+**Requirements**: None (content production tooling phase)
+
+**Success Criteria** (what must be TRUE):
+  1. LumaShortCreator table stores creators with language, monthly capacity, bible/positivity capability, and AI flag
+  2. Admin can manage creators (CRUD) from admin dashboard
+  3. Used bible verses tracked in dedicated table to prevent repetition
+  4. Generate pipeline selects random unused KJV verse, fetches all bible_translations (ESV API + Bible API), and creates daily_content + daily_content_translations rows
+  5. Generate pipeline creates positivity content with motivational quote (verse_text) and 1-minute guided meditation script
+  6. TTS audio generated via ElevenLabs (English) and Murf API (Spanish) for all translations
+  7. SRT subtitle files generated from TTS audio for all translations
+  8. Background video prompt generated per day (minimal, representative of verse/message content) suitable for Sora/Veo 3
+  9. 45-second camera script generated per day (bible: verse deep-dive context; positivity: message expansion)
+  10. Content generation skips existing data (idempotent — safe to re-run after partial failure)
+  11. Auto-assign distributes scripts to creators based on language, mode capability, and monthly capacity
+  12. Admin content management page loads daily_content by month/year with bible/positivity category split
+  13. Unassigned tab shows dates missing content with generate button (single + bulk)
+  14. Assigned tab shows all creator assignments with reassign capability
+  15. HeyGen integration generates AI videos for Spanish content using AI creator profiles
+  16. Pending tab shows days with missing fields, broken out by day with checkboxes, with per-field and bulk regeneration
+  17. Background videos tab allows uploading video files for daily content
+  18. Completed tab shows fully-filled daily_content rows with approve action
+  19. Approved content flagged as production-ready
+
+**Plans**: 14 plans in 6 waves
+
+Plans:
+- [ ] 12-01-PLAN.md — Database foundation: used_bible_verses + luma_short_creators tables, daily_content extensions (status, creator_id, text columns)
+- [ ] 12-02-PLAN.md — npm deps (@elevenlabs/elevenlabs-js), KJV verse index (31,102 verses), verse selection module
+- [ ] 12-03-PLAN.md — Content pipeline library: AI text generation (Claude), TTS (ElevenLabs + Murf), SRT subtitle generator
+- [ ] 12-04-PLAN.md — Creator CRUD API, withCreator middleware, round-robin assignment module
+- [ ] 12-05-PLAN.md — Pipeline runner: orchestrates day/month generation with idempotent gap-fill and progress callbacks
+- [ ] 12-06-PLAN.md — Admin content production API: month overview, SSE generation, regenerate, assign, review, background video
+- [ ] 12-07-PLAN.md — Creator portal API: assignments, stats, content detail, video upload
+- [ ] 12-08-PLAN.md — HeyGen integration: REST client, admin bulk trigger, webhook handler
+- [ ] 12-09-PLAN.md — Admin UI part 1: content production page shell, Unassigned tab, Pending tab, GenerationProgressModal
+- [ ] 12-10-PLAN.md — Admin UI part 2: Assigned tab, Completed tab, Background Videos tab, CreatorManager
+- [ ] 12-11-PLAN.md — Creator portal UI: layout, dashboard, assignment list, assignment detail
+- [ ] 12-12-PLAN.md — Teleprompter recording: camera preview, script overlay, auto-scroll, MediaRecorder, submit flow
+- [ ] 12-13-PLAN.md — Creator email notifications: assignment and rejection emails via SendGrid
+- [ ] 12-14-PLAN.md — Integration: admin nav link, platform settings for API keys, creator attribution on daily content, build verification
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12
 
 **Parallel Opportunities:**
 - Phase 3 (Real-Time) and Phase 4 (Enhanced Content) are mostly independent and can be partially parallelized after Phase 2 completes
@@ -421,6 +468,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 9. Platform Refinements & Admin Tools | 6/6 | Complete | 2026-02-16 |
 | 10. Email System Setup with SendGrid | 5/5 | Complete | 2026-02-16 |
 | 11. Verse by Category System | 7/7 | Complete | 2026-02-17 |
+| 12. Content Production Platform | 0/14 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-11*
@@ -440,4 +488,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 *Phase 11 added: 2026-02-16 (Verse by Category System)*
 *Phase 11 planned: 2026-02-16 (7 plans in 4 waves)*
 *Phase 11 executed: 2026-02-17 (7 plans in 4 waves, 42 min)*
-*Depth: Comprehensive (11 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category)*
+*Phase 12 added: 2026-02-17 (Content Production Platform)*
+*Phase 12 planned: 2026-02-17 (14 plans in 6 waves)*
+*Depth: Comprehensive (12 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category + content production)*
