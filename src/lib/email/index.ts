@@ -1,27 +1,21 @@
-import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 import { passwordResetTemplate, verificationTemplate, emailChangeVerificationTemplate, passwordChangeAlertTemplate, accountDeletionTemplate } from './templates';
 
-const FROM_ADDRESS = process.env.SMTP_FROM || 'noreply@freeluma.com';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const APP_URL = 'https://freeluma.com';
 
-function isSmtpConfigured(): boolean {
-  return Boolean(process.env.SMTP_HOST);
+// Set API key at module level (guarded so it does not throw if key missing)
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
 
-function getTransporter() {
-  if (!isSmtpConfigured()) {
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+/**
+ * Parse the dev whitelist from EMAIL_DEV_WHITELIST env var.
+ * Returns null if not set (meaning all emails allowed in dev).
+ */
+function getDevWhitelist(): Set<string> | null {
+  const whitelist = process.env.EMAIL_DEV_WHITELIST;
+  if (!whitelist) return null;
+  return new Set(whitelist.split(',').map(e => e.trim().toLowerCase()));
 }
 
 export async function sendEmail(
@@ -30,11 +24,9 @@ export async function sendEmail(
   html: string,
   headers?: Record<string, string>
 ): Promise<void> {
-  const transporter = getTransporter();
-
-  if (!transporter) {
-    // Dev fallback: log email to console
-    console.log('\n========== EMAIL (SMTP not configured) ==========');
+  // Dev fallback: log email to console if SendGrid not configured
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log('\n========== EMAIL (SendGrid not configured) ==========');
     console.log(`To: ${to}`);
     console.log(`Subject: ${subject}`);
     console.log(`HTML length: ${html.length} chars`);
@@ -56,23 +48,45 @@ export async function sendEmail(
           url.includes('/profile/') ||
           url.includes('/prayer-wall') ||
           url.includes('/daily') ||
-          url.includes('/login')
+          url.includes('/login') ||
+          url.includes('/workshop')
         ) {
           console.log(`  => ${url}`);
         }
       });
     }
-    console.log('=================================================\n');
+    console.log('=====================================================\n');
     return;
   }
 
-  await transporter.sendMail({
-    from: `"Free Luma" <${FROM_ADDRESS}>`,
-    to,
-    subject,
-    html,
-    headers,
-  });
+  // Dev whitelist guard: prevent accidental emails to real users in non-production
+  if (process.env.NODE_ENV !== 'production') {
+    const whitelist = getDevWhitelist();
+    if (whitelist && !whitelist.has(to.toLowerCase())) {
+      console.log(`[Email] Skipped (not in dev whitelist): ${to}`);
+      return;
+    }
+  }
+
+  try {
+    await sgMail.send({
+      to,
+      from: { email: 'hello@freeluma.com', name: 'Free Luma' },
+      subject,
+      html,
+      headers,
+      trackingSettings: {
+        clickTracking: { enable: false, enableText: false },
+        openTracking: { enable: false },
+      },
+    });
+  } catch (error: unknown) {
+    const sgError = error as { response?: { body?: unknown } };
+    if (sgError.response?.body) {
+      console.error('[Email] SendGrid error details:', sgError.response.body);
+    }
+    throw error;
+  }
 }
 
 export async function sendPasswordResetEmail(
