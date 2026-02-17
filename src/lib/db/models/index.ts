@@ -50,6 +50,13 @@ import { WorkshopChat } from './WorkshopChat';
 import { WorkshopNote } from './WorkshopNote';
 import { WorkshopInvite } from './WorkshopInvite';
 import { WorkshopBan } from './WorkshopBan';
+import { VerseCategory } from './VerseCategory';
+import { VerseCategoryMedia } from './VerseCategoryMedia';
+import { VerseCategoryContent } from './VerseCategoryContent';
+import { VerseCategoryContentTranslation } from './VerseCategoryContentTranslation';
+import { VerseCategoryReaction } from './VerseCategoryReaction';
+import { VerseCategoryComment } from './VerseCategoryComment';
+import { VerseCategoryCommentReaction } from './VerseCategoryCommentReaction';
 
 // ---- Associations ----
 
@@ -951,6 +958,108 @@ WorkshopBan.belongsTo(Workshop, {
   as: 'workshop',
 });
 
+// ---- Phase 11: Verse by Category Associations ----
+
+// VerseCategory -> VerseCategoryMedia (one-to-many)
+VerseCategory.hasMany(VerseCategoryMedia, {
+  foreignKey: 'category_id',
+  as: 'media',
+});
+VerseCategoryMedia.belongsTo(VerseCategory, {
+  foreignKey: 'category_id',
+  as: 'category',
+});
+
+// VerseCategory -> VerseCategoryContent (one-to-many)
+VerseCategory.hasMany(VerseCategoryContent, {
+  foreignKey: 'category_id',
+  as: 'verses',
+});
+VerseCategoryContent.belongsTo(VerseCategory, {
+  foreignKey: 'category_id',
+  as: 'category',
+});
+
+// VerseCategoryContent -> VerseCategoryContentTranslation (one-to-many)
+VerseCategoryContent.hasMany(VerseCategoryContentTranslation, {
+  foreignKey: 'verse_category_content_id',
+  as: 'translations',
+});
+VerseCategoryContentTranslation.belongsTo(VerseCategoryContent, {
+  foreignKey: 'verse_category_content_id',
+  as: 'verseContent',
+});
+
+// VerseCategoryContent -> VerseCategoryReaction (one-to-many)
+VerseCategoryContent.hasMany(VerseCategoryReaction, {
+  foreignKey: 'verse_category_content_id',
+  as: 'reactions',
+});
+VerseCategoryReaction.belongsTo(VerseCategoryContent, {
+  foreignKey: 'verse_category_content_id',
+  as: 'verseContent',
+});
+
+// User -> VerseCategoryReaction (one-to-many)
+User.hasMany(VerseCategoryReaction, {
+  foreignKey: 'user_id',
+  as: 'verseCategoryReactions',
+});
+VerseCategoryReaction.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// VerseCategoryContent -> VerseCategoryComment (one-to-many)
+VerseCategoryContent.hasMany(VerseCategoryComment, {
+  foreignKey: 'verse_category_content_id',
+  as: 'verseComments',
+});
+VerseCategoryComment.belongsTo(VerseCategoryContent, {
+  foreignKey: 'verse_category_content_id',
+  as: 'verseContent',
+});
+
+// User -> VerseCategoryComment (one-to-many)
+User.hasMany(VerseCategoryComment, {
+  foreignKey: 'user_id',
+  as: 'verseCategoryComments',
+});
+VerseCategoryComment.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// VerseCategoryComment -> VerseCategoryComment (self-referencing for replies)
+VerseCategoryComment.hasMany(VerseCategoryComment, {
+  foreignKey: 'parent_id',
+  as: 'replies',
+});
+VerseCategoryComment.belongsTo(VerseCategoryComment, {
+  foreignKey: 'parent_id',
+  as: 'parent',
+});
+
+// VerseCategoryComment -> VerseCategoryCommentReaction (one-to-many)
+VerseCategoryComment.hasMany(VerseCategoryCommentReaction, {
+  foreignKey: 'comment_id',
+  as: 'commentReactions',
+});
+VerseCategoryCommentReaction.belongsTo(VerseCategoryComment, {
+  foreignKey: 'comment_id',
+  as: 'comment',
+});
+
+// User -> VerseCategoryCommentReaction (one-to-many)
+User.hasMany(VerseCategoryCommentReaction, {
+  foreignKey: 'user_id',
+  as: 'verseCategoryCommentReactions',
+});
+VerseCategoryCommentReaction.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
 export {
   sequelize,
   User,
@@ -1004,4 +1113,11 @@ export {
   WorkshopNote,
   WorkshopInvite,
   WorkshopBan,
+  VerseCategory,
+  VerseCategoryMedia,
+  VerseCategoryContent,
+  VerseCategoryContentTranslation,
+  VerseCategoryReaction,
+  VerseCategoryComment,
+  VerseCategoryCommentReaction,
 };

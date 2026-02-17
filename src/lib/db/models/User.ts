@@ -22,6 +22,8 @@ export interface UserAttributes {
   mode: 'bible' | 'positivity';
   timezone: string;
   preferred_translation: string;
+  verse_mode: 'daily_verse' | 'verse_by_category';
+  verse_category_id: number | null;
   language: 'en' | 'es';
   email_verified: boolean;
   email_verification_token: string | null;
@@ -58,6 +60,8 @@ export interface UserCreationAttributes extends Optional<UserAttributes,
   | 'mode'
   | 'timezone'
   | 'preferred_translation'
+  | 'verse_mode'
+  | 'verse_category_id'
   | 'language'
   | 'email_verified'
   | 'email_verification_token'
@@ -98,6 +102,8 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   declare mode: 'bible' | 'positivity';
   declare timezone: string;
   declare preferred_translation: string;
+  declare verse_mode: 'daily_verse' | 'verse_by_category';
+  declare verse_category_id: number | null;
   declare language: 'en' | 'es';
   declare email_verified: boolean;
   declare email_verification_token: string | null;
@@ -207,6 +213,19 @@ User.init(
       type: DataTypes.STRING(10),
       defaultValue: 'KJV',
       allowNull: false,
+    },
+    verse_mode: {
+      type: DataTypes.ENUM('daily_verse', 'verse_by_category'),
+      defaultValue: 'daily_verse',
+      allowNull: false,
+    },
+    verse_category_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'verse_categories',
+        key: 'id',
+      },
     },
     language: {
       type: DataTypes.ENUM('en', 'es'),
