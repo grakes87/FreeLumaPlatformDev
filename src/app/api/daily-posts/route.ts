@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middleware';
-import { BibleTranslation, DailyContent, DailyContentTranslation, User } from '@/lib/db/models';
+import { BibleTranslation, DailyContent, DailyContentTranslation, LumaShortCreator, User } from '@/lib/db/models';
 import { getUserLocalDate } from '@/lib/utils/timezone';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 import { LANGUAGES } from '@/lib/utils/constants';
@@ -62,6 +62,18 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
           as: 'translations',
           attributes: ['translation_code', 'translated_text', 'audio_url', 'audio_srt_url', 'chapter_text'],
         },
+        {
+          model: LumaShortCreator,
+          as: 'creator',
+          attributes: ['id', 'name'],
+          include: [
+            {
+              model: User,
+              as: 'user',
+              attributes: ['id', 'avatar_url', 'avatar_color'],
+            },
+          ],
+        },
       ],
     });
 
@@ -95,6 +107,16 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
       translationNames[bt.code] = bt.name;
     }
 
+    // Extract creator info if assigned
+    const creatorData = content.get('creator') as Record<string, unknown> | null;
+    const creator = creatorData
+      ? {
+          name: creatorData.name as string,
+          avatar_url: (creatorData as Record<string, unknown> & { user?: { avatar_url?: string | null } })?.user?.avatar_url ?? null,
+          avatar_color: (creatorData as Record<string, unknown> & { user?: { avatar_color?: string } })?.user?.avatar_color ?? '#6366f1',
+        }
+      : null;
+
     // Format the response
     const response = {
       id: content.id,
@@ -109,6 +131,7 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
       lumashort_video_url: content.lumashort_video_url,
       translations,
       translation_names: translationNames,
+      creator,
     };
 
     // Fire-and-forget: track daily view for authenticated users

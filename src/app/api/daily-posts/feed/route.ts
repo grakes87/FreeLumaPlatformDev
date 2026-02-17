@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Op } from 'sequelize';
-import { BibleTranslation, DailyContent, DailyContentTranslation } from '@/lib/db/models';
+import { BibleTranslation, DailyContent, DailyContentTranslation, LumaShortCreator, User } from '@/lib/db/models';
 
 /**
  * GET /api/daily-posts/feed?mode=bible&language=en&date=2026-02-17&cursor=YYYY-MM-DD&limit=5
@@ -37,6 +37,18 @@ export async function GET(req: NextRequest) {
           model: DailyContentTranslation,
           as: 'translations',
           attributes: ['translation_code', 'translated_text', 'audio_url', 'audio_srt_url', 'chapter_text'],
+        },
+        {
+          model: LumaShortCreator,
+          as: 'creator',
+          attributes: ['id', 'name'],
+          include: [
+            {
+              model: User,
+              as: 'user',
+              attributes: ['id', 'avatar_url', 'avatar_color'],
+            },
+          ],
         },
       ],
       order: [['post_date', 'DESC']],
@@ -86,6 +98,16 @@ export async function GET(req: NextRequest) {
         if (nameMap[t.code]) translationNames[t.code] = nameMap[t.code];
       }
 
+      // Extract creator info if assigned
+      const creatorRaw = content.get('creator') as Record<string, unknown> | null;
+      const creator = creatorRaw
+        ? {
+            name: creatorRaw.name as string,
+            avatar_url: (creatorRaw as Record<string, unknown> & { user?: { avatar_url?: string | null } })?.user?.avatar_url ?? null,
+            avatar_color: (creatorRaw as Record<string, unknown> & { user?: { avatar_color?: string } })?.user?.avatar_color ?? '#6366f1',
+          }
+        : null;
+
       return {
         id: content.id,
         post_date: content.post_date,
@@ -99,6 +121,7 @@ export async function GET(req: NextRequest) {
         lumashort_video_url: content.lumashort_video_url,
         translations,
         translation_names: translationNames,
+        creator,
       };
     });
 

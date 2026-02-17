@@ -4,6 +4,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { detectTimezone } from '@/lib/utils/timezone';
 import { LANGUAGES } from '@/lib/utils/constants';
 
+export interface DailyContentCreator {
+  name: string;
+  avatar_url: string | null;
+  avatar_color: string;
+}
+
 export interface DailyContentData {
   id: number;
   post_date: string;
@@ -17,6 +23,7 @@ export interface DailyContentData {
   lumashort_video_url: string | null;
   translations: Array<{ code: string; text: string; audio_url: string | null; audio_srt_url: string | null; chapter_text: string | null }>;
   translation_names: Record<string, string>;
+  creator?: DailyContentCreator | null;
 }
 
 interface UseDailyContentReturn {

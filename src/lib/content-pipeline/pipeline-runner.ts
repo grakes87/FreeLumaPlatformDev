@@ -16,26 +16,26 @@
 import { Op } from 'sequelize';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 
-import { selectRandomUnusedVerse } from './verse-selection.js';
+import { selectRandomUnusedVerse } from './verse-selection';
 import {
   generatePositivityQuote,
   generateDevotionalReflection,
   generateCameraScript,
   generateMeditationScript,
   generateBackgroundPrompt,
-} from './text-generation.js';
-import { generateTtsElevenLabs } from './tts-elevenlabs.js';
-import { generateTtsMurf } from './tts-murf.js';
+} from './text-generation';
+import { generateTtsElevenLabs } from './tts-elevenlabs';
+import { generateTtsMurf } from './tts-murf';
 import {
   generateSrt,
   characterAlignmentToWords,
   murfDurationsToWords,
-} from './srt-generator.js';
-import { fetchPassage } from '@/lib/bible-api/index.js';
-import { getPublicUrl } from '@/lib/storage/presign.js';
-import { b2Client, B2_BUCKET, isB2Configured } from '@/lib/storage/b2.js';
+} from './srt-generator';
+import { fetchPassage } from '@/lib/bible-api/index';
+import { getPublicUrl } from '@/lib/storage/presign';
+import { b2Client, B2_BUCKET, isB2Configured } from '@/lib/storage/b2';
 
-import type { VerseReference } from './bible-verse-index.js';
+import type { VerseReference } from './bible-verse-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -157,7 +157,7 @@ export async function generateDayContent(
     BibleTranslation,
     UsedBibleVerse,
     PlatformSetting,
-  } = await import('@/lib/db/models/index.js');
+  } = await import('@/lib/db/models/index');
 
   let selectedVerse: VerseReference | null = null;
 

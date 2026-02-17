@@ -8,8 +8,8 @@
  * handles that after successful content creation, ensuring idempotency.
  */
 
-import { ALL_KJV_VERSES, KJV_VERSE_COUNT } from './bible-verse-index.js';
-import type { VerseReference } from './bible-verse-index.js';
+import { ALL_KJV_VERSES, KJV_VERSE_COUNT } from './bible-verse-index';
+import type { VerseReference } from './bible-verse-index';
 
 /**
  * Select a random unused KJV verse.
@@ -26,7 +26,7 @@ import type { VerseReference } from './bible-verse-index.js';
 export async function selectRandomUnusedVerse(): Promise<VerseReference> {
   // Dynamic import to avoid circular dependency and allow this module
   // to be used before the database is fully initialized
-  const { UsedBibleVerse } = await import('@/lib/db/models/index.js');
+  const { UsedBibleVerse } = await import('@/lib/db/models/index');
 
   // Fetch all used verses (only the fields needed for the key)
   const usedRows = await UsedBibleVerse.findAll({

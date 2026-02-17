@@ -108,7 +108,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
 
     // Build per-day response
     const days = rows.map((row) => {
-      const json = row.toJSON() as Record<string, unknown>;
+      const json = row.toJSON() as unknown as Record<string, unknown>;
       const translations = (json.translations as Array<Record<string, unknown>>) || [];
 
       return {
@@ -146,7 +146,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
     });
 
     const creatorsData = creators.map((c) => {
-      const json = c.toJSON() as Record<string, unknown>;
+      const json = c.toJSON() as unknown as Record<string, unknown>;
       return {
         id: c.id,
         name: c.name,
