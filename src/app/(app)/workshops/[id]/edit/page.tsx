@@ -2,12 +2,13 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   CreateWorkshopForm,
   type WorkshopFormData,
 } from '@/components/workshop/CreateWorkshopForm';
+import { InviteUsersModal } from '@/components/workshop/InviteUsersModal';
 import { Card } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 
@@ -35,6 +36,7 @@ export default function EditWorkshopPage({ params }: EditWorkshopPageProps) {
   const [workshop, setWorkshop] = useState<WorkshopDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const workshopId = parseInt(id, 10);
 
@@ -111,7 +113,7 @@ export default function EditWorkshopPage({ params }: EditWorkshopPageProps) {
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push(`/workshops/${workshopId}`)}
             className="rounded-full p-1.5 text-text transition-colors hover:bg-slate-100 dark:text-text-dark dark:hover:bg-slate-800"
             aria-label="Go back"
           >
@@ -157,7 +159,6 @@ export default function EditWorkshopPage({ params }: EditWorkshopPageProps) {
     time: timeStr,
     duration_minutes: workshop.duration_minutes,
     is_private: workshop.is_private,
-    max_capacity: workshop.max_capacity,
   };
 
   return (
@@ -165,7 +166,7 @@ export default function EditWorkshopPage({ params }: EditWorkshopPageProps) {
       {/* Header */}
       <div className="mb-6 flex items-center gap-3">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push(`/workshops/${workshopId}`)}
           className="rounded-full p-1.5 text-text transition-colors hover:bg-slate-100 dark:text-text-dark dark:hover:bg-slate-800"
           aria-label="Go back"
         >
@@ -184,6 +185,29 @@ export default function EditWorkshopPage({ params }: EditWorkshopPageProps) {
         onSuccess={() => {
           router.push(`/workshops/${workshopId}`);
         }}
+      />
+
+      {/* Invite section (for private workshops) */}
+      {workshop.is_private && (
+        <div className="mt-6 rounded-xl border border-border bg-surface p-4 dark:border-border-dark dark:bg-surface-dark">
+          <p className="mb-3 text-sm font-medium text-text dark:text-text-dark">
+            This is a private workshop. Invite people to join.
+          </p>
+          <button
+            type="button"
+            onClick={() => setInviteOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+          >
+            <UserPlus className="h-4 w-4" />
+            Invite People
+          </button>
+        </div>
+      )}
+
+      <InviteUsersModal
+        workshopId={workshopId}
+        isOpen={inviteOpen}
+        onClose={() => setInviteOpen(false)}
       />
     </div>
   );

@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const activation = await ActivationCode.findOne({
       where: {
         code,
-        used: false,
+        status: 'pending',
         expires_at: { [Op.gt]: new Date() },
       },
     });

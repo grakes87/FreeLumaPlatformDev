@@ -1,7 +1,7 @@
 'use client';
 
 import { type ReactNode, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AuthProvider } from '@/context/AuthContext';
 import { SocketProvider } from '@/context/SocketContext';
@@ -25,8 +25,9 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Daily post routes are accessible to guests
-  const isGuestAllowedRoute = pathname === '/' || pathname.startsWith('/daily/');
+  // Daily post routes and mode landing pages are accessible to guests
+  const isGuestAllowedRoute =
+    pathname === '/' || pathname.startsWith('/daily/') || pathname === '/bible' || pathname === '/positivity';
 
   useEffect(() => {
     if (!loading && !isAuthenticated && !isGuestAllowedRoute) {
@@ -36,7 +37,7 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loading && isAuthenticated && user && !user.onboarding_complete) {
-      router.replace('/onboarding/mode');
+      router.replace('/onboarding/profile');
     }
   }, [loading, isAuthenticated, user, router]);
 
@@ -84,6 +85,20 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
 }
 
 function GuestDailyWrapper({ children }: { children: ReactNode }) {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const code = searchParams.get('code');
+
+  // Determine mode from the route
+  const mode = pathname === '/positivity' ? 'positivity' : 'bible';
+
+  // Build signup/login URLs preserving activation code and mode
+  let signupHref = `/signup?mode=${mode}`;
+  let loginHref = '/login';
+  if (code) {
+    signupHref = `/signup?activation_code=${encodeURIComponent(code)}&mode=${mode}`;
+  }
+
   return (
     <div className="fixed inset-0 overflow-hidden bg-black">
       {/* Daily post content (full screen, scroll snap matches authenticated AppShell) */}
@@ -103,13 +118,13 @@ function GuestDailyWrapper({ children }: { children: ReactNode }) {
           </p>
           <div className="flex gap-3">
             <Link
-              href="/signup"
+              href={signupHref}
               className="flex-1 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-primary-dark"
             >
               Sign Up
             </Link>
             <Link
-              href="/login"
+              href={loginHref}
               className="flex-1 rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
             >
               Sign In

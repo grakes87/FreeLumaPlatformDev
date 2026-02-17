@@ -164,7 +164,7 @@ export const POST = withAuth(
 
       // Check user has can_host flag
       const user = await User.findByPk(userId, {
-        attributes: ['id', 'can_host'],
+        attributes: ['id', 'can_host', 'mode'],
       });
       if (!user || !user.can_host) {
         return errorResponse(
@@ -190,6 +190,8 @@ export const POST = withAuth(
         until: until ? new Date(until) : undefined,
       });
 
+      const userMode = user.mode || 'bible';
+
       // Create the series
       const series = await WorkshopSeries.create({
         host_id: userId,
@@ -200,6 +202,7 @@ export const POST = withAuth(
         time_of_day,
         timezone,
         duration_minutes: duration_minutes ?? null,
+        mode: userMode,
       });
 
       // Generate instances for 90-day horizon
@@ -222,6 +225,7 @@ export const POST = withAuth(
         scheduled_at: scheduledAt,
         duration_minutes: duration_minutes ?? null,
         is_private: is_private ?? false,
+        mode: userMode,
       }));
 
       const workshops = await Workshop.bulkCreate(workshopRows);

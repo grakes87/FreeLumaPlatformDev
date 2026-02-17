@@ -74,10 +74,10 @@ export default function WorkshopDetailPage({
         </p>
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => router.push('/workshops')}
           className="mt-4 rounded-full bg-primary px-5 py-2 text-sm font-medium text-white"
         >
-          Go Back
+          Back to Workshops
         </button>
       </div>
     );
@@ -89,9 +89,9 @@ export default function WorkshopDetailPage({
       <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-surface/90 px-4 py-3 backdrop-blur-md dark:border-border-dark dark:bg-surface-dark/90">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => router.push('/workshops')}
           className="rounded-lg p-1 text-text-muted transition-colors hover:bg-slate-100 dark:text-text-muted-dark dark:hover:bg-slate-800"
-          aria-label="Go back"
+          aria-label="Back to workshops"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import {
   Plus,
   Pencil,
@@ -594,10 +594,14 @@ function VersesTab({
   const [showAI, setShowAI] = useState(false);
   const [aiCount, setAiCount] = useState(20);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [aiSuggestions, setAiSuggestions] = useState<{ ref: string; text: string | null }[]>([]);
   const [aiSelected, setAiSelected] = useState<Set<string>>(new Set());
   const [aiSaving, setAiSaving] = useState(false);
   const [aiSaveProgress, setAiSaveProgress] = useState({ current: 0, total: 0 });
+  // Verse list expand state — shows all translations for a verse
+  const [expandedVerseId, setExpandedVerseId] = useState<number | null>(null);
+  const [verseTranslations, setVerseTranslations] = useState<Record<number, { code: string; text: string | null }[]>>({});
+  const [verseTransLoading, setVerseTransLoading] = useState<number | null>(null);
 
   // Edit state
   const [editVerse, setEditVerse] = useState<Verse | null>(null);
@@ -693,9 +697,9 @@ function VersesTab({
       });
       if (res.ok) {
         const data = await res.json();
-        const suggestions: string[] = data.suggestions || [];
+        const suggestions: { ref: string; text: string | null }[] = (data.data?.suggestions ?? data.suggestions) || [];
         setAiSuggestions(suggestions);
-        setAiSelected(new Set(suggestions));
+        setAiSelected(new Set(suggestions.map((s) => s.ref)));
         toast.success(`Generated ${suggestions.length} suggestions`);
       } else {
         const data = await res.json();
@@ -810,6 +814,71 @@ function VersesTab({
       return next;
     });
   };
+
+  const TRANSLATION_CODES = ['KJV', 'ESV', 'NIV', 'NKJV', 'NLT', 'CSB', 'AMP', 'NIRV', 'NVI', 'RVR', 'NAB', 'NRSV'];
+
+  const handleExpandVerse = useCallback(async (verse: Verse) => {
+    if (expandedVerseId === verse.id) {
+      setExpandedVerseId(null);
+      return;
+    }
+    setExpandedVerseId(verse.id);
+
+    // Already cached
+    if (verseTranslations[verse.id]) return;
+
+    // First use translations already in the verse data
+    const preloaded: Record<string, string> = {};
+    if (verse.translations) {
+      for (const t of verse.translations) {
+        preloaded[t.translation_code.toUpperCase()] = t.translated_text;
+      }
+    }
+    // KJV is always the content_text
+    if (!preloaded['KJV']) {
+      preloaded['KJV'] = verse.content_text;
+    }
+
+    // Fetch any missing translations from API
+    const missing = TRANSLATION_CODES.filter((code) => !preloaded[code]);
+
+    if (missing.length === 0) {
+      setVerseTranslations((prev) => ({
+        ...prev,
+        [verse.id]: TRANSLATION_CODES.map((code) => ({ code, text: preloaded[code] ?? null })),
+      }));
+      return;
+    }
+
+    setVerseTransLoading(verse.id);
+    try {
+      const fetched = await Promise.all(
+        missing.map(async (code) => {
+          try {
+            const params = new URLSearchParams({ reference: verse.verse_reference, translation: code, type: 'verse' });
+            const res = await fetch(`/api/bible-translations/verse?${params}`);
+            if (!res.ok) return { code, text: null };
+            const data = await res.json();
+            return { code, text: (data.data?.text ?? data.text) as string | null };
+          } catch {
+            return { code, text: null };
+          }
+        })
+      );
+
+      const merged: Record<string, string | null> = { ...preloaded };
+      for (const f of fetched) {
+        merged[f.code] = f.text;
+      }
+
+      setVerseTranslations((prev) => ({
+        ...prev,
+        [verse.id]: TRANSLATION_CODES.map((code) => ({ code, text: merged[code] ?? null })),
+      }));
+    } finally {
+      setVerseTransLoading(null);
+    }
+  }, [expandedVerseId, verseTranslations]);
 
   const hasMore = verses.length < total;
   const selectedCategory = categories.find((c) => c.id === catId);
@@ -931,7 +1000,7 @@ function VersesTab({
                       <div className="flex gap-2">
                         <button
                           type="button"
-                          onClick={() => setAiSelected(new Set(aiSuggestions))}
+                          onClick={() => setAiSelected(new Set(aiSuggestions.map((s) => s.ref)))}
                           className="text-xs text-primary hover:underline"
                         >
                           Select All
@@ -945,19 +1014,32 @@ function VersesTab({
                         </button>
                       </div>
                     </div>
-                    <div className="max-h-64 overflow-y-auto rounded-lg border border-border dark:border-border-dark">
-                      {aiSuggestions.map((ref) => (
+                    <div className="max-h-96 overflow-y-auto rounded-lg border border-border dark:border-border-dark">
+                      {aiSuggestions.map((suggestion) => (
                         <label
-                          key={ref}
-                          className="flex cursor-pointer items-center gap-3 px-4 py-2 transition-colors hover:bg-surface-hover dark:hover:bg-surface-hover-dark"
+                          key={suggestion.ref}
+                          className="flex cursor-pointer items-start gap-3 border-b border-border/50 px-4 py-3 transition-colors last:border-b-0 hover:bg-surface-hover dark:border-border-dark/50 dark:hover:bg-surface-hover-dark"
                         >
                           <input
                             type="checkbox"
-                            checked={aiSelected.has(ref)}
-                            onChange={() => toggleAiSelection(ref)}
-                            className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                            checked={aiSelected.has(suggestion.ref)}
+                            onChange={() => toggleAiSelection(suggestion.ref)}
+                            className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-primary focus:ring-primary"
                           />
-                          <span className="text-sm text-text dark:text-text-dark">{ref}</span>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-sm font-medium text-text dark:text-text-dark">
+                              {suggestion.ref}
+                            </span>
+                            {suggestion.text ? (
+                              <p className="mt-0.5 text-xs leading-relaxed text-text-muted dark:text-text-muted-dark">
+                                {suggestion.text}
+                              </p>
+                            ) : (
+                              <p className="mt-0.5 text-xs italic text-red-400">
+                                Could not fetch KJV text
+                              </p>
+                            )}
+                          </div>
                         </label>
                       ))}
                     </div>
@@ -1027,53 +1109,104 @@ function VersesTab({
                 </thead>
                 <tbody className="divide-y divide-border dark:divide-border-dark">
                   {verses.map((v) => (
-                    <tr
-                      key={v.id}
-                      className="bg-surface transition-colors hover:bg-surface-hover/30 dark:bg-surface-dark dark:hover:bg-surface-hover-dark/30"
-                    >
-                      <td className="px-4 py-3 font-medium text-text dark:text-text-dark whitespace-nowrap">
-                        {v.verse_reference}
-                      </td>
-                      <td className="px-4 py-3 text-text-muted dark:text-text-muted-dark whitespace-nowrap">
-                        {v.book}
-                      </td>
-                      <td className="max-w-xs px-4 py-3 text-text-muted dark:text-text-muted-dark">
-                        <p className="line-clamp-2 text-xs">{v.content_text}</p>
-                      </td>
-                      <td className="px-4 py-3 text-center text-text dark:text-text-dark">
-                        {v.translations?.length ?? 0}
-                      </td>
-                      <td className="px-4 py-3 text-center text-text-muted dark:text-text-muted-dark">
-                        {v.reaction_count ?? 0}
-                      </td>
-                      <td className="px-4 py-3 text-center text-text-muted dark:text-text-muted-dark">
-                        {v.comment_count ?? 0}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
+                    <Fragment key={v.id}>
+                      <tr
+                        className="bg-surface transition-colors hover:bg-surface-hover/30 dark:bg-surface-dark dark:hover:bg-surface-hover-dark/30"
+                      >
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => {
-                              setEditVerse(v);
-                              setEditRef(v.verse_reference);
-                              setEditText(v.content_text);
-                            }}
-                            className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface-hover hover:text-text dark:text-text-muted-dark dark:hover:bg-surface-hover-dark dark:hover:text-text-dark"
-                            title="Edit"
+                            onClick={() => handleExpandVerse(v)}
+                            className="flex items-center gap-1.5 font-medium text-text dark:text-text-dark"
                           >
-                            <Pencil className="h-4 w-4" />
+                            {expandedVerseId === v.id ? (
+                              <ChevronUp className="h-3.5 w-3.5 shrink-0 text-text-muted dark:text-text-muted-dark" />
+                            ) : (
+                              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-text-muted dark:text-text-muted-dark" />
+                            )}
+                            {v.verse_reference}
+                            {verseTransLoading === v.id && (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                            )}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteVerse(v)}
-                            className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-red-50 hover:text-red-500 dark:text-text-muted-dark dark:hover:bg-red-500/10"
-                            title="Delete"
+                        </td>
+                        <td className="px-4 py-3 text-text-muted dark:text-text-muted-dark whitespace-nowrap">
+                          {v.book}
+                        </td>
+                        <td className="max-w-xs px-4 py-3 text-text-muted dark:text-text-muted-dark">
+                          <p className="line-clamp-2 text-xs">{v.content_text}</p>
+                        </td>
+                        <td className="px-4 py-3 text-center text-text dark:text-text-dark">
+                          {v.translations?.length ?? 0}
+                        </td>
+                        <td className="px-4 py-3 text-center text-text-muted dark:text-text-muted-dark">
+                          {v.reaction_count ?? 0}
+                        </td>
+                        <td className="px-4 py-3 text-center text-text-muted dark:text-text-muted-dark">
+                          {v.comment_count ?? 0}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditVerse(v);
+                                setEditRef(v.verse_reference);
+                                setEditText(v.content_text);
+                              }}
+                              className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface-hover hover:text-text dark:text-text-muted-dark dark:hover:bg-surface-hover-dark dark:hover:text-text-dark"
+                              title="Edit"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteVerse(v)}
+                              className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-red-50 hover:text-red-500 dark:text-text-muted-dark dark:hover:bg-red-500/10"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Expanded translations row */}
+                      {expandedVerseId === v.id && (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="bg-surface-hover/40 px-4 py-3 dark:bg-surface-hover-dark/40"
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                            {verseTranslations[v.id] ? (
+                              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                {verseTranslations[v.id].map(({ code, text }) => (
+                                  <div key={code} className="rounded-lg bg-surface p-2.5 dark:bg-surface-dark">
+                                    <span className="text-xs font-bold text-primary">{code}</span>
+                                    {text ? (
+                                      <p className="mt-0.5 text-xs leading-relaxed text-text-muted dark:text-text-muted-dark">
+                                        {text}
+                                      </p>
+                                    ) : (
+                                      <p className="mt-0.5 text-xs italic text-text-muted/50 dark:text-text-muted-dark/50">
+                                        Not available
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 py-2">
+                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                <span className="text-xs text-text-muted dark:text-text-muted-dark">
+                                  Fetching all translations...
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

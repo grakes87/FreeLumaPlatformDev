@@ -114,6 +114,16 @@ const adminActionSchema = z.object({
   scheduled_at: z.string().optional(),
   duration_minutes: z.number().int().min(15).max(480).optional(),
   is_private: z.boolean().optional(),
+  mode: z.enum(['bible', 'positivity']).optional(),
+  // Recurring fields
+  is_recurring: z.boolean().optional(),
+  frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly']).optional(),
+  time_of_day: z.string().optional(),
+  timezone: z.string().optional(),
+  byDay: z.array(z.string()).optional(),
+  endCondition: z.enum(['never', 'count', 'until']).optional(),
+  occurrenceCount: z.number().int().min(1).max(52).optional(),
+  untilDate: z.string().optional(),
 });
 
 /**
@@ -217,22 +227,111 @@ export const PUT = withAdmin(async (req: NextRequest, context: AuthContext) => {
     }
 
     if (action === 'create_on_behalf') {
-      const { host_id, title, description, category_id, scheduled_at, duration_minutes, is_private } = parsed.data;
+      const {
+        host_id, title, description, category_id, scheduled_at,
+        duration_minutes, is_private, mode,
+        is_recurring, frequency, time_of_day, timezone, byDay,
+        endCondition, occurrenceCount, untilDate,
+      } = parsed.data;
 
-      if (!host_id || !title || !scheduled_at) {
-        return errorResponse('host_id, title, and scheduled_at are required');
+      if (!host_id || !title) {
+        return errorResponse('host_id and title are required');
       }
 
-      const { User, Workshop } = await import('@/lib/db/models');
+      const { User, Workshop, WorkshopSeries } = await import('@/lib/db/models');
 
       // Validate host exists and is active
-      const hostUser = await User.findByPk(host_id, { attributes: ['id', 'can_host', 'status', 'display_name', 'username'] });
+      const hostUser = await User.findByPk(host_id, { attributes: ['id', 'can_host', 'status', 'display_name', 'username', 'mode'] });
       if (!hostUser) return errorResponse('Host user not found', 404);
       if (hostUser.status !== 'active') return errorResponse('Host user is not active');
 
       // Auto-enable can_host if needed
       if (!hostUser.can_host) {
         await hostUser.update({ can_host: true });
+      }
+
+      const workshopMode = mode || hostUser.mode || 'bible';
+
+      if (is_recurring) {
+        // Create recurring workshop series
+        if (!frequency || !time_of_day || !timezone) {
+          return errorResponse('frequency, time_of_day, and timezone are required for recurring workshops');
+        }
+
+        // Build rrule
+        const freqMap: Record<string, string> = {
+          daily: 'FREQ=DAILY',
+          weekly: 'FREQ=WEEKLY',
+          biweekly: 'FREQ=WEEKLY;INTERVAL=2',
+          monthly: 'FREQ=MONTHLY',
+        };
+        let rrule = freqMap[frequency] || 'FREQ=WEEKLY';
+
+        if ((frequency === 'weekly' || frequency === 'biweekly') && byDay && byDay.length > 0) {
+          rrule += `;BYDAY=${byDay.join(',')}`;
+        }
+
+        if (endCondition === 'count' && occurrenceCount) {
+          rrule += `;COUNT=${occurrenceCount}`;
+        } else if (endCondition === 'until' && untilDate) {
+          const untilStr = new Date(`${untilDate}T23:59:59Z`).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+          rrule += `;UNTIL=${untilStr}`;
+        }
+
+        const series = await WorkshopSeries.create({
+          host_id,
+          title,
+          description: description || null,
+          category_id: category_id || null,
+          rrule,
+          time_of_day,
+          timezone,
+          duration_minutes: duration_minutes || null,
+          mode: workshopMode,
+        });
+
+        // Generate instances for 90-day horizon
+        const { generateInstancesInTimezone } = await import('@/lib/workshop/recurrence');
+        const instanceDates = generateInstancesInTimezone(rrule, time_of_day, timezone, new Date(), 90);
+
+        const workshopRows = instanceDates.map((scheduledAt: Date) => ({
+          series_id: series.id,
+          host_id,
+          category_id: category_id || null,
+          title,
+          description: description || null,
+          scheduled_at: scheduledAt,
+          duration_minutes: duration_minutes || null,
+          is_private: is_private || false,
+          mode: workshopMode,
+          created_by_admin_id: context.user.id,
+        }));
+
+        const workshops = await Workshop.bulkCreate(workshopRows);
+        await Promise.all(workshops.map((w) => w.update({ agora_channel: `workshop-${w.id}` })));
+
+        // Notify host (non-fatal)
+        try {
+          const { createNotification } = await import('@/lib/notifications/create');
+          const { NotificationType, NotificationEntityType } = await import('@/lib/notifications/types');
+          await createNotification({
+            recipient_id: host_id,
+            actor_id: context.user.id,
+            type: NotificationType.WORKSHOP_UPDATED,
+            entity_type: NotificationEntityType.WORKSHOP,
+            entity_id: workshops[0]?.id || series.id,
+            preview_text: `Admin created a recurring workshop series for you: ${title}`,
+          });
+        } catch {
+          console.error('[Admin] Failed to send workshop series creation notification');
+        }
+
+        return successResponse({ series, workshops, action: 'create_on_behalf' }, 201);
+      }
+
+      // Single workshop
+      if (!scheduled_at) {
+        return errorResponse('scheduled_at is required for single workshops');
       }
 
       // Create workshop on behalf of host
@@ -244,6 +343,7 @@ export const PUT = withAdmin(async (req: NextRequest, context: AuthContext) => {
         scheduled_at: new Date(scheduled_at),
         duration_minutes: duration_minutes || null,
         is_private: is_private || false,
+        mode: workshopMode,
         created_by_admin_id: context.user.id,
       });
 

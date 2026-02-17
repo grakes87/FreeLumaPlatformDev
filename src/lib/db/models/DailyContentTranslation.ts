@@ -6,6 +6,7 @@ export interface DailyContentTranslationAttributes {
   daily_content_id: number;
   translation_code: string;
   translated_text: string;
+  chapter_text: string | null;
   verse_reference: string | null;
   audio_url: string | null;
   audio_srt_url: string | null;
@@ -16,6 +17,7 @@ export interface DailyContentTranslationAttributes {
 
 export interface DailyContentTranslationCreationAttributes extends Optional<DailyContentTranslationAttributes,
   | 'id'
+  | 'chapter_text'
   | 'verse_reference'
   | 'audio_url'
   | 'audio_srt_url'
@@ -29,6 +31,7 @@ class DailyContentTranslation extends Model<DailyContentTranslationAttributes, D
   declare daily_content_id: number;
   declare translation_code: string;
   declare translated_text: string;
+  declare chapter_text: string | null;
   declare verse_reference: string | null;
   declare audio_url: string | null;
   declare audio_srt_url: string | null;
@@ -59,6 +62,10 @@ DailyContentTranslation.init(
     translated_text: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    chapter_text: {
+      type: DataTypes.TEXT('long'),
+      allowNull: true,
     },
     verse_reference: {
       type: DataTypes.STRING(255),

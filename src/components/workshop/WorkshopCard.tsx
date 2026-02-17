@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { format, isPast } from 'date-fns';
-import { Users, Lock, Repeat, Clock } from 'lucide-react';
+import { Users, Lock, Repeat, Clock, Pencil, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Card } from '@/components/ui/Card';
 import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
@@ -57,6 +58,7 @@ function CategoryBadge({ category }: { category: Workshop['category'] }) {
  * Shows title, host, date, category, attendee count, and status indicators.
  */
 export function WorkshopCard({ workshop }: WorkshopCardProps) {
+  const router = useRouter();
   const scheduledDate = new Date(workshop.scheduled_at);
   const formattedDate = format(scheduledDate, "EEE, MMM d 'at' h:mm a");
   const isEnded = workshop.status === 'ended';
@@ -86,11 +88,19 @@ export function WorkshopCard({ workshop }: WorkshopCardProps) {
             </span>
           )}
 
-          {/* Recurring indicator */}
+          {/* Recurring indicator — links to series page */}
           {workshop.series_id && (
-            <span className="text-text-muted dark:text-text-muted-dark" title="Part of a series">
+            <button
+              className="text-text-muted hover:text-primary dark:text-text-muted-dark dark:hover:text-primary"
+              title="View series"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                router.push(`/workshops/series/${workshop.series_id}`);
+              }}
+            >
               <Repeat className="h-3.5 w-3.5" />
-            </span>
+            </button>
           )}
         </div>
 
@@ -140,12 +150,45 @@ export function WorkshopCard({ workshop }: WorkshopCardProps) {
           </span>
         </div>
 
-        {/* RSVP status (if user has RSVP'd) */}
-        {workshop.user_rsvp && (
-          <div className="mt-2">
+        {/* RSVP / Hosting badge + host quick actions */}
+        {(workshop.is_host || workshop.user_rsvp) && (
+          <div className="mt-2 flex items-center gap-2">
             <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600 dark:bg-green-500/20 dark:text-green-400">
-              {workshop.is_host ? 'Hosting' : workshop.user_rsvp.is_co_host ? 'Co-host' : 'RSVP\'d'}
+              {workshop.is_host ? 'Hosting' : workshop.user_rsvp?.is_co_host ? 'Co-host' : 'RSVP\'d'}
             </span>
+
+            {/* Host quick actions */}
+            {workshop.is_host && workshop.status !== 'ended' && (
+              <>
+                <div className="flex-1" />
+                <button
+                  className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-text-muted transition-colors hover:bg-surface-hover hover:text-text dark:border-border-dark dark:text-text-muted-dark dark:hover:bg-surface-hover-dark dark:hover:text-text-dark"
+                  title="Edit workshop"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    router.push(`/workshops/${workshop.id}/edit`);
+                  }}
+                >
+                  <Pencil className="h-3 w-3" />
+                  Edit
+                </button>
+                {workshop.status === 'scheduled' && (
+                  <button
+                    className="inline-flex items-center gap-1 rounded-full bg-green-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-green-700"
+                    title="Start workshop"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      router.push(`/workshops/${workshop.id}/live`);
+                    }}
+                  >
+                    <Radio className="h-3 w-3" />
+                    Start
+                  </button>
+                )}
+              </>
+            )}
           </div>
         )}
       </Card>

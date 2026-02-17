@@ -5,7 +5,7 @@ import { useDailyFeed } from '@/hooks/useDailyFeed';
 import { DailyPostCarousel } from './DailyPostCarousel';
 import { useDailyTranslation } from '@/context/DailyTranslationContext';
 import { useAuth } from '@/hooks/useAuth';
-import { VerseModeToggle, type VerseMode } from './VerseModeToggle';
+import type { VerseMode } from './VerseModeToggle';
 import { VerseByCategorySlide } from './VerseByCategorySlide';
 import { CategorySelector } from './CategorySelector';
 import { useVerseByCategoryFeed } from '@/hooks/useVerseByCategoryFeed';
@@ -39,20 +39,15 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
   // Category selector collapsed state
   const [categorySelectorCollapsed, setCategorySelectorCollapsed] = useState(true);
 
-  const handleModeChange = useCallback(async (newMode: VerseMode) => {
-    setVerseMode(newMode);
-    // Fire-and-forget persist
-    try {
-      await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ verse_mode: newMode }),
-      });
+  // Listen for verse mode changes from TopBar circle toggle
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const newMode = (e as CustomEvent<VerseMode>).detail;
+      setVerseMode(newMode);
       refreshUser();
-    } catch {
-      // Silently fail
-    }
+    };
+    window.addEventListener('verse-mode-change', handler);
+    return () => window.removeEventListener('verse-mode-change', handler);
   }, [refreshUser]);
 
   const handleCategorySelect = useCallback((id: number | 'all') => {
@@ -206,15 +201,7 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
 
   return (
     <div className="bg-[#0a0a0f] relative">
-      {/* VerseModeToggle -- fixed at top, centered, only for bible-mode users */}
-      {showVerseModeToggle && (
-        <div
-          className="fixed left-1/2 z-30 -translate-x-1/2"
-          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 3.5rem + 0.25rem)' }}
-        >
-          <VerseModeToggle mode={verseMode} onChange={handleModeChange} />
-        </div>
-      )}
+      {/* VerseModeToggle is now rendered in TopBar, not here */}
 
       {/* Daily Verse mode (standard DailyFeed scroll) */}
       <div

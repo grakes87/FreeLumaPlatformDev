@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import type { FeedPost } from '@/hooks/useFeed';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { PostCard } from './PostCard';
@@ -22,6 +22,8 @@ interface PostFeedProps {
   currentUserId: number | null;
   onRemovePost?: (postId: number) => void;
   onUpdatePost?: (postId: number, updates: Partial<FeedPost>) => void;
+  /** Ref tracking how many items were trimmed from front (TikTok mode scroll adjustment) */
+  frontTrimRef?: React.MutableRefObject<number>;
 }
 
 /**
@@ -40,6 +42,7 @@ export function PostFeed({
   currentUserId,
   onRemovePost,
   onUpdatePost,
+  frontTrimRef,
 }: PostFeedProps) {
   const { ref: sentinelRef, inView } = useInfiniteScroll();
 
@@ -73,9 +76,11 @@ export function PostFeed({
     }
   }, [feedStyle, posts.length]);
 
-  // TikTok preloading: load next batch when user is 3 posts from the end
+  // TikTok mode: track active card index for virtualization + preloading
+  const [tiktokActiveIndex, setTiktokActiveIndex] = useState(0);
+
   useEffect(() => {
-    if (feedStyle !== 'tiktok' || !hasMore || loading) return;
+    if (feedStyle !== 'tiktok') return;
 
     const container = getScrollContainer();
     if (!container) return;
@@ -84,9 +89,11 @@ export function PostFeed({
       const cardHeight = container.clientHeight;
       if (cardHeight === 0) return;
       const currentIndex = Math.round(container.scrollTop / cardHeight);
-      const threshold = posts.length - 3;
+      setTiktokActiveIndex(currentIndex);
 
-      if (currentIndex >= threshold && !preloadTriggeredRef.current) {
+      // Preload next batch when 3 posts from end
+      const threshold = posts.length - 3;
+      if (currentIndex >= threshold && hasMore && !loading && !preloadTriggeredRef.current) {
         preloadTriggeredRef.current = true;
         onLoadMore();
       }
@@ -100,6 +107,21 @@ export function PostFeed({
   useEffect(() => {
     preloadTriggeredRef.current = false;
   }, [posts.length]);
+
+  // Adjust scroll position when sliding window trims items from front (TikTok mode)
+  useLayoutEffect(() => {
+    if (!frontTrimRef || feedStyle !== 'tiktok') return;
+    const trimCount = frontTrimRef.current;
+    if (trimCount > 0) {
+      frontTrimRef.current = 0;
+      const container = getScrollContainer();
+      if (container) {
+        const cardHeight = container.clientHeight;
+        container.scrollTop -= trimCount * cardHeight;
+      }
+      setTiktokActiveIndex((prev) => Math.max(0, prev - trimCount));
+    }
+  }, [posts, frontTrimRef, feedStyle]);
 
   // Pull-to-refresh handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -175,19 +197,23 @@ export function PostFeed({
           </div>
         )}
 
-        {posts.map((post) => (
+        {posts.map((post, index) => (
           <div
             key={post.id}
             className="w-full snap-start snap-always"
             style={{ height: '100svh' }}
           >
-            <PostCard
-              post={post}
-              feedStyle="tiktok"
-              currentUserId={currentUserId}
-              onRemovePost={onRemovePost}
-              onUpdatePost={onUpdatePost}
-            />
+            {Math.abs(index - tiktokActiveIndex) <= 2 ? (
+              <PostCard
+                post={post}
+                feedStyle="tiktok"
+                currentUserId={currentUserId}
+                onRemovePost={onRemovePost}
+                onUpdatePost={onUpdatePost}
+              />
+            ) : (
+              <div className="h-full w-full bg-black" />
+            )}
           </div>
         ))}
 

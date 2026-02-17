@@ -77,6 +77,9 @@ interface UsePrayerWallReturn {
   updatePrayer: (id: number, updates: Partial<PrayerItem>) => void;
 }
 
+/** Max prayer items to keep in memory. Prevents unbounded growth during long sessions. */
+const MAX_PRAYERS_IN_MEMORY = 100;
+
 /**
  * Hook to manage prayer wall feed state with tabs, filters, and cursor pagination.
  */
@@ -133,7 +136,14 @@ export function usePrayerWall(): UsePrayerWallReturn {
         if (reset) {
           setPrayers(data.prayers);
         } else {
-          setPrayers((prev) => [...prev, ...data.prayers]);
+          setPrayers((prev) => {
+            const combined = [...prev, ...data.prayers];
+            // Cap array to prevent unbounded growth during long sessions
+            if (combined.length > MAX_PRAYERS_IN_MEMORY) {
+              return combined.slice(combined.length - MAX_PRAYERS_IN_MEMORY);
+            }
+            return combined;
+          });
         }
 
         setCursor(data.next_cursor);

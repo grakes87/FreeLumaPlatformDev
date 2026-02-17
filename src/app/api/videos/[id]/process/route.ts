@@ -83,7 +83,7 @@ export const POST = withAdmin(
                 CacheControl: 'public, max-age=31536000, immutable',
               })
             );
-            updates.thumbnail_url = getPublicUrl(thumbnailKey);
+            updates.thumbnail_url = `${getPublicUrl(thumbnailKey)}?v=${Date.now()}`;
             log.push(`[Thumbnail] Uploaded to B2: ${thumbnailKey}`);
           } else {
             log.push('[Thumbnail] B2 client not initialized');

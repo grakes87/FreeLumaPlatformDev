@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Search, X, Loader2, Check, UserPlus } from 'lucide-react';
+import { Search, X, Loader2, Check, UserPlus, UserCog } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -20,33 +20,53 @@ interface InviteUsersModalProps {
   workshopId: number;
   isOpen: boolean;
   onClose: () => void;
+  mode?: 'invite' | 'cohost';
 }
 
 export function InviteUsersModal({
   workshopId,
   isOpen,
   onClose,
+  mode = 'invite',
 }: InviteUsersModalProps) {
   const toast = useToast();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<UserResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [followers, setFollowers] = useState<UserResult[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Reset state when modal opens
+  const isCohost = mode === 'cohost';
+  const title = isCohost ? 'Add Co-host' : 'Invite People';
+
+  // Reset state and load initial followers when modal opens
   useEffect(() => {
     if (isOpen) {
       setQuery('');
       setResults([]);
       setSelected(new Set());
+      setFollowers([]);
       setTimeout(() => inputRef.current?.focus(), 100);
+
+      // Pre-load followers/following for the initial view
+      setInitialLoading(true);
+      fetch('/api/users/search?followers_only=true&limit=50', {
+        credentials: 'include',
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.users) setFollowers(data.users);
+        })
+        .catch(() => {})
+        .finally(() => setInitialLoading(false));
     }
   }, [isOpen]);
 
-  // Debounced search
+  // Debounced search — searches within followers/following
   useEffect(() => {
     if (!isOpen) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -61,6 +81,7 @@ export function InviteUsersModal({
       try {
         const params = new URLSearchParams();
         params.set('q', query);
+        params.set('followers_only', 'true');
         params.set('limit', '20');
 
         const res = await fetch(`/api/users/search?${params}`, {
@@ -84,47 +105,93 @@ export function InviteUsersModal({
   }, [query, isOpen]);
 
   const toggleUser = useCallback((userId: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(userId)) {
-        next.delete(userId);
-      } else {
-        next.add(userId);
-      }
-      return next;
-    });
-  }, []);
+    if (isCohost) {
+      // Co-host mode: single select only
+      setSelected((prev) => {
+        if (prev.has(userId)) return new Set();
+        return new Set([userId]);
+      });
+    } else {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        if (next.has(userId)) {
+          next.delete(userId);
+        } else {
+          next.add(userId);
+        }
+        return next;
+      });
+    }
+  }, [isCohost]);
 
-  const handleInvite = useCallback(async () => {
+  const handleSubmit = useCallback(async () => {
     if (selected.size === 0 || submitting) return;
 
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/workshops/${workshopId}/invite`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ userIds: Array.from(selected) }),
-      });
+      if (isCohost) {
+        // Co-host: first invite, then promote to co-host
+        const userId = Array.from(selected)[0];
 
-      if (res.ok) {
-        const data = await res.json();
-        const invited = data.data?.invited ?? data.invited ?? selected.size;
-        toast.success(`Invited ${invited} user${invited !== 1 ? 's' : ''}`);
-        onClose();
+        // Invite user first (may already be RSVP'd)
+        await fetch(`/api/workshops/${workshopId}/invite`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ userIds: [userId] }),
+        });
+
+        // Promote to co-host
+        const res = await fetch(
+          `/api/workshops/${workshopId}/attendees/${userId}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ is_co_host: true }),
+          }
+        );
+
+        if (res.ok) {
+          toast.success('Co-host added');
+          onClose();
+        } else {
+          const data = await res.json().catch(() => null);
+          toast.error(data?.error || 'Failed to add co-host');
+        }
       } else {
-        const data = await res.json().catch(() => null);
-        toast.error(data?.error || 'Failed to send invitations');
+        // Regular invite
+        const res = await fetch(`/api/workshops/${workshopId}/invite`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ userIds: Array.from(selected) }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const invited = data.data?.invited ?? data.invited ?? selected.size;
+          toast.success(`Invited ${invited} user${invited !== 1 ? 's' : ''}`);
+          onClose();
+        } else {
+          const data = await res.json().catch(() => null);
+          toast.error(data?.error || 'Failed to send invitations');
+        }
       }
     } catch {
-      toast.error('Failed to send invitations');
+      toast.error(isCohost ? 'Failed to add co-host' : 'Failed to send invitations');
     } finally {
       setSubmitting(false);
     }
-  }, [workshopId, selected, submitting, toast, onClose]);
+  }, [workshopId, selected, submitting, isCohost, toast, onClose]);
+
+  // Show search results if searching, otherwise show followers
+  const displayUsers = query.length >= 2 ? results : followers;
+  const showEmptySearch = !loading && !initialLoading && query.length >= 2 && results.length === 0;
+  const showInitialEmpty = !loading && !initialLoading && query.length < 2 && followers.length === 0;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Invite Users" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="lg">
       {/* Search input */}
       <div className="mb-4">
         <div className="flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-2 dark:bg-gray-800">
@@ -134,7 +201,7 @@ export function InviteUsersModal({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search people..."
+            placeholder="Search followers..."
             className={cn(
               'flex-1 bg-transparent text-sm text-gray-900 outline-none',
               'placeholder:text-gray-400 dark:text-white dark:placeholder:text-gray-500'
@@ -161,26 +228,26 @@ export function InviteUsersModal({
 
       {/* Results */}
       <div className="max-h-64 overflow-y-auto">
-        {loading && (
+        {(loading || initialLoading) && (
           <div className="flex justify-center py-6">
             <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
           </div>
         )}
 
-        {!loading && query.length >= 2 && results.length === 0 && (
+        {showEmptySearch && (
           <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-            No users found
+            No followers found matching &ldquo;{query}&rdquo;
           </div>
         )}
 
-        {!loading && query.length < 2 && (
+        {showInitialEmpty && (
           <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-            Type at least 2 characters to search
+            No followers or following to show
           </div>
         )}
 
-        {!loading &&
-          results.map((user) => {
+        {!loading && !initialLoading &&
+          displayUsers.map((user) => {
             const isSelected = selected.has(user.id);
 
             return (
@@ -233,17 +300,26 @@ export function InviteUsersModal({
           })}
       </div>
 
-      {/* Invite button */}
+      {/* Action button */}
       <div className="mt-4 border-t border-border pt-4 dark:border-border-dark">
         <Button
           variant="primary"
           fullWidth
           loading={submitting}
           disabled={selected.size === 0}
-          onClick={handleInvite}
+          onClick={handleSubmit}
         >
-          <UserPlus className="h-4 w-4" />
-          Invite {selected.size > 0 ? `${selected.size} User${selected.size !== 1 ? 's' : ''}` : 'Selected'}
+          {isCohost ? (
+            <>
+              <UserCog className="h-4 w-4" />
+              {selected.size > 0 ? 'Add as Co-host' : 'Select a Co-host'}
+            </>
+          ) : (
+            <>
+              <UserPlus className="h-4 w-4" />
+              Invite {selected.size > 0 ? `${selected.size} User${selected.size !== 1 ? 's' : ''}` : 'Selected'}
+            </>
+          )}
         </Button>
       </div>
     </Modal>

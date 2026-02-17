@@ -28,21 +28,25 @@ export function FontLoader() {
     return Array.from(families).sort();
   }, [fontConfig]);
 
-  // Build CSS variable declarations
-  const cssVars = useMemo(() => {
-    const lines: string[] = [];
+  // Build CSS: variables on :root + override utility classes per active field.
+  // Only fields with a real custom font get a variable and class.
+  // When a field is "inherit"/empty, nothing is output — Tailwind defaults apply.
+  const cssText = useMemo(() => {
+    const varLines: string[] = [];
+    const classRules: string[] = [];
     for (const field of FONT_FIELDS) {
       const family = fontConfig[field.key];
       if (family && family !== 'inherit' && family !== '') {
-        // Look up the font's category for the fallback stack
         const curated = findCuratedFont(family);
         const fallback = curated?.category ?? 'sans-serif';
-        lines.push(`  ${field.cssVar}: '${family}', ${fallback};`);
-      } else {
-        lines.push(`  ${field.cssVar}: inherit;`);
+        varLines.push(`  ${field.cssVar}: '${family}', ${fallback};`);
+        // Utility class that components add; only exists when font is active
+        const cls = field.cssVar.replace('--', 'fl-');
+        classRules.push(`.${cls} { font-family: var(${field.cssVar}); }`);
       }
     }
-    return `:root {\n${lines.join('\n')}\n}`;
+    if (varLines.length === 0) return '';
+    return `:root {\n${varLines.join('\n')}\n}\n${classRules.join('\n')}`;
   }, [fontConfig]);
 
   // Nothing to load -- render nothing
@@ -64,8 +68,8 @@ export function FontLoader() {
       {/* Load the Google Fonts stylesheet */}
       <link rel="stylesheet" href={href} />
 
-      {/* Set CSS custom properties for each font field */}
-      <style dangerouslySetInnerHTML={{ __html: cssVars }} />
+      {/* Set CSS custom properties + override utility classes */}
+      <style dangerouslySetInnerHTML={{ __html: cssText }} />
     </>
   );
 }

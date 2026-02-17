@@ -80,23 +80,31 @@ export function QuickReactionPicker({
   }
 
   return createPortal(
-    <div ref={pickerRef} style={style}>
-      <div className="flex gap-0.5 rounded-full bg-white px-2 py-1.5 shadow-[0_2px_12px_rgba(0,0,0,0.15)]">
-        {reactionTypes.map((type) => (
-          <button
-            key={type}
-            type="button"
-            onClick={() => handleSelect(type)}
-            className={cn(
-              'rounded-full p-1 text-[26px] leading-none transition-transform hover:-translate-y-1 hover:scale-125 active:scale-90',
-              selectedReaction === type && 'bg-primary/20 ring-2 ring-primary/50 scale-110'
-            )}
-          >
-            {REACTION_EMOJI_MAP[type]}
-          </button>
-        ))}
+    <>
+      {/* Invisible backdrop to catch outside clicks/taps */}
+      <div
+        className="fixed inset-0 z-[59]"
+        onClick={onClose}
+        onTouchEnd={onClose}
+      />
+      <div ref={pickerRef} style={style}>
+        <div className="flex gap-0.5 rounded-full bg-white px-2 py-1.5 shadow-[0_2px_12px_rgba(0,0,0,0.15)]">
+          {reactionTypes.map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => handleSelect(type)}
+              className={cn(
+                'rounded-full p-1 text-[26px] leading-none transition-transform hover:-translate-y-1 hover:scale-125 active:scale-90',
+                selectedReaction === type && 'bg-primary/20 ring-2 ring-primary/50 scale-110'
+              )}
+            >
+              {REACTION_EMOJI_MAP[type]}
+            </button>
+          ))}
+        </div>
       </div>
-    </div>,
+    </>,
     document.body
   );
 }

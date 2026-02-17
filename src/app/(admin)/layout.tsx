@@ -12,6 +12,16 @@ function AdminGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
 
+  // Force light theme on admin pages
+  useEffect(() => {
+    const html = document.documentElement;
+    const prev = html.getAttribute('data-theme');
+    html.setAttribute('data-theme', 'light');
+    return () => {
+      html.setAttribute('data-theme', prev || 'dark');
+    };
+  }, []);
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.replace('/login');

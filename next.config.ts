@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '**.backblazeb2.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'cdn.freeluma.app',
+      },
     ],
   },
 };

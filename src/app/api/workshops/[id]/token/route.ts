@@ -26,6 +26,15 @@ export const GET = withAuth(
 
       const userId = context.user.id;
 
+      // Optional uid override for screen-share (uses a separate Agora client
+      // with uid = userId + 100000).  Authorization is still checked against
+      // the authenticated user; only the token UID changes.
+      const uidParam = req.nextUrl.searchParams.get('uid');
+      const tokenUid = uidParam ? parseInt(uidParam, 10) : userId;
+      if (isNaN(tokenUid)) {
+        return errorResponse('Invalid uid parameter');
+      }
+
       const workshop = await Workshop.findByPk(workshopId);
       if (!workshop) {
         return errorResponse('Workshop not found', 404);
@@ -89,14 +98,14 @@ export const GET = withAuth(
 
       const token = generateAgoraToken(
         workshop.agora_channel,
-        userId,
+        tokenUid,
         role
       );
 
       return successResponse({
         token,
         channelName: workshop.agora_channel,
-        uid: userId,
+        uid: tokenUid,
         role,
         appId: process.env.NEXT_PUBLIC_AGORA_APP_ID || '',
       });

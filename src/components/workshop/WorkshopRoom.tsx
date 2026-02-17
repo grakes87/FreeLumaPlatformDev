@@ -12,14 +12,15 @@ import {
   Hand,
   AlertTriangle,
   LogOut,
+  Ban,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useWorkshopState } from '@/hooks/useWorkshopState';
 import { useWorkshopChat, type ChatMessage } from '@/hooks/useWorkshopChat';
-import { useWorkshopSocket } from '@/hooks/useWorkshopSocket';
 import { WorkshopLobby } from '@/components/workshop/WorkshopLobby';
 import { WorkshopVideo } from '@/components/workshop/WorkshopVideo';
 import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,21 +57,29 @@ export default function WorkshopRoom({
     agoraAppId,
     agoraRole,
     error,
+    socket,
     attendees,
     raisedHands,
     socketActions,
+    banUser,
     startWorkshop,
     endWorkshop,
   } = useWorkshopState(workshopId);
 
-  // Socket for chat (get raw socket from useWorkshopSocket)
-  const { socket } = useWorkshopSocket(workshopId);
+  // Chat uses the same socket — no duplicate connection
   const { messages, sendMessage } = useWorkshopChat(socket, workshopId);
 
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('chat');
   const [starting, setStarting] = useState(false);
+
+  // Track previous raised hand count to detect new raises
+  const prevRaisedHandCountRef = useRef(0);
+  const [handAlert, setHandAlert] = useState(false);
+
+  // End workshop confirmation
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
 
   // Duration timer
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -97,6 +106,21 @@ export default function WorkshopRoom({
     };
   }, [state]);
 
+  // Alert host/co-host when new hands are raised
+  useEffect(() => {
+    if (!isHost && !isCoHost) return;
+    const prevCount = prevRaisedHandCountRef.current;
+    const newCount = raisedHands.length;
+    if (newCount > prevCount && prevCount >= 0) {
+      setHandAlert(true);
+      // Auto-dismiss after 5s
+      const timer = setTimeout(() => setHandAlert(false), 5000);
+      prevRaisedHandCountRef.current = newCount;
+      return () => clearTimeout(timer);
+    }
+    prevRaisedHandCountRef.current = newCount;
+  }, [raisedHands.length, isHost, isCoHost]);
+
   // Redirect to detail page when ended
   useEffect(() => {
     if (state === 'ended') {
@@ -116,10 +140,12 @@ export default function WorkshopRoom({
     }
   }, [startWorkshop]);
 
-  const handleEndWorkshop = useCallback(async () => {
-    if (confirm('Are you sure you want to end the workshop for everyone?')) {
-      await endWorkshop();
-    }
+  const handleEndRequest = useCallback(() => {
+    setShowEndConfirm(true);
+  }, []);
+
+  const handleEndConfirm = useCallback(async () => {
+    await endWorkshop();
   }, [endWorkshop]);
 
   const formatDuration = (secs: number) => {
@@ -137,8 +163,8 @@ export default function WorkshopRoom({
     return (
       <div className="flex h-full w-full items-center justify-center">
         <div className="text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-white/60" />
-          <p className="mt-3 text-sm text-white/60">Joining workshop...</p>
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-text-muted dark:text-white/60" />
+          <p className="mt-3 text-sm text-text-muted dark:text-white/60">Joining workshop...</p>
         </div>
       </div>
     );
@@ -150,19 +176,19 @@ export default function WorkshopRoom({
       <div className="flex h-full w-full items-center justify-center px-4">
         <div className="text-center">
           <AlertTriangle className="mx-auto h-10 w-10 text-red-400" />
-          <p className="mt-3 text-white">{error || 'Something went wrong'}</p>
+          <p className="mt-3 text-text dark:text-white">{error || 'Something went wrong'}</p>
           <div className="mt-4 flex gap-3 justify-center">
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20"
+              className="rounded-xl bg-gray-100 px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-gray-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
             >
               Retry
             </button>
             <button
               type="button"
               onClick={onExit}
-              className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20"
+              className="rounded-xl bg-gray-100 px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-gray-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
             >
               Go Back
             </button>
@@ -177,11 +203,11 @@ export default function WorkshopRoom({
     return (
       <div className="flex h-full w-full items-center justify-center px-4">
         <div className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
-            <LogOut className="h-8 w-8 text-white/60" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-white/10">
+            <LogOut className="h-8 w-8 text-text-muted dark:text-white/60" />
           </div>
-          <h2 className="text-xl font-bold text-white">Workshop Ended</h2>
-          <p className="mt-2 text-sm text-white/50">
+          <h2 className="text-xl font-bold text-text dark:text-white">Workshop Ended</h2>
+          <p className="mt-2 text-sm text-text-muted dark:text-white/50">
             Redirecting to workshop page...
           </p>
         </div>
@@ -194,16 +220,16 @@ export default function WorkshopRoom({
     return (
       <div className="flex h-full flex-col">
         {/* Lobby top bar */}
-        <div className="flex h-12 shrink-0 items-center gap-3 border-b border-white/10 px-3">
+        <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border dark:border-white/10 px-3">
           <button
             type="button"
             onClick={onExit}
-            className="rounded-full p-1.5 text-white/60 transition-colors hover:text-white"
+            className="rounded-full p-1.5 text-text-muted transition-colors hover:text-text dark:text-white/60 dark:hover:text-white"
             aria-label="Back"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h2 className="flex-1 truncate text-sm font-semibold text-white">
+          <h2 className="flex-1 truncate text-sm font-semibold text-text dark:text-white">
             {workshop.title}
           </h2>
         </div>
@@ -224,17 +250,17 @@ export default function WorkshopRoom({
     return (
       <div className="flex h-full flex-col">
         {/* Top bar */}
-        <div className="flex h-12 shrink-0 items-center gap-2 border-b border-white/10 px-3">
+        <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border dark:border-white/10 px-3">
           <button
             type="button"
             onClick={onExit}
-            className="shrink-0 rounded-full p-1.5 text-white/60 transition-colors hover:text-white"
+            className="shrink-0 rounded-full p-1.5 text-text-muted transition-colors hover:text-text dark:text-white/60 dark:hover:text-white"
             aria-label="Leave workshop"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
 
-          <h2 className="flex-1 truncate text-sm font-semibold text-white">
+          <h2 className="flex-1 truncate text-sm font-semibold text-text dark:text-white">
             {workshop.title}
           </h2>
 
@@ -243,17 +269,41 @@ export default function WorkshopRoom({
             LIVE {formatDuration(elapsedSeconds)}
           </span>
 
-          {/* Attendee count */}
-          <span className="shrink-0 flex items-center gap-1 text-xs text-white/50">
-            <Users className="h-3.5 w-3.5" />
-            {attendees.length}
-          </span>
+          {/* Attendee count + raised hand indicator */}
+          <button
+            type="button"
+            onClick={() => {
+              if (raisedHands.length > 0 && (isHost || isCoHost)) {
+                setSidebarOpen(true);
+                setSidebarTab('participants');
+                setHandAlert(false);
+              }
+            }}
+            className={cn(
+              'shrink-0 flex items-center gap-1 text-xs',
+              raisedHands.length > 0 && (isHost || isCoHost)
+                ? 'text-amber-400 animate-pulse cursor-pointer'
+                : 'text-text-muted dark:text-white/50 cursor-default'
+            )}
+          >
+            {raisedHands.length > 0 && (isHost || isCoHost) ? (
+              <>
+                <Hand className="h-3.5 w-3.5" />
+                {raisedHands.length}
+              </>
+            ) : (
+              <>
+                <Users className="h-3.5 w-3.5" />
+                {attendees.length}
+              </>
+            )}
+          </button>
 
           {/* Sidebar toggle (mobile) */}
           <button
             type="button"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="shrink-0 rounded-full p-1.5 text-white/60 transition-colors hover:text-white lg:hidden"
+            className="shrink-0 rounded-full p-1.5 text-text-muted transition-colors hover:text-text dark:text-white/60 dark:hover:text-white lg:hidden"
             aria-label="Toggle sidebar"
           >
             <MessageSquare className="h-5 w-5" />
@@ -263,7 +313,7 @@ export default function WorkshopRoom({
           {isHost && (
             <button
               type="button"
-              onClick={handleEndWorkshop}
+              onClick={handleEndRequest}
               className="shrink-0 rounded-lg bg-red-500 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-red-600"
             >
               End
@@ -275,9 +325,35 @@ export default function WorkshopRoom({
         <div className="flex flex-1 min-h-0">
           {/* Video area */}
           <div className={cn(
-            'flex-1 min-w-0',
+            'relative flex-1 min-w-0',
             sidebarOpen ? 'hidden lg:flex' : 'flex'
           )}>
+            {/* Floating action buttons (mobile) */}
+            {!sidebarOpen && (
+              <div className="absolute bottom-20 right-3 z-10 flex flex-col gap-2 lg:hidden">
+                {/* Raised hand alert */}
+                {raisedHands.length > 0 && (isHost || isCoHost) && (
+                  <button
+                    type="button"
+                    onClick={() => { setSidebarOpen(true); setSidebarTab('participants'); setHandAlert(false); }}
+                    className="flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2.5 text-white shadow-lg animate-pulse"
+                  >
+                    <Hand className="h-4 w-4" />
+                    <span className="text-sm font-medium">{raisedHands.length} Hand{raisedHands.length > 1 ? 's' : ''}</span>
+                  </button>
+                )}
+                {/* Chat button */}
+                <button
+                  type="button"
+                  onClick={() => { setSidebarOpen(true); setSidebarTab('chat'); }}
+                  className="flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-white shadow-lg transition-colors hover:bg-primary/90"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span className="text-sm font-medium">Chat</span>
+                </button>
+              </div>
+            )}
+
             {agoraToken && agoraChannel && agoraUid != null && agoraAppId ? (
               <WorkshopVideo
                 appId={agoraAppId}
@@ -295,8 +371,8 @@ export default function WorkshopRoom({
             ) : (
               <div className="flex flex-1 items-center justify-center">
                 <div className="text-center">
-                  <Loader2 className="mx-auto h-6 w-6 animate-spin text-white/40" />
-                  <p className="mt-2 text-xs text-white/40">Connecting video...</p>
+                  <Loader2 className="mx-auto h-6 w-6 animate-spin text-text-muted dark:text-white/40" />
+                  <p className="mt-2 text-xs text-text-muted dark:text-white/40">Connecting video...</p>
                 </div>
               </div>
             )}
@@ -305,7 +381,7 @@ export default function WorkshopRoom({
           {/* Sidebar */}
           <div
             className={cn(
-              'flex flex-col border-l border-white/10 bg-gray-900',
+              'flex flex-col border-l border-border dark:border-white/10 bg-surface dark:bg-gray-900 transition-transform duration-200',
               // Desktop: always visible
               'lg:flex lg:w-[30%] lg:min-w-[280px] lg:max-w-[400px]',
               // Mobile: overlay
@@ -315,7 +391,7 @@ export default function WorkshopRoom({
             )}
           >
             {/* Sidebar header */}
-            <div className="flex h-10 shrink-0 items-center border-b border-white/10 px-2">
+            <div className="flex h-10 shrink-0 items-center border-b border-border dark:border-white/10 px-2">
               {/* Tab buttons */}
               <SidebarTabButton
                 active={sidebarTab === 'chat'}
@@ -325,9 +401,10 @@ export default function WorkshopRoom({
               />
               <SidebarTabButton
                 active={sidebarTab === 'participants'}
-                onClick={() => setSidebarTab('participants')}
+                onClick={() => { setSidebarTab('participants'); setHandAlert(false); }}
                 icon={<Users className="h-4 w-4" />}
                 label={`${attendees.length}`}
+                badge={raisedHands.length > 0 && (isHost || isCoHost) ? raisedHands.length : undefined}
               />
               <SidebarTabButton
                 active={sidebarTab === 'notes'}
@@ -340,7 +417,7 @@ export default function WorkshopRoom({
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}
-                className="ml-auto rounded-full p-1.5 text-white/60 transition-colors hover:text-white lg:hidden"
+                className="ml-auto rounded-full p-1.5 text-text-muted dark:text-white/60 transition-colors hover:text-text dark:hover:text-white lg:hidden"
                 aria-label="Close sidebar"
               >
                 <X className="h-4 w-4" />
@@ -362,6 +439,7 @@ export default function WorkshopRoom({
                   isHost={isHost}
                   isCoHost={isCoHost}
                   socketActions={socketActions}
+                  banUser={banUser}
                 />
               )}
               {sidebarTab === 'notes' && (
@@ -370,6 +448,18 @@ export default function WorkshopRoom({
             </div>
           </div>
         </div>
+
+        {/* End workshop confirmation */}
+        <ConfirmDialog
+          isOpen={showEndConfirm}
+          onClose={() => setShowEndConfirm(false)}
+          onConfirm={handleEndConfirm}
+          title="End Workshop"
+          message="Are you sure you want to end the workshop for everyone? This cannot be undone."
+          confirmLabel="End Workshop"
+          cancelLabel="Continue"
+          danger
+        />
       </div>
     );
   }
@@ -387,25 +477,32 @@ function SidebarTabButton({
   onClick,
   icon,
   label,
+  badge,
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
+  badge?: number;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-colors',
+        'relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-colors',
         active
-          ? 'text-white bg-white/10'
-          : 'text-white/50 hover:text-white/80'
+          ? 'text-text dark:text-white bg-gray-100 dark:bg-white/10'
+          : 'text-text-muted dark:text-white/50 hover:text-text dark:hover:text-white/80'
       )}
     >
       {icon}
       {label}
+      {badge != null && badge > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+          {badge}
+        </span>
+      )}
     </button>
   );
 }
@@ -444,7 +541,7 @@ function ChatPanel({
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
         {messages.length === 0 ? (
-          <p className="py-8 text-center text-xs text-white/30">
+          <p className="py-8 text-center text-xs text-text-muted/50 dark:text-white/30">
             No messages yet. Say hello!
           </p>
         ) : (
@@ -467,10 +564,10 @@ function ChatPanel({
                 </div>
               )}
               <div className="min-w-0">
-                <span className="text-xs font-semibold text-white/70">
+                <span className="text-xs font-semibold text-text-muted dark:text-white/70">
                   {msg.displayName}
                 </span>
-                <p className="text-sm text-white/90 break-words">
+                <p className="text-sm text-text dark:text-white/90 break-words">
                   {msg.message}
                 </p>
               </div>
@@ -482,7 +579,7 @@ function ChatPanel({
       {/* Input */}
       <form
         onSubmit={handleSubmit}
-        className="flex shrink-0 gap-2 border-t border-white/10 p-2"
+        className="flex shrink-0 gap-2 border-t border-border dark:border-white/10 p-2"
       >
         <input
           type="text"
@@ -490,7 +587,7 @@ function ChatPanel({
           onChange={(e) => setInput(e.target.value)}
           placeholder="Type a message..."
           maxLength={1000}
-          className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:ring-1 focus:ring-primary"
+          className="flex-1 rounded-lg bg-gray-100 dark:bg-white/10 px-3 py-2 text-sm text-text dark:text-white placeholder-text-muted/50 dark:placeholder-white/30 outline-none focus:ring-1 focus:ring-primary"
         />
         <button
           type="submit"
@@ -514,6 +611,7 @@ function ParticipantsPanel({
   isHost,
   isCoHost,
   socketActions,
+  banUser,
 }: {
   attendees: import('@/hooks/useWorkshopSocket').AttendeeInfo[];
   raisedHands: number[];
@@ -527,8 +625,11 @@ function ParticipantsPanel({
     muteUser: (userId: number) => void;
     removeUser: (userId: number) => void;
   };
+  banUser: (targetUserId: number, reason?: string) => void;
 }) {
   const canModerate = isHost || isCoHost;
+  const [kickTarget, setKickTarget] = useState<{ userId: number; name: string } | null>(null);
+  const [banTarget, setBanTarget] = useState<{ userId: number; name: string } | null>(null);
 
   // Sort: host first, co-hosts next, then raised hands, then alphabetical
   const sorted = [...attendees].sort((a, b) => {
@@ -544,7 +645,7 @@ function ParticipantsPanel({
     <div className="h-full overflow-y-auto">
       {/* Raised hands section */}
       {raisedHands.length > 0 && canModerate && (
-        <div className="border-b border-white/10 px-3 py-2">
+        <div className="border-b border-border dark:border-white/10 px-3 py-2">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-amber-400">
             <Hand className="h-3.5 w-3.5" />
             Raised Hands ({raisedHands.length})
@@ -554,7 +655,7 @@ function ParticipantsPanel({
             if (!attendee) return null;
             return (
               <div key={uid} className="flex items-center justify-between py-1">
-                <span className="text-xs text-white/80">{attendee.displayName}</span>
+                <span className="text-xs text-text dark:text-white/80">{attendee.displayName}</span>
                 <button
                   type="button"
                   onClick={() => socketActions.approveSpeaker(uid)}
@@ -569,9 +670,9 @@ function ParticipantsPanel({
       )}
 
       {/* All participants */}
-      <div className="px-3 py-2 space-y-1">
+      <div className="px-3 py-2 space-y-0.5">
         {sorted.map((attendee) => (
-          <div key={attendee.userId} className="flex items-center gap-2 py-1.5">
+          <div key={attendee.userId} className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-white/5">
             {attendee.avatarUrl ? (
               <img
                 src={attendee.avatarUrl}
@@ -587,7 +688,7 @@ function ParticipantsPanel({
               />
             )}
             <div className="flex-1 min-w-0">
-              <span className="text-xs text-white/80 truncate block">
+              <span className="text-xs text-text dark:text-white/80 truncate block">
                 {attendee.displayName}
               </span>
             </div>
@@ -610,9 +711,70 @@ function ParticipantsPanel({
             {raisedHands.includes(attendee.userId) && (
               <Hand className="h-3.5 w-3.5 shrink-0 text-amber-400" />
             )}
+
+            {/* Moderation actions (host/co-host only, not on host themselves) */}
+            {canModerate && !attendee.isHost && (
+              <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                {/* Kick button */}
+                <button
+                  type="button"
+                  onClick={() => setKickTarget({ userId: attendee.userId, name: attendee.displayName })}
+                  className="rounded p-1 text-text-muted/50 dark:text-white/40 transition-colors hover:bg-gray-100 dark:hover:bg-white/10 hover:text-text dark:hover:text-white/80"
+                  title="Kick"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                </button>
+
+                {/* Ban button (host only) */}
+                {isHost && (
+                  <button
+                    type="button"
+                    onClick={() => setBanTarget({ userId: attendee.userId, name: attendee.displayName })}
+                    className="rounded p-1 text-text-muted/50 dark:text-white/40 transition-colors hover:bg-red-500/20 hover:text-red-400"
+                    title="Ban from all your workshops"
+                  >
+                    <Ban className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
+
+      {/* Kick confirmation */}
+      {kickTarget && (
+        <ConfirmDialog
+          isOpen
+          onClose={() => setKickTarget(null)}
+          onConfirm={() => {
+            socketActions.removeUser(kickTarget.userId);
+            setKickTarget(null);
+          }}
+          title="Kick Attendee"
+          message={`Remove ${kickTarget.name} from the workshop? They can rejoin later.`}
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          danger
+        />
+      )}
+
+      {/* Ban confirmation */}
+      {banTarget && (
+        <ConfirmDialog
+          isOpen
+          onClose={() => setBanTarget(null)}
+          onConfirm={() => {
+            banUser(banTarget.userId);
+            setBanTarget(null);
+          }}
+          title="Ban from All Your Workshops"
+          message={`Ban ${banTarget.name} from all your workshops? They will be removed from this session and unable to join any of your future workshops.`}
+          confirmLabel="Ban"
+          cancelLabel="Cancel"
+          danger
+        />
+      )}
     </div>
   );
 }
@@ -683,17 +845,17 @@ function NotesPanel({ workshopId }: { workshopId: number }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
-        <span className="text-xs font-semibold text-white/60">Personal Notes</span>
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border dark:border-white/10">
+        <span className="text-xs font-semibold text-text-muted dark:text-white/60">Personal Notes</span>
         {saving && (
-          <span className="text-[10px] text-white/40">Saving...</span>
+          <span className="text-[10px] text-text-muted/50 dark:text-white/40">Saving...</span>
         )}
       </div>
       <textarea
         value={notes}
         onChange={handleChange}
         placeholder="Jot down your notes here..."
-        className="flex-1 resize-none bg-transparent px-3 py-2 text-sm text-white/90 placeholder-white/30 outline-none"
+        className="flex-1 resize-none bg-transparent px-3 py-2 text-sm text-text dark:text-white/90 placeholder-text-muted/50 dark:placeholder-white/30 outline-none"
       />
     </div>
   );

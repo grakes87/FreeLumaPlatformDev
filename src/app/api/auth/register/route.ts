@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
     }
 
     const { email, password, display_name, username, activation_code, date_of_birth } = parsed.data;
+    const requestedMode = body.mode === 'positivity' ? 'positivity' : body.mode === 'bible' ? 'bible' : null;
+    const requestedTranslation = typeof body.preferred_translation === 'string' ? body.preferred_translation.trim() : null;
+    const requestedLanguage = body.language === 'es' ? 'es' : 'en';
     const normalizedEmail = email.toLowerCase().trim();
     const normalizedUsername = username.toLowerCase().trim();
 
@@ -47,7 +50,7 @@ export async function POST(req: NextRequest) {
       const activationCode = await ActivationCode.findOne({
         where: {
           code: activation_code,
-          used: false,
+          status: 'pending',
           expires_at: { [Op.gt]: new Date() },
         },
         transaction: t,
@@ -85,7 +88,8 @@ export async function POST(req: NextRequest) {
       const avatar_color =
         AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 
-      // Create user
+      // User's selection takes precedence, then activation code hint, then default
+      const userMode = requestedMode || (activationCode.mode_hint === 'positivity' ? 'positivity' : 'bible');
       const user = await User.create(
         {
           email: normalizedEmail,
@@ -94,6 +98,9 @@ export async function POST(req: NextRequest) {
           username: normalizedUsername,
           avatar_color,
           date_of_birth: date_of_birth || null,
+          mode: userMode,
+          preferred_translation: requestedTranslation || 'KJV',
+          language: requestedLanguage,
           onboarding_complete: false,
         },
         { transaction: t }
@@ -101,11 +108,11 @@ export async function POST(req: NextRequest) {
 
       // Atomically mark activation code as used
       const [affectedRows] = await ActivationCode.update(
-        { used: true, used_by: user.id },
+        { used: true, used_by: user.id, status: 'activated' as const, used_at: new Date() },
         {
           where: {
             id: activationCode.id,
-            used: false,
+            status: 'pending',
           },
           transaction: t,
         }

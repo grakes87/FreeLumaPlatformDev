@@ -140,7 +140,7 @@ export function AppleButton({
 
       if (result.isNewUser) {
         toast.success('Account created with Apple!');
-        router.push('/onboarding/mode');
+        router.push('/onboarding/profile');
       } else {
         toast.success('Welcome back!');
         router.push('/');

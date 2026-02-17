@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import { Heart, MessageCircle } from 'lucide-react';
 import { useVerseCategoryReactions } from '@/hooks/useVerseCategoryReactions';
 import { REACTION_EMOJI_MAP, DAILY_REACTION_TYPES } from '@/lib/utils/constants';
@@ -32,14 +32,55 @@ export function VerseByCategorySlide({
   initialCommentCount,
   activeTranslation,
 }: VerseByCategorySlideProps) {
-  // Get displayed text for the active translation
-  const displayText = useMemo(() => {
-    if (!activeTranslation) return verse.content_text;
+  // Get displayed text for the active translation — pre-loaded or fetched on demand
+  const preloadedText = useMemo(() => {
+    if (!activeTranslation) return null;
     const translation = verse.translations.find(
       (t) => t.translation_code.toUpperCase() === activeTranslation.toUpperCase()
     );
-    return translation?.translated_text ?? verse.content_text;
-  }, [activeTranslation, verse.translations, verse.content_text]);
+    return translation?.translated_text ?? null;
+  }, [activeTranslation, verse.translations]);
+
+  // Cache of on-demand fetched translations keyed by "verseId:code"
+  const [fetchedTranslations, setFetchedTranslations] = useState<Record<string, string>>({});
+  const fetchingRef = useRef<Set<string>>(new Set());
+
+  // Fetch translation on demand when not pre-loaded
+  useEffect(() => {
+    if (!activeTranslation || preloadedText) return;
+    if (!verse.verse_reference) return;
+
+    const cacheKey = `${verse.id}:${activeTranslation.toUpperCase()}`;
+    if (fetchedTranslations[cacheKey] || fetchingRef.current.has(cacheKey)) return;
+
+    fetchingRef.current.add(cacheKey);
+
+    const params = new URLSearchParams({
+      reference: verse.verse_reference,
+      translation: activeTranslation,
+      type: 'verse',
+    });
+
+    fetch(`/api/bible-translations/verse?${params}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const text = data?.data?.text ?? data?.text;
+        if (text) {
+          setFetchedTranslations((prev) => ({ ...prev, [cacheKey]: text }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        fetchingRef.current.delete(cacheKey);
+      });
+  }, [activeTranslation, preloadedText, verse.id, verse.verse_reference, fetchedTranslations]);
+
+  const displayText = useMemo(() => {
+    if (!activeTranslation) return verse.content_text;
+    if (preloadedText) return preloadedText;
+    const cacheKey = `${verse.id}:${activeTranslation.toUpperCase()}`;
+    return fetchedTranslations[cacheKey] ?? verse.content_text;
+  }, [activeTranslation, preloadedText, verse.id, verse.content_text, fetchedTranslations]);
 
   // Reactions via hook with initial data from parent API response
   const { counts, total, userReaction, commentCount, toggleReaction, refetch } =
@@ -116,18 +157,21 @@ export function VerseByCategorySlide({
           paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 2.5rem)',
         }}
       >
-        {/* Top area: Category name badge (where date normally appears) */}
-        <div className="flex w-full flex-col items-center gap-1">
-          <p className="text-xs font-medium uppercase tracking-widest text-white/60">
-            Verse by Category
-          </p>
-          <h2 className="text-lg font-semibold text-white drop-shadow-lg">
-            {verse.category?.name ?? 'All Categories'}
-          </h2>
-        </div>
+        {/* Top spacer for CategorySelector overlay area */}
+        <div />
 
-        {/* Center: Verse text */}
+        {/* Center: Labels + Verse grouped together */}
         <div className="flex max-w-lg flex-col items-center gap-4 text-center">
+          {/* Category labels directly above verse */}
+          <div className="flex flex-col items-center gap-1">
+            <p className="fl-font-daily-reference text-sm font-medium uppercase tracking-widest text-white/60 sm:text-base">
+              Verse by Category
+            </p>
+            <h2 className="fl-font-daily-reference text-xl font-semibold text-white drop-shadow-lg sm:text-2xl">
+              {verse.category?.name ?? 'All Categories'}
+            </h2>
+          </div>
+
           <p
             className="fl-font-daily-verse text-xl leading-relaxed font-light tracking-wide text-white drop-shadow-lg font-serif italic sm:text-2xl md:text-3xl"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}

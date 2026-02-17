@@ -87,7 +87,7 @@ export const POST = withAdmin(async (req: NextRequest, context) => {
       code,
       mode_hint: mode_hint ?? null,
       expires_at: expiresAt,
-      source: 'generated' as const,
+      status: 'generated' as const,
       created_by: context.user.id,
     }));
 
@@ -106,12 +106,49 @@ export const POST = withAdmin(async (req: NextRequest, context) => {
   }
 });
 
+// PUT: Bulk update code status (e.g., generated -> pending on export)
+const putSchema = z.object({
+  ids: z.array(z.number().int()).min(1).max(10000),
+  status: z.enum(['pending', 'generated']),
+});
+
+export const PUT = withAdmin(async (req: NextRequest) => {
+  try {
+    const body = await req.json();
+    const result = putSchema.safeParse(body);
+
+    if (!result.success) {
+      const firstError = result.error.issues[0];
+      return NextResponse.json(
+        { error: firstError?.message || 'Invalid request body' },
+        { status: 400 }
+      );
+    }
+
+    const { ids, status } = result.data;
+
+    const [affectedRows] = await ActivationCode.update(
+      { status },
+      { where: { id: { [Op.in]: ids }, status: { [Op.ne]: 'activated' } } }
+    );
+
+    return NextResponse.json({ updated: affectedRows });
+  } catch (error) {
+    console.error('Admin activation codes PUT error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+});
+
 // GET: List activation codes with stats
 const getQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(50),
   used: z.enum(['true', 'false']).optional(),
-  source: z.enum(['generated', 'imported']).optional(),
+  status: z.enum(['pending', 'generated', 'activated']).optional(),
+  search: z.string().optional(),
 });
 
 export const GET = withAdmin(async (req: NextRequest) => {
@@ -121,7 +158,8 @@ export const GET = withAdmin(async (req: NextRequest) => {
       page: searchParams.get('page') ?? undefined,
       limit: searchParams.get('limit') ?? undefined,
       used: searchParams.get('used') ?? undefined,
-      source: searchParams.get('source') ?? undefined,
+      status: searchParams.get('status') ?? undefined,
+      search: searchParams.get('search') ?? undefined,
     });
 
     if (!result.success) {
@@ -132,13 +170,14 @@ export const GET = withAdmin(async (req: NextRequest) => {
       );
     }
 
-    const { page, limit, used, source } = result.data;
+    const { page, limit, used, status, search } = result.data;
     const offset = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
     if (used === 'true') where.used = true;
     if (used === 'false') where.used = false;
-    if (source) where.source = source;
+    if (status) where.status = status;
+    if (search) where.code = { [Op.like]: `%${search}%` };
 
     const { User } = await import('@/lib/db/models');
 
@@ -155,15 +194,17 @@ export const GET = withAdmin(async (req: NextRequest) => {
       offset,
     });
 
-    // Get usage stats
-    const usedCount = await ActivationCode.count({ where: { used: true } });
-    const unusedCount = await ActivationCode.count({ where: { used: false } });
+    // Get status stats
+    const pendingCount = await ActivationCode.count({ where: { status: 'pending' } });
+    const generatedCount = await ActivationCode.count({ where: { status: 'generated' } });
+    const activatedCount = await ActivationCode.count({ where: { status: 'activated' } });
 
     return NextResponse.json({
       codes,
       total,
-      used_count: usedCount,
-      unused_count: unusedCount,
+      pending_count: pendingCount,
+      generated_count: generatedCount,
+      activated_count: activatedCount,
       page,
       limit,
       total_pages: Math.ceil(total / limit),

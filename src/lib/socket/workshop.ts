@@ -29,6 +29,15 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
   // Track which workshop rooms this socket has joined (for disconnect cleanup)
   const activeWorkshops = new Set<number>();
 
+  /** Broadcast to all clients in a workshop room, including the sender.
+   *  Uses socket.to() + socket.emit() instead of nsp.to() which doesn't
+   *  reliably deliver events to clients. */
+  function broadcastToRoom(workshopId: number, event: string, data: unknown) {
+    const room = `workshop:${workshopId}`;
+    socket.to(room).emit(event, data);
+    socket.emit(event, data);
+  }
+
   // ---- Helper: Validate caller is host or co-host ----
   async function isHostOrCoHost(workshopId: number, callerUserId: number): Promise<boolean> {
     const { Workshop, WorkshopAttendee } = await import('@/lib/db/models');
@@ -68,6 +77,19 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
       if (!['scheduled', 'lobby', 'live'].includes(workshop.status)) {
         socket.emit('workshop:error', { event: 'join', message: 'Workshop is not active' });
         return;
+      }
+
+      // Check if user is banned by this host
+      if (workshop.host_id !== userId) {
+        const { WorkshopBan } = await import('@/lib/db/models');
+        const ban = await WorkshopBan.findOne({
+          where: { host_id: workshop.host_id, banned_user_id: userId },
+          attributes: ['id'],
+        });
+        if (ban) {
+          socket.emit('workshop:error', { event: 'join', message: 'You are not able to join this host\'s workshops' });
+          return;
+        }
       }
 
       // Validate user is host, co-host, RSVP'd, or invited (for private)
@@ -184,7 +206,7 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
   socket.on('workshop:raise-hand', async ({ workshopId }: { workshopId: number }) => {
     if (!handLimiter()) return;
     if (!socket.rooms.has(`workshop:${workshopId}`)) return;
-    nsp.to(`workshop:${workshopId}`).emit('workshop:hand-raised', { userId });
+    broadcastToRoom(workshopId, 'workshop:hand-raised', { userId });
   });
 
   // -------------------------------------------------------------------------
@@ -193,7 +215,7 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
   socket.on('workshop:lower-hand', async ({ workshopId }: { workshopId: number }) => {
     if (!handLimiter()) return;
     if (!socket.rooms.has(`workshop:${workshopId}`)) return;
-    nsp.to(`workshop:${workshopId}`).emit('workshop:hand-lowered', { userId });
+    broadcastToRoom(workshopId, 'workshop:hand-lowered', { userId });
   });
 
   // -------------------------------------------------------------------------
@@ -213,7 +235,7 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
         { where: { workshop_id: workshopId, user_id: targetUserId } }
       );
 
-      nsp.to(`workshop:${workshopId}`).emit('workshop:speaker-approved', { userId: targetUserId });
+      broadcastToRoom(workshopId, 'workshop:speaker-approved', { userId: targetUserId });
     } catch (err) {
       console.error('[Workshop] workshop:approve-speaker error:', err);
     }
@@ -236,7 +258,7 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
         { where: { workshop_id: workshopId, user_id: targetUserId } }
       );
 
-      nsp.to(`workshop:${workshopId}`).emit('workshop:speaker-revoked', { userId: targetUserId });
+      broadcastToRoom(workshopId, 'workshop:speaker-revoked', { userId: targetUserId });
     } catch (err) {
       console.error('[Workshop] workshop:revoke-speaker error:', err);
     }
@@ -259,7 +281,7 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
         { where: { workshop_id: workshopId, user_id: targetUserId } }
       );
 
-      nsp.to(`workshop:${workshopId}`).emit('workshop:cohost-promoted', { userId: targetUserId });
+      broadcastToRoom(workshopId, 'workshop:cohost-promoted', { userId: targetUserId });
     } catch (err) {
       console.error('[Workshop] workshop:promote-cohost error:', err);
     }
@@ -282,7 +304,7 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
         { where: { workshop_id: workshopId, user_id: targetUserId } }
       );
 
-      nsp.to(`workshop:${workshopId}`).emit('workshop:cohost-demoted', { userId: targetUserId });
+      broadcastToRoom(workshopId, 'workshop:cohost-demoted', { userId: targetUserId });
     } catch (err) {
       console.error('[Workshop] workshop:demote-cohost error:', err);
     }
@@ -299,7 +321,7 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
         return;
       }
 
-      nsp.to(`workshop:${workshopId}`).emit('workshop:user-muted', { userId: targetUserId });
+      broadcastToRoom(workshopId, 'workshop:user-muted', { userId: targetUserId });
     } catch (err) {
       console.error('[Workshop] workshop:mute-user error:', err);
     }
@@ -322,9 +344,49 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
         { where: { workshop_id: workshopId, user_id: targetUserId } }
       );
 
-      nsp.to(`workshop:${workshopId}`).emit('workshop:user-removed', { userId: targetUserId });
+      broadcastToRoom(workshopId, 'workshop:user-removed', { userId: targetUserId });
     } catch (err) {
       console.error('[Workshop] workshop:remove-user error:', err);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // workshop:ban-user — host bans an attendee from all their workshops
+  // -------------------------------------------------------------------------
+  socket.on('workshop:ban-user', async ({ workshopId, targetUserId, reason }: { workshopId: number; targetUserId: number; reason?: string }) => {
+    try {
+      if (!socket.rooms.has(`workshop:${workshopId}`)) return;
+      // Only the host (not co-hosts) can ban
+      if (!(await isHost(workshopId, userId))) {
+        socket.emit('workshop:error', { event: 'ban-user', message: 'Only the host can ban users' });
+        return;
+      }
+
+      const { Workshop, WorkshopAttendee, WorkshopBan } = await import('@/lib/db/models');
+      const workshop = await Workshop.findByPk(workshopId, { attributes: ['id', 'host_id'] });
+      if (!workshop) return;
+
+      // Create or find ban record
+      await WorkshopBan.findOrCreate({
+        where: { host_id: workshop.host_id, banned_user_id: targetUserId },
+        defaults: {
+          host_id: workshop.host_id,
+          banned_user_id: targetUserId,
+          banned_by: userId,
+          workshop_id: workshopId,
+          reason: reason ?? null,
+        },
+      });
+
+      // Kick the user from the current session
+      await WorkshopAttendee.update(
+        { status: 'left', left_at: new Date() },
+        { where: { workshop_id: workshopId, user_id: targetUserId } }
+      );
+
+      broadcastToRoom(workshopId, 'workshop:user-removed', { userId: targetUserId });
+    } catch (err) {
+      console.error('[Workshop] workshop:ban-user error:', err);
     }
   });
 
@@ -369,7 +431,7 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
       });
 
       // Broadcast to entire room (including sender for echo confirmation)
-      nsp.to(`workshop:${workshopId}`).emit('workshop:chat-message', {
+      const chatPayload = {
         id: chatRow.id,
         userId,
         displayName: user?.display_name ?? 'Unknown',
@@ -377,7 +439,8 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
         message: trimmed,
         offsetMs,
         createdAt: chatRow.created_at.toISOString(),
-      });
+      };
+      broadcastToRoom(workshopId, 'workshop:chat-message', chatPayload);
     } catch (err) {
       console.error('[Workshop] workshop:chat error:', err);
     }
@@ -398,7 +461,7 @@ export function registerWorkshopHandlers(nsp: Namespace, socket: Socket): void {
       });
       if (!workshop) return;
 
-      nsp.to(`workshop:${workshopId}`).emit('workshop:state-changed', {
+      broadcastToRoom(workshopId, 'workshop:state-changed', {
         status: newStatus,
         startedAt: workshop.actual_started_at?.toISOString() ?? null,
         endedAt: workshop.actual_ended_at?.toISOString() ?? null,

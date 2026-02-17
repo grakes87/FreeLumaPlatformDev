@@ -27,7 +27,6 @@ export interface WorkshopFormData {
   time: string;
   duration_minutes: number | null;
   is_private: boolean;
-  max_capacity: number | null;
   // Series fields
   is_recurring: boolean;
   frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
@@ -66,12 +65,6 @@ const workshopFormSchema = z.object({
     .max(480, 'Maximum duration is 8 hours')
     .nullable(),
   is_private: z.boolean(),
-  max_capacity: z
-    .number()
-    .int()
-    .min(2, 'Minimum capacity is 2')
-    .max(500, 'Maximum capacity is 500')
-    .nullable(),
   is_recurring: z.boolean(),
   frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly']),
   byDay: z.array(z.string()),
@@ -138,7 +131,6 @@ export function CreateWorkshopForm({
       time: initialData?.time ?? '',
       duration_minutes: initialData?.duration_minutes ?? null,
       is_private: initialData?.is_private ?? false,
-      max_capacity: initialData?.max_capacity ?? null,
       is_recurring: false,
       frequency: 'weekly',
       byDay: [],
@@ -148,7 +140,6 @@ export function CreateWorkshopForm({
     },
   });
 
-  const isPrivate = watch('is_private');
   const isRecurring = watch('is_recurring');
   const frequency = watch('frequency');
   const endCondition = watch('endCondition');
@@ -215,7 +206,6 @@ export function CreateWorkshopForm({
             scheduled_at: scheduledAt,
             duration_minutes: data.duration_minutes,
             is_private: data.is_private,
-            max_capacity: data.is_private ? data.max_capacity : null,
           }),
         });
 
@@ -292,7 +282,6 @@ export function CreateWorkshopForm({
             scheduled_at: scheduledAt,
             duration_minutes: data.duration_minutes || undefined,
             is_private: data.is_private,
-            max_capacity: data.is_private ? data.max_capacity : null,
           }),
         });
 
@@ -473,29 +462,6 @@ export function CreateWorkshopForm({
           )}
         />
       </div>
-
-      {/* Max capacity (shown when private) */}
-      {isPrivate && (
-        <Controller
-          name="max_capacity"
-          control={control}
-          render={({ field }) => (
-            <Input
-              label="Max Capacity"
-              type="number"
-              placeholder="Maximum attendees (2-500)"
-              value={field.value ?? ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                field.onChange(val ? parseInt(val, 10) : null);
-              }}
-              error={errors.max_capacity?.message}
-              min={2}
-              max={500}
-            />
-          )}
-        />
-      )}
 
       {/* Recurring Series (create mode only) */}
       {mode === 'create' && (

@@ -196,7 +196,9 @@ async function analyzeFrames(
       {
         role: 'system',
         content:
-          'You are a thumbnail design consultant. Analyze these video screenshots and the description to create a detailed image generation prompt for a professional, eye-catching video thumbnail. ' +
+          'You are a thumbnail design consultant. Analyze these video screenshots and the description to create a detailed image generation prompt for a Pixar-style 3D animated video thumbnail. ' +
+          'The thumbnail must look like a scene from a Pixar or Disney animated film — soft lighting, rich colors, stylized 3D-rendered characters and environments. ' +
+          'Use the people, setting, and mood from the video frames as reference to recreate the scene in this animated style. ' +
           'Focus on the visual theme, mood, colors, key subjects, and composition. ' +
           'The thumbnail should NOT contain any text, words, letters, or numbers. ' +
           'Output ONLY the image generation prompt, nothing else.',
@@ -227,7 +229,7 @@ async function generateImage(prompt: string): Promise<Buffer | null> {
 
   const response = await openai.images.generate({
     model: 'gpt-image-1',
-    prompt: `Professional video thumbnail, no text, no words, no letters, no numbers: ${prompt}`,
+    prompt: `Pixar-style 3D animated video thumbnail, soft cinematic lighting, rich vibrant colors, stylized characters, no text, no words, no letters, no numbers: ${prompt}`,
     n: 1,
     size: '1024x1024',
   });

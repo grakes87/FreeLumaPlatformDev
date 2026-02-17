@@ -14,6 +14,7 @@ import { useNotificationBadge } from '@/components/notifications/useNotification
 import { useChatUnreadBadge } from '@/components/chat/useChatUnreadBadge';
 import { useDailyTranslation } from '@/context/DailyTranslationContext';
 import { useAuth } from '@/hooks/useAuth';
+import { VerseModeToggle, type VerseMode } from '@/components/daily/VerseModeToggle';
 
 interface TopBarProps {
   transparent?: boolean;
@@ -35,7 +36,7 @@ export function TopBar({ transparent = false }: TopBarProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const translationRef = useRef<HTMLDivElement>(null);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const unreadCount = useNotificationBadge();
   const hasUnreadMessages = useChatUnreadBadge();
   const dailyTranslation = useDailyTranslation();
@@ -44,6 +45,33 @@ export function TopBar({ transparent = false }: TopBarProps) {
   const showTranslationSelector = isDailyTab
     && dailyTranslation
     && dailyTranslation.availableTranslations.length > 0;
+
+  // Verse mode toggle -- bible-mode users on daily tab
+  const isBibleMode = user?.mode === 'bible';
+  const showVerseModeToggle = isDailyTab && isBibleMode && isAuthenticated;
+  const [verseMode, setVerseMode] = useState<VerseMode>(
+    (user?.verse_mode as VerseMode) || 'daily_verse'
+  );
+
+  // Sync if user data loads after mount
+  useEffect(() => {
+    if (user?.verse_mode) {
+      setVerseMode(user.verse_mode as VerseMode);
+    }
+  }, [user?.verse_mode]);
+
+  const handleVerseModeChange = useCallback((newMode: VerseMode) => {
+    setVerseMode(newMode);
+    // Persist to API + update auth context
+    fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ verse_mode: newMode }),
+    }).catch(() => {});
+    // Dispatch custom event so DailyFeed can react
+    window.dispatchEvent(new CustomEvent('verse-mode-change', { detail: newMode }));
+  }, []);
 
   const logoSrc = transparent || resolvedTheme === 'dark'
     ? '/logo-white.png'
@@ -108,6 +136,11 @@ export function TopBar({ transparent = false }: TopBarProps) {
           className="h-10 w-auto"
           priority
         />
+
+        {/* Verse mode circle — DV / VC toggle for bible-mode users on daily tab */}
+        {showVerseModeToggle && (
+          <VerseModeToggle mode={verseMode} onChange={handleVerseModeChange} />
+        )}
 
         {/* Bible translation circle — only on daily content tab */}
         {showTranslationSelector && (

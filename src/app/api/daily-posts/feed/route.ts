@@ -29,11 +29,15 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
       }
     }
 
-    // Guest language from cookie
+    // Guest language from cookie + mode override for landing pages
     if (!context.user) {
       const langCookie = req.cookies.get('preferred_language')?.value;
       if (langCookie && (LANGUAGES as readonly string[]).includes(langCookie)) {
         language = langCookie;
+      }
+      const modeParam = new URL(req.url).searchParams.get('mode');
+      if (modeParam === 'positivity' || modeParam === 'bible') {
+        mode = modeParam;
       }
     }
 
@@ -62,7 +66,7 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
         {
           model: DailyContentTranslation,
           as: 'translations',
-          attributes: ['translation_code', 'translated_text', 'audio_url', 'audio_srt_url'],
+          attributes: ['translation_code', 'translated_text', 'audio_url', 'audio_srt_url', 'chapter_text'],
         },
       ],
       order: [['post_date', 'DESC']],
@@ -103,6 +107,7 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
         text: t.translated_text,
         audio_url: t.audio_url ?? null,
         audio_srt_url: t.audio_srt_url ?? null,
+        chapter_text: t.chapter_text ?? null,
       })) ?? [];
 
       // Filter name map to only codes in this day
@@ -121,8 +126,6 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
         verse_reference: content.verse_reference,
         chapter_reference: content.chapter_reference,
         video_background_url: content.video_background_url,
-        audio_url: content.audio_url,
-        audio_srt_url: content.audio_srt_url,
         lumashort_video_url: content.lumashort_video_url,
         translations,
         translation_names: translationNames,

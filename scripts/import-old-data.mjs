@@ -1683,7 +1683,7 @@ async function importActivationCodes(conn) {
       null,          // mode_hint
       '9999-12-31 00:00:00', // expires_at (never expire)
       null,          // created_by
-      'imported',    // source
+      'pending',     // status
       now,           // created_at
       now,           // updated_at
     ]);
@@ -1696,7 +1696,7 @@ async function importActivationCodes(conn) {
     for (const batch of chunk(codeValues, BATCH_SIZE)) {
       const [result] = await conn.query(
         `INSERT IGNORE INTO activation_codes (code, used, used_by, used_at, mode_hint,
-          expires_at, created_by, source, created_at, updated_at)
+          expires_at, created_by, status, created_at, updated_at)
         VALUES ?`,
         [batch]
       );

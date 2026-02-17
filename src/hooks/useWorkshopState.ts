@@ -43,6 +43,8 @@ export interface UseWorkshopStateReturn {
   agoraAppId: string | null;
   agoraRole: 'host' | 'audience';
   error: string | null;
+  // Raw socket (for chat hook / ban action — avoids duplicate connections)
+  socket: import('socket.io-client').Socket | null;
   // Socket-relayed state
   workshopSocketState: WorkshopState | null;
   attendees: AttendeeInfo[];
@@ -58,6 +60,7 @@ export interface UseWorkshopStateReturn {
     muteUser: (userId: number) => void;
     removeUser: (userId: number) => void;
   };
+  banUser: (targetUserId: number, reason?: string) => void;
   // Lifecycle actions
   startWorkshop: () => Promise<void>;
   endWorkshop: () => Promise<void>;
@@ -91,8 +94,9 @@ export function useWorkshopState(workshopId: number): UseWorkshopStateReturn {
   const tokenRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
 
-  // Socket connection
+  // Socket connection (single instance — shared with chat hook via return value)
   const {
+    socket,
     workshopState: socketState,
     attendees,
     raisedHands,
@@ -104,6 +108,7 @@ export function useWorkshopState(workshopId: number): UseWorkshopStateReturn {
     demoteCoHost,
     muteUser,
     removeUser,
+    banUser,
   } = useWorkshopSocket(workshopId);
 
   // --- Fetch workshop detail on mount ---
@@ -292,6 +297,7 @@ export function useWorkshopState(workshopId: number): UseWorkshopStateReturn {
     agoraAppId,
     agoraRole,
     error,
+    socket,
     workshopSocketState: socketState,
     attendees,
     raisedHands,
@@ -305,6 +311,7 @@ export function useWorkshopState(workshopId: number): UseWorkshopStateReturn {
       muteUser,
       removeUser,
     },
+    banUser,
     startWorkshop,
     endWorkshop,
     refreshToken,

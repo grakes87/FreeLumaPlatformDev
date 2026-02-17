@@ -36,6 +36,9 @@ interface UseNotificationsReturn {
   clearAll: () => Promise<void>;
 }
 
+/** Max notifications to keep in memory. Prevents unbounded growth during long sessions. */
+const MAX_NOTIFICATIONS_IN_MEMORY = 200;
+
 export function useNotifications(): UseNotificationsReturn {
   const { notifSocket } = useSocket();
   const { unreadCount, refreshUnreadCount, decrementUnread, clearUnreadCount } = useNotificationContext();
@@ -76,7 +79,14 @@ export function useNotifications(): UseNotificationsReturn {
       };
 
       if (append) {
-        setNotifications((prev) => [...prev, ...result.notifications]);
+        setNotifications((prev) => {
+          const combined = [...prev, ...result.notifications];
+          // Cap array to prevent unbounded growth during long sessions
+          if (combined.length > MAX_NOTIFICATIONS_IN_MEMORY) {
+            return combined.slice(combined.length - MAX_NOTIFICATIONS_IN_MEMORY);
+          }
+          return combined;
+        });
       } else {
         setNotifications(result.notifications);
       }
@@ -131,7 +141,14 @@ export function useNotifications(): UseNotificationsReturn {
         recent_actors: payload.recent_actors ?? (payload.actor ? [payload.actor] : []),
       };
 
-      setNotifications((prev) => [grouped, ...prev]);
+      setNotifications((prev) => {
+        const updated = [grouped, ...prev];
+        // Cap when real-time notifications push array over limit
+        if (updated.length > MAX_NOTIFICATIONS_IN_MEMORY) {
+          return updated.slice(0, MAX_NOTIFICATIONS_IN_MEMORY);
+        }
+        return updated;
+      });
     };
 
     notifSocket.on('notification:new', handler);

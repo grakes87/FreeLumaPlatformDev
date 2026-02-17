@@ -160,9 +160,13 @@ export const PUT = withAuth(
         return errorResponse('Workshop not found', 404);
       }
 
-      // Only host can edit
+      // Admin bypass: admins can edit any workshop; non-admins must be host
       if (workshop.host_id !== userId) {
-        return errorResponse('Only the host can edit this workshop', 403);
+        const { User } = await import('@/lib/db/models');
+        const user = await User.findByPk(userId, { attributes: ['is_admin'] });
+        if (!user?.is_admin) {
+          return errorResponse('Only the host can edit this workshop', 403);
+        }
       }
 
       // Can only edit scheduled workshops
@@ -241,6 +245,7 @@ export const PUT = withAuth(
 
 /**
  * DELETE /api/workshops/[id] - Cancel a workshop (host only)
+ * Supports ?cancel_future=true to cancel all future events in the same series
  */
 export const DELETE = withAuth(
   async (req: NextRequest, context: AuthContext) => {
@@ -260,9 +265,13 @@ export const DELETE = withAuth(
         return errorResponse('Workshop not found', 404);
       }
 
-      // Only host can cancel
+      // Admin bypass: admins can cancel any workshop; non-admins must be host
       if (workshop.host_id !== userId) {
-        return errorResponse('Only the host can cancel this workshop', 403);
+        const { User } = await import('@/lib/db/models');
+        const user = await User.findByPk(userId, { attributes: ['is_admin'] });
+        if (!user?.is_admin) {
+          return errorResponse('Only the host can cancel this workshop', 403);
+        }
       }
 
       // Can't cancel already ended or cancelled workshops
@@ -270,13 +279,34 @@ export const DELETE = withAuth(
         return errorResponse(`Workshop is already ${workshop.status}`, 400);
       }
 
-      // Set status to cancelled
-      await workshop.update({ status: 'cancelled' });
+      const cancelFuture = req.nextUrl.searchParams.get('cancel_future') === 'true';
 
-      // Fire-and-forget: notify RSVP'd attendees of cancellation
+      // Cancel this workshop
+      await workshop.update({ status: 'cancelled' });
       notifyAttendeesOfCancellation(workshopId, workshop.title, userId).catch(() => {});
 
-      return successResponse({ cancelled: true });
+      let cancelledCount = 1;
+
+      // Cancel all future events in the same series
+      if (cancelFuture && workshop.series_id) {
+        const futureWorkshops = await Workshop.findAll({
+          where: {
+            series_id: workshop.series_id,
+            id: { [Op.ne]: workshopId },
+            status: 'scheduled',
+            scheduled_at: { [Op.gt]: new Date() },
+          },
+          attributes: ['id', 'title'],
+        });
+
+        for (const fw of futureWorkshops) {
+          await fw.update({ status: 'cancelled' });
+          notifyAttendeesOfCancellation(fw.id, fw.title, userId).catch(() => {});
+          cancelledCount++;
+        }
+      }
+
+      return successResponse({ cancelled: true, cancelled_count: cancelledCount });
     } catch (error) {
       return serverError(error, 'Failed to cancel workshop');
     }

@@ -66,7 +66,7 @@ function GoogleButtonInner({
 
       if (result.isNewUser) {
         toast.success('Account created with Google!');
-        router.push('/onboarding/mode');
+        router.push('/onboarding/profile');
       } else {
         toast.success('Welcome back!');
         router.push('/');

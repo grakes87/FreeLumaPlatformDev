@@ -10,8 +10,6 @@ export interface DailyContentAttributes {
   verse_reference: string | null;
   chapter_reference: string | null;
   video_background_url: string;
-  audio_url: string | null;
-  audio_srt_url: string | null;
   lumashort_video_url: string | null;
   language: 'en' | 'es';
   published: boolean;
@@ -23,8 +21,6 @@ export interface DailyContentCreationAttributes extends Optional<DailyContentAtt
   | 'id'
   | 'verse_reference'
   | 'chapter_reference'
-  | 'audio_url'
-  | 'audio_srt_url'
   | 'lumashort_video_url'
   | 'language'
   | 'published'
@@ -41,8 +37,6 @@ class DailyContent extends Model<DailyContentAttributes, DailyContentCreationAtt
   declare verse_reference: string | null;
   declare chapter_reference: string | null;
   declare video_background_url: string;
-  declare audio_url: string | null;
-  declare audio_srt_url: string | null;
   declare lumashort_video_url: string | null;
   declare language: 'en' | 'es';
   declare published: boolean;
@@ -84,14 +78,6 @@ DailyContent.init(
     video_background_url: {
       type: DataTypes.STRING(500),
       allowNull: false,
-    },
-    audio_url: {
-      type: DataTypes.STRING(500),
-      allowNull: true,
-    },
-    audio_srt_url: {
-      type: DataTypes.STRING(500),
-      allowNull: true,
     },
     lumashort_video_url: {
       type: DataTypes.STRING(500),

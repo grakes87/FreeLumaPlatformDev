@@ -22,6 +22,7 @@ export interface WorkshopAttributes {
   recording_resource_id: string | null;
   agora_channel: string | null;
   attendee_count: number;
+  mode: 'bible' | 'positivity';
   created_by_admin_id: number | null;
   created_at: Date;
   updated_at: Date;
@@ -43,6 +44,7 @@ export interface WorkshopCreationAttributes extends Optional<WorkshopAttributes,
   | 'recording_resource_id'
   | 'agora_channel'
   | 'attendee_count'
+  | 'mode'
   | 'created_by_admin_id'
   | 'created_at'
   | 'updated_at'
@@ -67,6 +69,7 @@ class Workshop extends Model<WorkshopAttributes, WorkshopCreationAttributes> imp
   declare recording_resource_id: string | null;
   declare agora_channel: string | null;
   declare attendee_count: number;
+  declare mode: 'bible' | 'positivity';
   declare created_by_admin_id: number | null;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
@@ -160,6 +163,11 @@ Workshop.init(
     attendee_count: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
+      allowNull: false,
+    },
+    mode: {
+      type: DataTypes.ENUM('bible', 'positivity'),
+      defaultValue: 'bible',
       allowNull: false,
     },
     created_by_admin_id: {

@@ -72,6 +72,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
         text: existingTranslation.translated_text,
         audio_url: existingTranslation.audio_url ?? null,
         audio_srt_url: existingTranslation.audio_srt_url ?? null,
+        chapter_text: existingTranslation.chapter_text ?? null,
         source: existingTranslation.source,
       });
     }

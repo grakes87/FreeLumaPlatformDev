@@ -18,7 +18,10 @@ interface DailyFeedResponse {
   has_more: boolean;
 }
 
-export function useDailyFeed() {
+/** Max days to keep in memory. Older entries are trimmed from front when exceeded. */
+const MAX_DAYS_IN_MEMORY = 30;
+
+export function useDailyFeed(mode?: string) {
   const [days, setDays] = useState<DailyContentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -29,13 +32,16 @@ export function useDailyFeed() {
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /** How many items were trimmed from the front on the last append. Component reads this to adjust scroll. */
+  const frontTrimRef = useRef(0);
+
   const fetchPage = useCallback(
     async (pageCursor: string | null, isRefresh: boolean) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
 
-      const tz = encodeURIComponent(detectTimezone());
+      const tz = detectTimezone();
       const params = new URLSearchParams();
       params.set('timezone', tz);
       params.set('limit', '5');
@@ -44,6 +50,7 @@ export function useDailyFeed() {
       // Include language cookie for guest users
       const lang = getLanguageCookie();
       if (lang !== 'en') params.set('language', lang);
+      if (mode) params.set('mode', mode);
 
       try {
         if (isRefresh) {
@@ -64,12 +71,21 @@ export function useDailyFeed() {
         const data: DailyFeedResponse = await res.json();
 
         if (isRefresh || !pageCursor) {
+          frontTrimRef.current = 0;
           setDays(data.days);
         } else {
           setDays((prev) => {
             const existingIds = new Set(prev.map((d) => d.id));
             const newDays = data.days.filter((d) => !existingIds.has(d.id));
-            return [...prev, ...newDays];
+            const combined = [...prev, ...newDays];
+            // Sliding window: trim oldest entries to cap memory usage
+            if (combined.length > MAX_DAYS_IN_MEMORY) {
+              const trimCount = combined.length - MAX_DAYS_IN_MEMORY;
+              frontTrimRef.current = trimCount;
+              return combined.slice(trimCount);
+            }
+            frontTrimRef.current = 0;
+            return combined;
           });
         }
 
@@ -90,7 +106,7 @@ export function useDailyFeed() {
         setRefreshing(false);
       }
     },
-    []
+    [mode]
   );
 
   // Fetch first page on mount
@@ -113,5 +129,5 @@ export function useDailyFeed() {
     fetchPage(null, true);
   }, [fetchPage]);
 
-  return { days, loading, refreshing, hasMore, fetchNextPage, refresh };
+  return { days, loading, refreshing, hasMore, fetchNextPage, refresh, frontTrimRef };
 }

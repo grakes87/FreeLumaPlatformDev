@@ -81,12 +81,18 @@ function SingleDayCarousel({ date }: { date?: string }) {
     );
   }
 
+  const activeT = activeTranslation
+    ? content.translations.find((t) => t.code === activeTranslation)
+    : null;
+  const resolvedChapterText = activeT?.chapter_text || null;
+
   return (
     <CarouselSwiper
       content={content}
       activeTranslation={activeTranslation}
       resolvedAudioUrl={resolvedAudioUrl}
       resolvedSrtUrl={resolvedSrtUrl}
+      resolvedChapterText={resolvedChapterText}
       isActive={true}
       feedMode={false}
     />
@@ -108,8 +114,8 @@ function FeedModeCarousel({
 
   const [localContent, setLocalContent] = useState(content);
   const translationCacheRef = useRef(
-    new Map<string, { text: string; audio_url: string | null; audio_srt_url: string | null }>(
-      content.translations.map((t) => [t.code, { text: t.text, audio_url: t.audio_url, audio_srt_url: t.audio_srt_url }])
+    new Map<string, { text: string; audio_url: string | null; audio_srt_url: string | null; chapter_text: string | null }>(
+      content.translations.map((t) => [t.code, { text: t.text, audio_url: t.audio_url, audio_srt_url: t.audio_srt_url, chapter_text: t.chapter_text }])
     )
   );
 
@@ -131,6 +137,7 @@ function FeedModeCarousel({
           text: data.text,
           audio_url: data.audio_url ?? null,
           audio_srt_url: data.audio_srt_url ?? null,
+          chapter_text: data.chapter_text ?? null,
         };
         translationCacheRef.current.set(code, entry);
         setLocalContent((prev) => {
@@ -148,8 +155,9 @@ function FeedModeCarousel({
   const activeT = activeTranslation
     ? localContent.translations.find((t) => t.code === activeTranslation)
     : null;
-  const resolvedAudioUrl = activeT?.audio_url || localContent.audio_url || null;
-  const resolvedSrtUrl = activeT?.audio_srt_url || localContent.audio_srt_url || null;
+  const resolvedAudioUrl = activeT?.audio_url || null;
+  const resolvedSrtUrl = activeT?.audio_srt_url || null;
+  const resolvedChapterText = activeT?.chapter_text || null;
 
   return (
     <CarouselSwiper
@@ -157,6 +165,7 @@ function FeedModeCarousel({
       activeTranslation={activeTranslation}
       resolvedAudioUrl={resolvedAudioUrl}
       resolvedSrtUrl={resolvedSrtUrl}
+      resolvedChapterText={resolvedChapterText}
       isActive={isActive}
       feedMode={feedMode}
     />
@@ -169,6 +178,7 @@ function CarouselSwiper({
   activeTranslation,
   resolvedAudioUrl,
   resolvedSrtUrl,
+  resolvedChapterText,
   isActive,
   feedMode,
 }: {
@@ -176,6 +186,7 @@ function CarouselSwiper({
   activeTranslation: string | null;
   resolvedAudioUrl: string | null;
   resolvedSrtUrl: string | null;
+  resolvedChapterText: string | null;
   isActive: boolean;
   feedMode: boolean;
 }) {
@@ -216,6 +227,7 @@ function CarouselSwiper({
           activeTranslation={activeTranslation}
           resolvedAudioUrl={resolvedAudioUrl}
           resolvedSrtUrl={resolvedSrtUrl}
+          resolvedChapterText={resolvedChapterText}
           isActive={isActive && activeSlide === 1}
         />
       </SwiperSlide>

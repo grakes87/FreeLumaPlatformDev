@@ -68,18 +68,18 @@ export function WorkshopLobby({
       <div className="w-full max-w-md space-y-6 text-center">
         {/* Workshop title */}
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-text dark:text-white">
             {workshop.title}
           </h1>
-          <p className="mt-1 text-sm text-white/50">
+          <p className="mt-1 text-sm text-text-muted dark:text-white/50">
             Hosted by {workshop.host.display_name}
           </p>
         </div>
 
         {/* Countdown timer */}
         {remaining > 0 ? (
-          <div className="rounded-2xl bg-white/5 p-6 backdrop-blur">
-            <div className="flex items-center justify-center gap-1.5 text-sm text-white/60">
+          <div className="rounded-2xl bg-surface-hover p-6 dark:bg-white/5 dark:backdrop-blur">
+            <div className="flex items-center justify-center gap-1.5 text-sm text-text-muted dark:text-white/60">
               <Clock className="h-4 w-4" />
               <span>Starting in</span>
             </div>
@@ -92,8 +92,8 @@ export function WorkshopLobby({
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl bg-white/5 p-6 backdrop-blur">
-            <div className="flex items-center justify-center gap-2 text-white/80">
+          <div className="rounded-2xl bg-surface-hover p-6 dark:bg-white/5 dark:backdrop-blur">
+            <div className="flex items-center justify-center gap-2 text-text-muted dark:text-white/80">
               {!isHost && (
                 <>
                   <WaitingDots />
@@ -122,8 +122,8 @@ export function WorkshopLobby({
         )}
 
         {/* Attendee list */}
-        <div className="rounded-2xl bg-white/5 p-4 backdrop-blur">
-          <div className="mb-3 flex items-center justify-center gap-1.5 text-sm text-white/60">
+        <div className="rounded-2xl bg-surface-hover p-4 dark:bg-white/5 dark:backdrop-blur">
+          <div className="mb-3 flex items-center justify-center gap-1.5 text-sm text-text-muted dark:text-white/60">
             <Users className="h-4 w-4" />
             <span>
               {attendees.length} {attendees.length === 1 ? 'person' : 'people'} in lobby
@@ -135,7 +135,7 @@ export function WorkshopLobby({
               {attendees.slice(0, 20).map((attendee) => (
                 <div
                   key={attendee.userId}
-                  className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5"
+                  className="flex items-center gap-2 rounded-full bg-black/5 px-3 py-1.5 dark:bg-white/10"
                 >
                   {attendee.avatarUrl ? (
                     <img
@@ -151,34 +151,34 @@ export function WorkshopLobby({
                       className="text-[10px]"
                     />
                   )}
-                  <span className="text-xs text-white/80">
+                  <span className="text-xs text-text dark:text-white/80">
                     {attendee.displayName}
                   </span>
                   {attendee.isHost && (
-                    <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+                    <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
                       HOST
                     </span>
                   )}
                   {attendee.isCoHost && !attendee.isHost && (
-                    <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-blue-400">
+                    <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400">
                       CO-HOST
                     </span>
                   )}
                 </div>
               ))}
               {attendees.length > 20 && (
-                <span className="text-xs text-white/50">
+                <span className="text-xs text-text-muted dark:text-white/50">
                   +{attendees.length - 20} more
                 </span>
               )}
             </div>
           ) : (
-            <p className="text-xs text-white/40">No one else is here yet</p>
+            <p className="text-xs text-text-muted dark:text-white/40">No one else is here yet</p>
           )}
         </div>
 
         {/* Tips */}
-        <div className="space-y-2 text-xs text-white/40">
+        <div className="space-y-2 text-xs text-text-muted dark:text-white/40">
           <p>You will be able to watch the host&apos;s video and raise your hand to speak.</p>
           {isHost && (
             <p>As host, your camera and microphone will be shared when you start.</p>
@@ -196,10 +196,10 @@ export function WorkshopLobby({
 function CountdownUnit({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex flex-col items-center">
-      <span className="text-3xl font-bold tabular-nums text-white">
+      <span className="text-3xl font-bold tabular-nums text-text dark:text-white">
         {String(value).padStart(2, '0')}
       </span>
-      <span className="mt-0.5 text-xs text-white/50">{label}</span>
+      <span className="mt-0.5 text-xs text-text-muted dark:text-white/50">{label}</span>
     </div>
   );
 }
@@ -207,9 +207,9 @@ function CountdownUnit({ value, label }: { value: number; label: string }) {
 function WaitingDots() {
   return (
     <span className="flex gap-1">
-      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/60 [animation-delay:0ms]" />
-      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/60 [animation-delay:150ms]" />
-      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/60 [animation-delay:300ms]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-muted dark:bg-white/60 [animation-delay:0ms]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-muted dark:bg-white/60 [animation-delay:150ms]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-muted dark:bg-white/60 [animation-delay:300ms]" />
     </span>
   );
 }

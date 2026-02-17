@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Calendar,
@@ -12,8 +13,12 @@ import {
   Pencil,
   Radio,
   UserPlus,
+  UserCog,
   Repeat,
   ChevronRight,
+  ChevronDown,
+  XCircle,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/Button';
@@ -21,6 +26,8 @@ import { Card } from '@/components/ui/Card';
 import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
 import { RSVPButton } from '@/components/workshop/RSVPButton';
 import { InviteUsersModal } from '@/components/workshop/InviteUsersModal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Modal } from '@/components/ui/Modal';
 
 // ---- Types ----
 
@@ -175,10 +182,29 @@ function parseRruleDescription(rrule: string | null): string | null {
 
 // ---- Component ----
 
+interface SeriesSession {
+  id: number;
+  title: string;
+  scheduled_at: string;
+  status: string;
+}
+
 export function WorkshopDetail({ workshop, userRsvp, isHost }: WorkshopDetailProps) {
-  const [inviteOpen, setInviteOpen] = useState(false);
+  const router = useRouter();
+  const [inviteMode, setInviteMode] = useState<'invite' | 'cohost' | null>(null);
   const [rsvpd, setRsvpd] = useState(!!userRsvp);
   const [attendeeCount, setAttendeeCount] = useState(workshop.attendee_count);
+  const [seriesExpanded, setSeriesExpanded] = useState(false);
+  const [seriesSessions, setSeriesSessions] = useState<SeriesSession[]>([]);
+  const [seriesLoading, setSeriesLoading] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  // Cancel confirmation state
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showCancelChoice, setShowCancelChoice] = useState(false);
+  const [showCancelSeriesConfirm, setShowCancelSeriesConfirm] = useState(false);
+
+  const canManage = workshop.status !== 'ended' && workshop.status !== 'cancelled';
 
   const statusConfig = STATUS_CONFIG[workshop.status] ?? STATUS_CONFIG.scheduled;
   const rruleDesc = workshop.series ? parseRruleDescription(workshop.series.rrule) : null;
@@ -187,6 +213,63 @@ export function WorkshopDetail({ workshop, userRsvp, isHost }: WorkshopDetailPro
     setRsvpd(isRsvpd);
     setAttendeeCount((prev) => (isRsvpd ? prev + 1 : Math.max(0, prev - 1)));
   };
+
+  const loadSeriesSessions = useCallback(async () => {
+    if (seriesExpanded) {
+      setSeriesExpanded(false);
+      return;
+    }
+    if (!workshop.series_id || seriesSessions.length > 0) {
+      setSeriesExpanded(true);
+      return;
+    }
+    setSeriesLoading(true);
+    try {
+      const res = await fetch(`/api/workshops?series_id=${workshop.series_id}&limit=50`);
+      if (res.ok) {
+        const data = await res.json();
+        setSeriesSessions(data.workshops ?? []);
+      }
+    } finally {
+      setSeriesLoading(false);
+      setSeriesExpanded(true);
+    }
+  }, [workshop.series_id, seriesSessions.length, seriesExpanded]);
+
+  // Opens cancel flow: if series workshop, show choice; otherwise show single confirm
+  const handleCancelRequest = useCallback(() => {
+    if (workshop.series_id) {
+      setShowCancelChoice(true);
+    } else {
+      setShowCancelConfirm(true);
+    }
+  }, [workshop.series_id]);
+
+  // Cancel single workshop
+  const handleCancelConfirm = useCallback(async () => {
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/workshops/${workshop.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.refresh();
+      }
+    } finally {
+      setCancelling(false);
+    }
+  }, [workshop.id, router]);
+
+  // Cancel all future series workshops
+  const handleCancelFutureSeries = useCallback(async () => {
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/workshops/${workshop.id}?cancel_future=true`, { method: 'DELETE' });
+      if (res.ok) {
+        router.refresh();
+      }
+    } finally {
+      setCancelling(false);
+    }
+  }, [workshop.id, router]);
 
   return (
     <div className="mx-auto max-w-2xl pb-32">
@@ -226,6 +309,38 @@ export function WorkshopDetail({ workshop, userRsvp, isHost }: WorkshopDetailPro
           )}
         </div>
       </div>
+
+      {/* Host Management Bar */}
+      {isHost && canManage && (
+        <div className="mx-4 mt-3 flex items-center gap-2 overflow-x-auto">
+          {workshop.status === 'scheduled' && (
+            <Link href={`/workshops/${workshop.id}/live`} className="shrink-0">
+              <button className="inline-flex items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700">
+                <Radio className="h-4 w-4" />
+                Go Live
+              </button>
+            </Link>
+          )}
+
+          <Link href={`/workshops/${workshop.id}/edit`} className="shrink-0">
+            <button className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-text shadow-sm transition-colors hover:bg-surface-hover dark:border-border-dark dark:bg-surface-dark dark:text-text-dark dark:hover:bg-surface-hover-dark">
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </button>
+          </Link>
+
+          {(workshop.status === 'scheduled' || workshop.status === 'starting_soon') && (
+            <button
+              onClick={handleCancelRequest}
+              disabled={cancelling}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-red-200 bg-surface px-4 py-2 text-sm font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:bg-surface-dark dark:text-red-400 dark:hover:bg-red-950"
+            >
+              {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
+              Cancel
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 2. Host Section */}
       <Card className="mx-4 mt-4">
@@ -310,23 +425,70 @@ export function WorkshopDetail({ workshop, userRsvp, isHost }: WorkshopDetailPro
             </div>
           )}
 
-          {/* Next in series */}
-          {workshop.next_in_series && (
-            <Link
-              href={`/workshops/${workshop.next_in_series.id}`}
-              className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-2 transition-colors hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
-            >
-              <ChevronRight className="h-4 w-4 shrink-0 text-primary" />
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-medium text-primary">Next Session</div>
-                <div className="truncate text-sm text-text dark:text-text-dark">
-                  {workshop.next_in_series.title}
+          {/* Series sessions — expandable list */}
+          {workshop.series_id && (
+            <div className="space-y-2">
+              <button
+                onClick={loadSeriesSessions}
+                className="flex w-full items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
+              >
+                {seriesLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : seriesExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+                {seriesExpanded ? 'Sessions' : 'View All Sessions'}
+                {seriesSessions.length > 0 && ` (${seriesSessions.length})`}
+              </button>
+
+              {seriesExpanded && seriesSessions.length > 0 && (
+                <div className="space-y-1 pl-2">
+                  {seriesSessions.map((session) => {
+                    const isCurrent = session.id === workshop.id;
+                    const sessionStatus = STATUS_CONFIG[session.status];
+                    return (
+                      <Link
+                        key={session.id}
+                        href={`/workshops/${session.id}`}
+                        className={cn(
+                          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                          isCurrent
+                            ? 'bg-primary/10 dark:bg-primary/20'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+                        )}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-text dark:text-text-dark">
+                            {session.title}
+                          </div>
+                          <div className="text-xs text-text-muted dark:text-text-muted-dark">
+                            {formatDate(session.scheduled_at)} &middot; {formatTime(session.scheduled_at)}
+                          </div>
+                        </div>
+                        {sessionStatus && (
+                          <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-xs font-medium', sessionStatus.color)}>
+                            {sessionStatus.label}
+                          </span>
+                        )}
+                        {isCurrent && (
+                          <span className="shrink-0 text-xs font-medium text-primary">Current</span>
+                        )}
+                      </Link>
+                    );
+                  })}
+
+                  <Link
+                    href={`/workshops/series/${workshop.series_id}`}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary hover:underline"
+                  >
+                    <Repeat className="h-3.5 w-3.5" />
+                    View Series Overview
+                  </Link>
                 </div>
-                <div className="text-xs text-text-muted dark:text-text-muted-dark">
-                  {formatDate(workshop.next_in_series.scheduled_at)}
-                </div>
-              </div>
-            </Link>
+              )}
+            </div>
           )}
         </div>
       </Card>
@@ -343,20 +505,32 @@ export function WorkshopDetail({ workshop, userRsvp, isHost }: WorkshopDetailPro
         </Card>
       )}
 
-      {/* 5. Attendees Section */}
-      <Card className="mx-4 mt-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-text-muted dark:text-text-muted-dark" />
-            <span className="text-sm font-medium text-text dark:text-text-dark">
-              {attendeeCount} attending
-            </span>
-            {workshop.max_capacity != null && (
-              <span className="text-xs text-text-muted dark:text-text-muted-dark">
-                / {workshop.max_capacity} max
-              </span>
-            )}
-          </div>
+      {/* 5. Invite / Co-host + Attendees Section */}
+      {isHost && canManage && (
+        <div className="mx-4 mt-4 flex items-center gap-2">
+          <button
+            onClick={() => setInviteMode('invite')}
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-medium text-text shadow-sm transition-colors hover:bg-surface-hover dark:border-border-dark dark:bg-surface-dark dark:text-text-dark dark:hover:bg-surface-hover-dark"
+          >
+            <UserPlus className="h-4 w-4" />
+            Invite People
+          </button>
+          <button
+            onClick={() => setInviteMode('cohost')}
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-medium text-text shadow-sm transition-colors hover:bg-surface-hover dark:border-border-dark dark:bg-surface-dark dark:text-text-dark dark:hover:bg-surface-hover-dark"
+          >
+            <UserCog className="h-4 w-4" />
+            Add Co-host
+          </button>
+        </div>
+      )}
+
+      <Card className="mx-4 mt-3">
+        <div className="flex items-center gap-2">
+          <Users className="h-5 w-5 text-text-muted dark:text-text-muted-dark" />
+          <span className="text-sm font-medium text-text dark:text-text-dark">
+            {attendeeCount} attending
+          </span>
         </div>
       </Card>
 
@@ -386,7 +560,7 @@ export function WorkshopDetail({ workshop, userRsvp, isHost }: WorkshopDetailPro
       )}
 
       {/* 7. Actions Section (fixed bottom on mobile) */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface px-4 py-3 dark:border-border-dark dark:bg-surface-dark" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="fixed inset-x-0 z-20 border-t border-border bg-surface px-4 py-3 dark:border-border-dark dark:bg-surface-dark" style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}>
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           {/* Live workshop: Join button takes priority */}
           {workshop.status === 'live' && (
@@ -420,47 +594,92 @@ export function WorkshopDetail({ workshop, userRsvp, isHost }: WorkshopDetailPro
               </Button>
             </Link>
           )}
-
-          {/* Host controls */}
-          {isHost && (
-            <>
-              {workshop.status === 'scheduled' && (
-                <Link href={`/workshops/${workshop.id}/live`}>
-                  <Button variant="secondary" size="md">
-                    <Radio className="h-4 w-4" />
-                    Start
-                  </Button>
-                </Link>
-              )}
-
-              <Link href={`/workshops/${workshop.id}/edit`}>
-                <Button variant="outline" size="md">
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              </Link>
-
-              {workshop.is_private && (
-                <Button
-                  variant="outline"
-                  size="md"
-                  onClick={() => setInviteOpen(true)}
-                >
-                  <UserPlus className="h-4 w-4" />
-                </Button>
-              )}
-            </>
-          )}
         </div>
       </div>
 
-      {/* Invite modal */}
-      {isHost && workshop.is_private && (
+      {/* Invite / Co-host modal */}
+      {isHost && (
         <InviteUsersModal
           workshopId={workshop.id}
-          isOpen={inviteOpen}
-          onClose={() => setInviteOpen(false)}
+          isOpen={inviteMode !== null}
+          onClose={() => setInviteMode(null)}
+          mode={inviteMode ?? 'invite'}
         />
       )}
+
+      {/* Cancel single workshop confirmation */}
+      <ConfirmDialog
+        isOpen={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={handleCancelConfirm}
+        title="Cancel Workshop"
+        message="Cancel this workshop? All RSVP'd attendees will be notified. This cannot be undone."
+        confirmLabel="Cancel Workshop"
+        cancelLabel="Keep It"
+        danger
+      />
+
+      {/* Series cancel choice modal */}
+      <Modal
+        isOpen={showCancelChoice}
+        onClose={() => setShowCancelChoice(false)}
+        title="Cancel Workshop"
+        size="sm"
+      >
+        <p className="text-sm text-text-muted dark:text-text-muted-dark">
+          This workshop is part of a series. What would you like to cancel?
+        </p>
+        <div className="mt-4 space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              setShowCancelChoice(false);
+              setShowCancelConfirm(true);
+            }}
+            className="flex w-full items-center gap-3 rounded-xl border border-border px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:border-border-dark dark:hover:bg-slate-800"
+          >
+            <XCircle className="h-5 w-5 shrink-0 text-red-500" />
+            <div>
+              <div className="text-sm font-semibold text-text dark:text-text-dark">
+                Cancel This Event Only
+              </div>
+              <div className="text-xs text-text-muted dark:text-text-muted-dark">
+                Only this session will be cancelled
+              </div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowCancelChoice(false);
+              setShowCancelSeriesConfirm(true);
+            }}
+            className="flex w-full items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-left transition-colors hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
+          >
+            <Repeat className="h-5 w-5 shrink-0 text-red-500" />
+            <div>
+              <div className="text-sm font-semibold text-red-600 dark:text-red-400">
+                Cancel All Future Events
+              </div>
+              <div className="text-xs text-text-muted dark:text-text-muted-dark">
+                All scheduled future sessions in this series will be cancelled
+              </div>
+            </div>
+          </button>
+        </div>
+      </Modal>
+
+      {/* Series cancel confirmation */}
+      <ConfirmDialog
+        isOpen={showCancelSeriesConfirm}
+        onClose={() => setShowCancelSeriesConfirm(false)}
+        onConfirm={handleCancelFutureSeries}
+        title="Cancel All Future Events"
+        message="This will cancel all scheduled future workshops in this series. Attendees of each event will be notified. This cannot be undone."
+        confirmLabel="Cancel All Future"
+        cancelLabel="Go Back"
+        danger
+      />
     </div>
   );
 }

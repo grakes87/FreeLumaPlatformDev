@@ -9,45 +9,31 @@ interface VerseModeToggleProps {
   onChange: (mode: VerseMode) => void;
 }
 
-const MODES: { value: VerseMode; label: string }[] = [
-  { value: 'daily_verse', label: 'Daily Post' },
-  { value: 'verse_by_category', label: 'Verse by Category' },
+const MODE_LABELS: Record<VerseMode, string> = {
+  daily_verse: 'DV',
+  verse_by_category: 'VC',
+};
+
+const MODE_OPTIONS: { value: VerseMode; short: string; label: string }[] = [
+  { value: 'daily_verse', short: 'DV', label: 'Daily Verse' },
+  { value: 'verse_by_category', short: 'VC', label: 'Verse by Category' },
 ];
 
 export function VerseModeToggle({ mode, onChange }: VerseModeToggleProps) {
-  const activeIndex = MODES.findIndex((m) => m.value === mode);
-
   return (
-    <div className="flex rounded-full bg-white/10 p-1 backdrop-blur-2xl">
-      {/* Animated pill indicator */}
-      <div className="relative flex w-full">
-        {/* Background pill */}
-        <div
-          className="absolute inset-y-0 rounded-full bg-white/20 transition-all duration-200"
-          style={{
-            width: `${100 / MODES.length}%`,
-            left: `${(activeIndex * 100) / MODES.length}%`,
-          }}
-        />
-
-        {/* Buttons */}
-        {MODES.map((m) => {
-          const isActive = m.value === mode;
-          return (
-            <button
-              key={m.value}
-              type="button"
-              onClick={() => onChange(m.value)}
-              className={cn(
-                'relative z-10 flex-1 rounded-full px-4 py-1.5 text-xs font-medium transition-colors duration-200',
-                isActive ? 'text-white' : 'text-white/60'
-              )}
-            >
-              {m.label}
-            </button>
-          );
-        })}
-      </div>
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          const next = mode === 'daily_verse' ? 'verse_by_category' : 'daily_verse';
+          onChange(next);
+        }}
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-white/15 text-[10px] font-bold tracking-tight text-white backdrop-blur-md transition-colors hover:bg-white/25"
+        aria-label={`Verse mode: ${mode === 'daily_verse' ? 'Daily Verse' : 'Verse by Category'}. Tap to switch.`}
+        title={mode === 'daily_verse' ? 'Daily Verse' : 'Verse by Category'}
+      >
+        {MODE_LABELS[mode]}
+      </button>
     </div>
   );
 }

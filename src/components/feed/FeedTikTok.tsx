@@ -40,6 +40,7 @@ export function FeedTikTok() {
     setActiveTab,
     removePost,
     updatePost,
+    frontTrimRef,
   } = useFeed();
 
   return (
@@ -60,6 +61,7 @@ export function FeedTikTok() {
           currentUserId={user?.id ?? null}
           onRemovePost={removePost}
           onUpdatePost={updatePost}
+          frontTrimRef={frontTrimRef}
         />
 
         {/* Post composer */}

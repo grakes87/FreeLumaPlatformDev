@@ -42,6 +42,7 @@ export interface UseWorkshopSocketReturn {
   demoteCoHost: (userId: number) => void;
   muteUser: (userId: number) => void;
   removeUser: (userId: number) => void;
+  banUser: (targetUserId: number, reason?: string) => void;
 }
 
 const DEFAULT_STATE: WorkshopState = {
@@ -333,6 +334,12 @@ export function useWorkshopSocket(workshopId: number | null): UseWorkshopSocketR
     }
   }, [socket, workshopId]);
 
+  const banUser = useCallback((targetUserId: number, reason?: string) => {
+    if (socket && workshopId) {
+      socket.emit('workshop:ban-user', { workshopId, targetUserId, reason });
+    }
+  }, [socket, workshopId]);
+
   return {
     socket,
     connected,
@@ -349,5 +356,6 @@ export function useWorkshopSocket(workshopId: number | null): UseWorkshopSocketR
     demoteCoHost,
     muteUser,
     removeUser,
+    banUser,
   };
 }

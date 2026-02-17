@@ -171,19 +171,19 @@ export function DailyPostSlide({
         <div className="flex max-w-lg flex-col items-center gap-4 text-center">
           <p
             className={
-              'text-xl leading-relaxed font-light tracking-wide text-white drop-shadow-lg sm:text-2xl md:text-3xl ' +
+              'fl-font-daily-verse text-xl leading-relaxed font-light tracking-wide text-white drop-shadow-lg sm:text-2xl md:text-3xl ' +
               (content.mode === 'bible' ? 'font-serif italic' : 'font-sans')
             }
-            style={{
-              textShadow: '0 2px 8px rgba(0,0,0,0.5)',
-            }}
+            style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}
           >
             &ldquo;{displayText}&rdquo;
           </p>
 
           {/* Reference / attribution */}
           {content.verse_reference && (
-            <p className="text-sm font-medium tracking-widest text-white/70 uppercase drop-shadow-md sm:text-base">
+            <p
+              className="fl-font-daily-reference text-sm font-medium tracking-widest text-white/70 uppercase drop-shadow-md sm:text-base"
+            >
               {content.verse_reference}
               {activeTranslation ? ` (${activeTranslation})` : ''}
             </p>

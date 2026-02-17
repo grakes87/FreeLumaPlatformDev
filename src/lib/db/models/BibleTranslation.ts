@@ -5,6 +5,7 @@ export interface BibleTranslationAttributes {
   id: number;
   code: string;
   name: string;
+  api_bible_id: string | null;
   language: string;
   is_public_domain: boolean;
   attribution_text: string | null;
@@ -15,6 +16,7 @@ export interface BibleTranslationAttributes {
 
 export interface BibleTranslationCreationAttributes extends Optional<BibleTranslationAttributes,
   | 'id'
+  | 'api_bible_id'
   | 'language'
   | 'is_public_domain'
   | 'attribution_text'
@@ -27,6 +29,7 @@ class BibleTranslation extends Model<BibleTranslationAttributes, BibleTranslatio
   declare id: number;
   declare code: string;
   declare name: string;
+  declare api_bible_id: string | null;
   declare language: string;
   declare is_public_domain: boolean;
   declare attribution_text: string | null;
@@ -50,6 +53,11 @@ BibleTranslation.init(
     name: {
       type: DataTypes.STRING(255),
       allowNull: false,
+    },
+    api_bible_id: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      defaultValue: null,
     },
     language: {
       type: DataTypes.STRING(10),

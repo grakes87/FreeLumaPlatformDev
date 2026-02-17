@@ -137,6 +137,13 @@ function CreateOnBehalfForm({
   const [time, setTime] = useState('');
   const [durationMinutes, setDurationMinutes] = useState<number | null>(null);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [workshopMode, setWorkshopMode] = useState<'bible' | 'positivity'>('bible');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'biweekly' | 'monthly'>('weekly');
+  const [byDay, setByDay] = useState<string[]>([]);
+  const [endCondition, setEndCondition] = useState<'never' | 'count' | 'until'>('never');
+  const [occurrenceCount, setOccurrenceCount] = useState(4);
+  const [untilDate, setUntilDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
@@ -148,34 +155,58 @@ function CreateOnBehalfForm({
       setFormError('Title must be at least 3 characters');
       return;
     }
-    if (!date || !time) {
+    if (!isRecurring && (!date || !time)) {
       setFormError('Date and time are required');
       return;
     }
-
-    const scheduledAt = new Date(`${date}T${time}`);
-    const minTime = new Date(Date.now() + 15 * 60 * 1000);
-    if (scheduledAt < minTime) {
-      setFormError('Workshop must be scheduled at least 15 minutes from now');
+    if (isRecurring && !time) {
+      setFormError('Time is required for recurring workshops');
       return;
+    }
+
+    if (!isRecurring) {
+      const scheduledAt = new Date(`${date}T${time}`);
+      const minTime = new Date(Date.now() + 15 * 60 * 1000);
+      if (scheduledAt < minTime) {
+        setFormError('Workshop must be scheduled at least 15 minutes from now');
+        return;
+      }
     }
 
     setSubmitting(true);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const body: any = {
+        action: 'create_on_behalf',
+        host_id: host.id,
+        title,
+        description: description || undefined,
+        category_id: categoryId,
+        duration_minutes: durationMinutes,
+        is_private: isPrivate,
+        mode: workshopMode,
+        is_recurring: isRecurring,
+      };
+
+      if (isRecurring) {
+        body.frequency = frequency;
+        body.time_of_day = time;
+        body.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if ((frequency === 'weekly' || frequency === 'biweekly') && byDay.length > 0) {
+          body.byDay = byDay;
+        }
+        body.endCondition = endCondition;
+        if (endCondition === 'count') body.occurrenceCount = occurrenceCount;
+        if (endCondition === 'until') body.untilDate = untilDate;
+      } else {
+        body.scheduled_at = new Date(`${date}T${time}`).toISOString();
+      }
+
       const res = await fetch('/api/admin/workshops', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          action: 'create_on_behalf',
-          host_id: host.id,
-          title,
-          description: description || undefined,
-          category_id: categoryId,
-          scheduled_at: scheduledAt.toISOString(),
-          duration_minutes: durationMinutes,
-          is_private: isPrivate,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -281,15 +312,50 @@ function CreateOnBehalfForm({
         </select>
       </div>
 
+      {/* Mode selector */}
+      <div className="w-full">
+        <label className="mb-1.5 block text-sm font-medium text-text dark:text-text-dark">
+          Mode
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setWorkshopMode('bible')}
+            className={cn(
+              'rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition-all',
+              workshopMode === 'bible'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-text-muted hover:border-primary/40'
+            )}
+          >
+            Faith
+          </button>
+          <button
+            type="button"
+            onClick={() => setWorkshopMode('positivity')}
+            className={cn(
+              'rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition-all',
+              workshopMode === 'positivity'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-text-muted hover:border-primary/40'
+            )}
+          >
+            Positivity
+          </button>
+        </div>
+      </div>
+
       {/* Date & Time */}
       <div className="grid grid-cols-2 gap-3">
-        <Input
-          label="Date"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          min={new Date().toISOString().split('T')[0]}
-        />
+        {!isRecurring && (
+          <Input
+            label="Date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            min={new Date().toISOString().split('T')[0]}
+          />
+        )}
         <Input
           label="Time"
           type="time"
@@ -340,6 +406,132 @@ function CreateOnBehalfForm({
           />
         </button>
       </div>
+
+      {/* Recurring toggle */}
+      <div className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3 dark:border-border-dark dark:bg-surface-dark">
+        <div>
+          <p className="text-sm font-medium text-text dark:text-text-dark">
+            Recurring series
+          </p>
+          <p className="text-xs text-text-muted dark:text-text-muted-dark">
+            Automatically generate workshop instances
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isRecurring}
+          onClick={() => setIsRecurring(!isRecurring)}
+          className={cn(
+            'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200',
+            isRecurring ? 'bg-primary' : 'bg-slate-300 dark:bg-slate-600'
+          )}
+        >
+          <span
+            className={cn(
+              'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200',
+              isRecurring ? 'translate-x-5' : 'translate-x-0'
+            )}
+          />
+        </button>
+      </div>
+
+      {/* Recurring options */}
+      {isRecurring && (
+        <div className="space-y-3 rounded-xl border border-border bg-slate-50 p-4 dark:border-border-dark dark:bg-slate-900">
+          {/* Frequency */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-text dark:text-text-dark">
+              Frequency
+            </label>
+            <select
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value as typeof frequency)}
+              className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+
+          {/* Day picker for weekly/biweekly */}
+          {(frequency === 'weekly' || frequency === 'biweekly') && (
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-text dark:text-text-dark">
+                Days
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'MO', label: 'Mon' },
+                  { key: 'TU', label: 'Tue' },
+                  { key: 'WE', label: 'Wed' },
+                  { key: 'TH', label: 'Thu' },
+                  { key: 'FR', label: 'Fri' },
+                  { key: 'SA', label: 'Sat' },
+                  { key: 'SU', label: 'Sun' },
+                ].map((d) => (
+                  <button
+                    key={d.key}
+                    type="button"
+                    onClick={() => {
+                      setByDay((prev) =>
+                        prev.includes(d.key) ? prev.filter((x) => x !== d.key) : [...prev, d.key]
+                      );
+                    }}
+                    className={cn(
+                      'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                      byDay.includes(d.key)
+                        ? 'bg-primary text-white'
+                        : 'bg-slate-200 text-text-muted hover:bg-slate-300 dark:bg-slate-700 dark:text-text-muted-dark dark:hover:bg-slate-600'
+                    )}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* End condition */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-text dark:text-text-dark">
+              Ends
+            </label>
+            <select
+              value={endCondition}
+              onChange={(e) => setEndCondition(e.target.value as typeof endCondition)}
+              className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+            >
+              <option value="never">Never</option>
+              <option value="count">After N occurrences</option>
+              <option value="until">Until date</option>
+            </select>
+          </div>
+
+          {endCondition === 'count' && (
+            <Input
+              label="Number of occurrences"
+              type="number"
+              value={occurrenceCount}
+              onChange={(e) => setOccurrenceCount(parseInt(e.target.value, 10) || 4)}
+              min={1}
+              max={52}
+            />
+          )}
+
+          {endCondition === 'until' && (
+            <Input
+              label="End date"
+              type="date"
+              value={untilDate}
+              onChange={(e) => setUntilDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+            />
+          )}
+        </div>
+      )}
 
       {/* Error */}
       {formError && (

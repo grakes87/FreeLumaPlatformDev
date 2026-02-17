@@ -12,10 +12,23 @@ interface AudioPlayerSlideProps {
   activeTranslation: string | null;
   resolvedAudioUrl: string | null;
   resolvedSrtUrl: string | null;
+  resolvedChapterText?: string | null;
   isActive?: boolean;
 }
 
 const PLAYBACK_SPEEDS = [0.5, 1, 1.5, 2];
+
+/**
+ * Extract "Book Chapter" from a verse reference like "1 Kings 6:2" → "1 Kings 6"
+ */
+function extractBookChapter(verseRef: string | null): string | null {
+  if (!verseRef) return null;
+  // Match book name (may start with a number) + chapter number before the colon
+  const match = verseRef.match(/^(.+?)\s+(\d+):\d+/);
+  if (match) return `${match[1]} ${match[2]}`;
+  // If no colon (e.g., "Psalms 23"), return as-is
+  return verseRef;
+}
 
 /**
  * Format seconds to mm:ss display.
@@ -32,6 +45,7 @@ export function AudioPlayerSlide({
   activeTranslation,
   resolvedAudioUrl,
   resolvedSrtUrl,
+  resolvedChapterText,
   isActive = true,
 }: AudioPlayerSlideProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -51,6 +65,43 @@ export function AudioPlayerSlide({
       audioRef.current.pause();
     }
   }, [isActive]);
+
+  const handleProgressDrag = useCallback(
+    (e: MouseEvent | TouchEvent) => {
+      const audio = audioRef.current;
+      const bar = progressRef.current;
+      if (!audio || !bar || duration <= 0) return;
+
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const rect = bar.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      audio.currentTime = ratio * duration;
+    },
+    [duration]
+  );
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const onMove = (e: MouseEvent | TouchEvent) => handleProgressDrag(e);
+    const onUp = () => handleDragEnd();
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove);
+    document.addEventListener('touchend', onUp);
+
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onUp);
+    };
+  }, [isDragging, handleProgressDrag, handleDragEnd]);
 
   const hasVideo = content.video_background_url &&
     content.video_background_url !== '' &&
@@ -125,43 +176,6 @@ export function AudioPlayerSlide({
     audio.currentTime = ratio * duration;
   };
 
-  const handleProgressDrag = useCallback(
-    (e: MouseEvent | TouchEvent) => {
-      const audio = audioRef.current;
-      const bar = progressRef.current;
-      if (!audio || !bar || duration <= 0) return;
-
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-      const rect = bar.getBoundingClientRect();
-      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-      audio.currentTime = ratio * duration;
-    },
-    [duration]
-  );
-
-  const handleDragEnd = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const onMove = (e: MouseEvent | TouchEvent) => handleProgressDrag(e);
-    const onUp = () => handleDragEnd();
-
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    document.addEventListener('touchmove', onMove);
-    document.addEventListener('touchend', onUp);
-
-    return () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      document.removeEventListener('touchmove', onMove);
-      document.removeEventListener('touchend', onUp);
-    };
-  }, [isDragging, handleProgressDrag, handleDragEnd]);
-
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden">
       {/* Blurred video background (same source as slide 1) */}
@@ -201,32 +215,79 @@ export function AudioPlayerSlide({
 
       {/* Content layer */}
       <div className="relative z-10 flex h-full flex-col">
-        {/* Top: Frosted glass "album art" card */}
-        <div className="flex-shrink-0 px-6 pb-3" style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top, 0px) + 0.5rem)' }}>
-          <div className="rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-center backdrop-blur-xl">
+        {/* Top: Header + Controls */}
+        <div className="flex-shrink-0 px-6 pb-2" style={{ paddingTop: 'calc(3.5rem + env(safe-area-inset-top, 0px) + 0.5rem)' }}>
+          {/* Frosted glass header card */}
+          <div className="rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-center backdrop-blur-xl">
             <p className="text-xs font-medium uppercase tracking-widest text-white/50">
               {content.mode === 'bible' ? 'Scripture Audio' : 'Daily Audio'}
             </p>
-            <h2 className="mt-1.5 text-xl font-semibold text-white">
-              {content.chapter_reference || content.title}
+            <h2 className="mt-1 text-lg font-semibold text-white">
+              {extractBookChapter(content.verse_reference) || content.chapter_reference || content.title}
             </h2>
-            {content.chapter_reference && content.title !== content.chapter_reference && (
-              <p className="mt-1 text-sm text-white/50">{content.title}</p>
-            )}
           </div>
-        </div>
 
-        {/* Center: Subtitle display (Apple Music lyrics style) */}
-        <SubtitleDisplay
-          srtUrl={resolvedSrtUrl}
-          currentTime={currentTime}
-          isPlaying={isPlaying}
-        />
+          {/* Playback controls */}
+          <div className="mt-3 flex items-center justify-center">
+            {/* Speed selector — left side */}
+            <button
+              type="button"
+              onClick={handleSpeedChange}
+              className="mr-auto rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-semibold text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label={`Playback speed: ${playbackSpeed}x`}
+            >
+              {playbackSpeed}x
+            </button>
 
-        {/* Bottom: Controls */}
-        <div className="flex-shrink-0 px-6 pt-2" style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 0.5rem)' }}>
-          <div>
-            {/* Progress bar — thin Apple Music style */}
+            {/* Center controls group */}
+            <div className="flex items-center gap-6">
+              {/* Rewind 15s */}
+              <button
+                type="button"
+                onClick={() => handleSkip(-15)}
+                className="relative text-white/70 transition-colors hover:text-white active:scale-90"
+                aria-label="Rewind 15 seconds"
+              >
+                <RotateCcw className="h-6 w-6" />
+                <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">
+                  15
+                </span>
+              </button>
+
+              {/* Play/Pause */}
+              <button
+                type="button"
+                onClick={handlePlayPause}
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-900 shadow-lg transition-transform active:scale-90"
+                aria-label={isPlaying ? 'Pause' : 'Play'}
+              >
+                {isPlaying ? (
+                  <Pause className="h-5 w-5" fill="currentColor" />
+                ) : (
+                  <Play className="h-5 w-5 translate-x-0.5" fill="currentColor" />
+                )}
+              </button>
+
+              {/* Forward 15s */}
+              <button
+                type="button"
+                onClick={() => handleSkip(15)}
+                className="relative text-white/70 transition-colors hover:text-white active:scale-90"
+                aria-label="Forward 15 seconds"
+              >
+                <RotateCw className="h-6 w-6" />
+                <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">
+                  15
+                </span>
+              </button>
+            </div>
+
+            {/* Invisible spacer to balance speed button */}
+            <div className="ml-auto w-[42px]" aria-hidden="true" />
+          </div>
+
+          {/* Progress bar */}
+          <div className="mt-2">
             <div
               ref={progressRef}
               className="relative h-1 w-full cursor-pointer rounded-full bg-white/20"
@@ -240,12 +301,10 @@ export function AudioPlayerSlide({
               aria-valuemax={Math.round(duration)}
               tabIndex={0}
             >
-              {/* Progress fill */}
               <div
                 className="absolute left-0 top-0 h-full rounded-full bg-white transition-[width] duration-100"
                 style={{ width: `${progress}%` }}
               />
-              {/* Drag handle */}
               <div
                 className={cn(
                   'absolute top-1/2 h-3 w-3 rounded-full bg-white shadow-md transition-transform',
@@ -254,9 +313,7 @@ export function AudioPlayerSlide({
                 style={{ left: `${progress}%`, transform: 'translate(-50%, -50%)' }}
               />
             </div>
-
-            {/* Time labels below the bar */}
-            <div className="mt-1.5 flex justify-between">
+            <div className="mt-1 flex justify-between">
               <span className="text-[11px] tabular-nums text-white/50">
                 {formatTime(currentTime)}
               </span>
@@ -264,67 +321,19 @@ export function AudioPlayerSlide({
                 {formatTime(duration)}
               </span>
             </div>
-
-            {/* Playback controls */}
-            <div className="mt-3 flex items-center justify-center">
-              {/* Speed selector — left side */}
-              <button
-                type="button"
-                onClick={handleSpeedChange}
-                className="mr-auto rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-semibold text-white/60 transition-colors hover:bg-white/10 hover:text-white"
-                aria-label={`Playback speed: ${playbackSpeed}x`}
-              >
-                {playbackSpeed}x
-              </button>
-
-              {/* Center controls group */}
-              <div className="flex items-center gap-6">
-                {/* Rewind 15s */}
-                <button
-                  type="button"
-                  onClick={() => handleSkip(-15)}
-                  className="relative text-white/70 transition-colors hover:text-white active:scale-90"
-                  aria-label="Rewind 15 seconds"
-                >
-                  <RotateCcw className="h-7 w-7" />
-                  <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold">
-                    15
-                  </span>
-                </button>
-
-                {/* Play/Pause — large centered button */}
-                <button
-                  type="button"
-                  onClick={handlePlayPause}
-                  className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-gray-900 shadow-lg transition-transform active:scale-90"
-                  aria-label={isPlaying ? 'Pause' : 'Play'}
-                >
-                  {isPlaying ? (
-                    <Pause className="h-6 w-6" fill="currentColor" />
-                  ) : (
-                    <Play className="h-6 w-6 translate-x-0.5" fill="currentColor" />
-                  )}
-                </button>
-
-                {/* Forward 15s */}
-                <button
-                  type="button"
-                  onClick={() => handleSkip(15)}
-                  className="relative text-white/70 transition-colors hover:text-white active:scale-90"
-                  aria-label="Forward 15 seconds"
-                >
-                  <RotateCw className="h-7 w-7" />
-                  <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold">
-                    15
-                  </span>
-                </button>
-              </div>
-
-              {/* Invisible spacer to balance speed button */}
-              <div className="ml-auto w-[42px]" aria-hidden="true" />
-            </div>
           </div>
         </div>
+
+        {/* Subtitle display (Apple Music lyrics style) — fills remaining space */}
+        <SubtitleDisplay
+          srtUrl={resolvedSrtUrl}
+          chapterText={resolvedChapterText ?? null}
+          currentTime={currentTime}
+          isPlaying={isPlaying}
+        />
+
+        {/* Bottom spacer for nav bar */}
+        <div className="flex-shrink-0" style={{ height: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }} />
       </div>
     </div>
   );

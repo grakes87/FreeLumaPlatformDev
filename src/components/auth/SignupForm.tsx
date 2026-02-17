@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,8 +15,79 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ActivationCodeStep } from './ActivationCodeStep';
+import { BookOpen, Sun } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
+import { LANGUAGE_OPTIONS } from '@/lib/utils/constants';
+import type { Language } from '@/lib/utils/constants';
 
 type Step = 'activation' | 'credentials';
+type Mode = 'bible' | 'positivity';
+
+// ── i18n strings keyed by language ──────────────────────────────
+const i18n: Record<Language, Record<string, string>> = {
+  en: {
+    createAccount: 'Create your account',
+    chooseExperience: 'Choose your experience',
+    faith: 'Faith',
+    positivity: 'Positivity',
+    preferredTranslation: 'Preferred translation',
+    email: 'Email',
+    emailPlaceholder: 'you@example.com',
+    displayName: 'Display Name',
+    displayNamePlaceholder: 'Your name',
+    username: 'Username',
+    usernamePlaceholder: 'username',
+    password: 'Password',
+    passwordPlaceholder: 'Create a password',
+    confirmPassword: 'Confirm Password',
+    confirmPasswordPlaceholder: 'Re-enter your password',
+    passwordsDoNotMatch: 'Passwords do not match',
+    dateOfBirth: 'Date of Birth',
+    termsPrefix: 'I agree to the',
+    termsOfService: 'Terms of Service',
+    termsAnd: 'and',
+    privacyPolicy: 'Privacy Policy',
+    submitButton: 'Create Account',
+    alreadyHaveAccount: 'Already have an account?',
+    logIn: 'Log in',
+    atLeast8: 'At least 8 characters',
+    oneUppercase: 'One uppercase letter',
+    oneLowercase: 'One lowercase letter',
+    oneNumber: 'One number',
+    language: 'Language',
+  },
+  es: {
+    createAccount: 'Crea tu cuenta',
+    chooseExperience: 'Elige tu experiencia',
+    faith: 'Fe',
+    positivity: 'Positividad',
+    preferredTranslation: 'Traduccion preferida',
+    email: 'Correo electronico',
+    emailPlaceholder: 'tu@ejemplo.com',
+    displayName: 'Nombre para mostrar',
+    displayNamePlaceholder: 'Tu nombre',
+    username: 'Usuario',
+    usernamePlaceholder: 'usuario',
+    password: 'Contrasena',
+    passwordPlaceholder: 'Crea una contrasena',
+    confirmPassword: 'Confirmar contrasena',
+    confirmPasswordPlaceholder: 'Repite tu contrasena',
+    passwordsDoNotMatch: 'Las contrasenas no coinciden',
+    dateOfBirth: 'Fecha de nacimiento',
+    termsPrefix: 'Acepto los',
+    termsOfService: 'Terminos de servicio',
+    termsAnd: 'y la',
+    privacyPolicy: 'Politica de privacidad',
+    submitButton: 'Crear cuenta',
+    alreadyHaveAccount: 'Ya tienes una cuenta?',
+    logIn: 'Iniciar sesion',
+    atLeast8: 'Al menos 8 caracteres',
+    oneUppercase: 'Una letra mayuscula',
+    oneLowercase: 'Una letra minuscula',
+    oneNumber: 'Un numero',
+    language: 'Idioma',
+  },
+};
 
 export function SignupForm() {
   const router = useRouter();
@@ -26,18 +97,54 @@ export function SignupForm() {
   const [step, setStep] = useState<Step>('activation');
   const [activationCode, setActivationCode] = useState('');
   const [modeHint, setModeHint] = useState<string | null>(null);
+  const urlMode = searchParams.get('mode');
+  const [selectedMode, setSelectedMode] = useState<Mode>(urlMode === 'positivity' ? 'positivity' : 'bible');
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>('en');
+  const [preferredTranslation, setPreferredTranslation] = useState('KJV');
+  const [allTranslations, setAllTranslations] = useState<{ code: string; name: string; language: string }[]>([]);
   const [serverError, setServerError] = useState('');
+
+  const t = i18n[selectedLanguage];
+
+  // Fetch all Bible translations once
+  useEffect(() => {
+    if (allTranslations.length > 0) return;
+    fetch('/api/bible-translations')
+      .then((res) => res.json())
+      .then((data) => { if (Array.isArray(data)) setAllTranslations(data); })
+      .catch(() => {});
+  }, [allTranslations.length]);
+
+  // Filter translations by selected language
+  const filteredTranslations = allTranslations.filter(
+    (tr) => tr.language === selectedLanguage
+  );
+
+  // Reset preferred translation when language changes and current pick isn't available
+  useEffect(() => {
+    if (filteredTranslations.length > 0 && !filteredTranslations.some((tr) => tr.code === preferredTranslation)) {
+      setPreferredTranslation(filteredTranslations[0].code);
+    }
+  }, [selectedLanguage, filteredTranslations, preferredTranslation]);
+
+  const handleLanguageChange = useCallback((lang: Language) => {
+    setSelectedLanguage(lang);
+  }, []);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     watch,
+    setError,
+    clearErrors,
   } = useForm<SignupCredentialsInput>({
     resolver: zodResolver(signupCredentialsSchema),
+    mode: 'onTouched',
     defaultValues: {
       email: '',
       password: '',
+      confirm_password: '',
       display_name: '',
       username: '',
       date_of_birth: '',
@@ -46,17 +153,31 @@ export function SignupForm() {
   });
 
   const password = watch('password', '');
+  const confirmPassword = watch('confirm_password', '');
+  const [confirmTouched, setConfirmTouched] = useState(false);
+
+  // Manual password-match validation (zodResolver ignores register validate)
+  useEffect(() => {
+    if (!confirmTouched || !confirmPassword) return;
+    if (confirmPassword !== password) {
+      setError('confirm_password', { type: 'validate', message: t.passwordsDoNotMatch });
+    } else {
+      clearErrors('confirm_password');
+    }
+  }, [confirmPassword, password, confirmTouched, setError, clearErrors, t.passwordsDoNotMatch]);
 
   const passwordRequirements = [
-    { label: 'At least 8 characters', met: password.length >= 8 },
-    { label: 'One uppercase letter', met: /[A-Z]/.test(password) },
-    { label: 'One lowercase letter', met: /[a-z]/.test(password) },
-    { label: 'One number', met: /[0-9]/.test(password) },
+    { label: t.atLeast8, met: password.length >= 8 },
+    { label: t.oneUppercase, met: /[A-Z]/.test(password) },
+    { label: t.oneLowercase, met: /[a-z]/.test(password) },
+    { label: t.oneNumber, met: /[0-9]/.test(password) },
   ];
 
   const handleActivationValidated = (code: string, hint: string | null) => {
     setActivationCode(code);
-    setModeHint(hint || searchParams.get('mode'));
+    const resolvedHint = hint || searchParams.get('mode');
+    setModeHint(resolvedHint);
+    if (resolvedHint === 'positivity') setSelectedMode('positivity');
     setStep('credentials');
   };
 
@@ -76,6 +197,9 @@ export function SignupForm() {
           activation_code: activationCode,
           date_of_birth: data.date_of_birth,
           terms_accepted: data.terms_accepted,
+          mode: selectedMode,
+          preferred_translation: selectedMode === 'bible' ? preferredTranslation : undefined,
+          language: selectedLanguage,
         }),
       });
 
@@ -87,16 +211,13 @@ export function SignupForm() {
       }
 
       login(result.user, result.token);
-      toast.success('Account created successfully!');
+      toast.success(selectedLanguage === 'es' ? 'Cuenta creada exitosamente!' : 'Account created successfully!');
 
-      // Redirect to onboarding with mode hint if available
-      const redirectMode = modeHint || searchParams.get('mode');
-      const onboardingUrl = redirectMode
-        ? `/onboarding/mode?mode=${redirectMode}`
-        : '/onboarding/mode';
-      router.push(onboardingUrl);
+      // Mode is auto-set during registration from activation code —
+      // skip mode selection and go straight to profile onboarding
+      router.push('/onboarding/profile');
     } catch {
-      setServerError('Something went wrong. Please try again.');
+      setServerError(selectedLanguage === 'es' ? 'Algo salio mal. Intentalo de nuevo.' : 'Something went wrong. Please try again.');
     }
   };
 
@@ -120,15 +241,94 @@ export function SignupForm() {
   return (
     <Card padding="lg">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {/* Language selector — flag buttons at top */}
+        <div className="flex items-center justify-center gap-2">
+          {LANGUAGE_OPTIONS.map((option) => (
+            <button
+              key={option.code}
+              type="button"
+              onClick={() => handleLanguageChange(option.code)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm transition-all',
+                selectedLanguage === option.code
+                  ? 'border-primary bg-primary/10 font-medium text-primary dark:bg-primary/20'
+                  : 'border-border text-text-muted hover:border-primary/40 dark:border-border-dark dark:text-text-muted-dark'
+              )}
+            >
+              <span className="text-base leading-none">{option.flag}</span>
+              <span>{option.label}</span>
+            </button>
+          ))}
+        </div>
+
         <h2 className="text-center text-xl font-semibold text-text dark:text-text-dark">
-          Create your account
+          {t.createAccount}
         </h2>
+
+        {/* Mode selector */}
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-text dark:text-text-dark">
+            {t.chooseExperience}
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setSelectedMode('bible')}
+              className={cn(
+                'flex items-center gap-2.5 rounded-xl border-2 px-4 py-3 text-left transition-all',
+                selectedMode === 'bible'
+                  ? 'border-primary bg-primary/10 dark:bg-primary/20'
+                  : 'border-border hover:border-primary/40 dark:border-border-dark'
+              )}
+            >
+              <BookOpen className={cn('h-5 w-5 shrink-0', selectedMode === 'bible' ? 'text-primary' : 'text-text-muted dark:text-text-muted-dark')} />
+              <span className={cn('text-sm font-medium', selectedMode === 'bible' ? 'text-primary' : 'text-text dark:text-text-dark')}>
+                {t.faith}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedMode('positivity')}
+              className={cn(
+                'flex items-center gap-2.5 rounded-xl border-2 px-4 py-3 text-left transition-all',
+                selectedMode === 'positivity'
+                  ? 'border-primary bg-primary/10 dark:bg-primary/20'
+                  : 'border-border hover:border-primary/40 dark:border-border-dark'
+              )}
+            >
+              <Sun className={cn('h-5 w-5 shrink-0', selectedMode === 'positivity' ? 'text-primary' : 'text-text-muted dark:text-text-muted-dark')} />
+              <span className={cn('text-sm font-medium', selectedMode === 'positivity' ? 'text-primary' : 'text-text dark:text-text-dark')}>
+                {t.positivity}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Bible translation selector — only for Faith mode */}
+        {selectedMode === 'bible' && filteredTranslations.length > 0 && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-text dark:text-text-dark">
+              {t.preferredTranslation}
+            </label>
+            <select
+              value={preferredTranslation}
+              onChange={(e) => setPreferredTranslation(e.target.value)}
+              className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text transition-colors focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-none dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+            >
+              {filteredTranslations.map((tr) => (
+                <option key={tr.code} value={tr.code}>
+                  {tr.name} ({tr.code})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <Input
           {...register('email')}
-          label="Email"
+          label={t.email}
           type="email"
-          placeholder="you@example.com"
+          placeholder={t.emailPlaceholder}
           error={errors.email?.message}
           autoComplete="email"
           autoFocus
@@ -136,8 +336,8 @@ export function SignupForm() {
 
         <Input
           {...register('display_name')}
-          label="Display Name"
-          placeholder="Your name"
+          label={t.displayName}
+          placeholder={t.displayNamePlaceholder}
           error={errors.display_name?.message}
           autoComplete="name"
         />
@@ -147,7 +347,7 @@ export function SignupForm() {
             htmlFor="username"
             className="mb-1.5 block text-sm font-medium text-text dark:text-text-dark"
           >
-            Username
+            {t.username}
           </label>
           <div className="flex items-center rounded-xl border border-border bg-surface transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/50 dark:border-border-dark dark:bg-surface-dark">
             <span className="pl-4 text-text-muted dark:text-text-muted-dark">
@@ -156,7 +356,7 @@ export function SignupForm() {
             <input
               {...register('username')}
               id="username"
-              placeholder="username"
+              placeholder={t.usernamePlaceholder}
               autoComplete="username"
               className="w-full rounded-xl bg-transparent px-2 py-3 text-text outline-none placeholder:text-text-muted dark:text-text-dark dark:placeholder:text-text-muted-dark"
             />
@@ -171,9 +371,9 @@ export function SignupForm() {
         <div>
           <Input
             {...register('password')}
-            label="Password"
+            label={t.password}
             type="password"
-            placeholder="Create a password"
+            placeholder={t.passwordPlaceholder}
             error={errors.password?.message}
             autoComplete="new-password"
           />
@@ -204,8 +404,26 @@ export function SignupForm() {
         </div>
 
         <Input
+          {...(() => {
+            const reg = register('confirm_password');
+            return {
+              ...reg,
+              onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
+                reg.onBlur(e);
+                setConfirmTouched(true);
+              },
+            };
+          })()}
+          label={t.confirmPassword}
+          type="password"
+          placeholder={t.confirmPasswordPlaceholder}
+          error={errors.confirm_password?.message}
+          autoComplete="new-password"
+        />
+
+        <Input
           {...register('date_of_birth')}
-          label="Date of Birth"
+          label={t.dateOfBirth}
           type="date"
           error={errors.date_of_birth?.message}
         />
@@ -221,13 +439,13 @@ export function SignupForm() {
             htmlFor="terms"
             className="text-sm text-text-muted dark:text-text-muted-dark"
           >
-            I agree to the{' '}
+            {t.termsPrefix}{' '}
             <Link href="/terms" className="text-primary hover:text-primary-dark">
-              Terms of Service
+              {t.termsOfService}
             </Link>{' '}
-            and{' '}
+            {t.termsAnd}{' '}
             <Link href="/privacy" className="text-primary hover:text-primary-dark">
-              Privacy Policy
+              {t.privacyPolicy}
             </Link>
           </label>
         </div>
@@ -240,17 +458,17 @@ export function SignupForm() {
         )}
 
         <Button type="submit" fullWidth loading={isSubmitting}>
-          Create Account
+          {t.submitButton}
         </Button>
 
         <div className="flex flex-col items-center gap-2 pt-2 text-sm">
           <p className="text-text-muted dark:text-text-muted-dark">
-            Already have an account?{' '}
+            {t.alreadyHaveAccount}{' '}
             <Link
               href="/login"
               className="font-medium text-primary hover:text-primary-dark transition-colors"
             >
-              Log in
+              {t.logIn}
             </Link>
           </p>
         </div>

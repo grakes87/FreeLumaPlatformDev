@@ -12,6 +12,7 @@ export interface WorkshopSeriesAttributes {
   timezone: string;
   duration_minutes: number | null;
   is_active: boolean;
+  mode: 'bible' | 'positivity';
   created_at: Date;
   updated_at: Date;
 }
@@ -22,6 +23,7 @@ export interface WorkshopSeriesCreationAttributes extends Optional<WorkshopSerie
   | 'description'
   | 'duration_minutes'
   | 'is_active'
+  | 'mode'
   | 'created_at'
   | 'updated_at'
 > {}
@@ -37,6 +39,7 @@ class WorkshopSeries extends Model<WorkshopSeriesAttributes, WorkshopSeriesCreat
   declare timezone: string;
   declare duration_minutes: number | null;
   declare is_active: boolean;
+  declare mode: 'bible' | 'positivity';
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
 }
@@ -91,6 +94,11 @@ WorkshopSeries.init(
     is_active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
+      allowNull: false,
+    },
+    mode: {
+      type: DataTypes.ENUM('bible', 'positivity'),
+      defaultValue: 'bible',
       allowNull: false,
     },
     created_at: DataTypes.DATE,

@@ -60,7 +60,7 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
         {
           model: DailyContentTranslation,
           as: 'translations',
-          attributes: ['translation_code', 'translated_text', 'audio_url', 'audio_srt_url'],
+          attributes: ['translation_code', 'translated_text', 'audio_url', 'audio_srt_url', 'chapter_text'],
         },
       ],
     });
@@ -80,6 +80,7 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
       text: t.translated_text,
       audio_url: t.audio_url ?? null,
       audio_srt_url: t.audio_srt_url ?? null,
+      chapter_text: t.chapter_text ?? null,
     })) ?? [];
 
     const codes = translations.map((t) => t.code);
@@ -105,8 +106,6 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
       verse_reference: content.verse_reference,
       chapter_reference: content.chapter_reference,
       video_background_url: content.video_background_url,
-      audio_url: content.audio_url,
-      audio_srt_url: content.audio_srt_url,
       lumashort_video_url: content.lumashort_video_url,
       translations,
       translation_names: translationNames,

@@ -81,8 +81,8 @@ export const PUT = withAuth(
         return errorResponse('can_speak must be a boolean');
       }
 
-      // Target must be in attendee list
-      const targetAttendee = await WorkshopAttendee.findOne({
+      // Target must be in attendee list (or auto-create when promoting to co-host)
+      let targetAttendee = await WorkshopAttendee.findOne({
         where: { workshop_id: workshopId, user_id: targetUserId },
         include: [
           {
@@ -92,6 +92,37 @@ export const PUT = withAuth(
           },
         ],
       });
+      if (!targetAttendee && is_co_host === true && isHost) {
+        // Host is promoting an invited-but-not-yet-RSVP'd user to co-host.
+        // Auto-create the attendee record so the promotion succeeds.
+        targetAttendee = await WorkshopAttendee.create({
+          workshop_id: workshopId,
+          user_id: targetUserId,
+          status: 'rsvp',
+          is_co_host: true,
+        });
+        // Reload with user association
+        targetAttendee = await WorkshopAttendee.findOne({
+          where: { id: targetAttendee.id },
+          include: [
+            {
+              model: User,
+              as: 'user',
+              attributes: ['id', 'display_name', 'username', 'avatar_url', 'avatar_color'],
+            },
+          ],
+        });
+        // Increment attendee count
+        await Workshop.increment('attendee_count', {
+          where: { id: workshopId },
+        });
+        return successResponse({
+          attendee: {
+            ...targetAttendee!.toJSON(),
+            is_host: targetUserId === workshop.host_id,
+          },
+        });
+      }
       if (!targetAttendee) {
         return errorResponse('User is not an attendee of this workshop', 404);
       }

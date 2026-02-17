@@ -14,10 +14,8 @@ export interface DailyContentData {
   verse_reference: string | null;
   chapter_reference: string | null;
   video_background_url: string;
-  audio_url: string | null;
-  audio_srt_url: string | null;
   lumashort_video_url: string | null;
-  translations: Array<{ code: string; text: string; audio_url: string | null; audio_srt_url: string | null }>;
+  translations: Array<{ code: string; text: string; audio_url: string | null; audio_srt_url: string | null; chapter_text: string | null }>;
   translation_names: Record<string, string>;
 }
 
@@ -61,7 +59,7 @@ export function useDailyContent(date?: string): UseDailyContentReturn {
   const [activeTranslation, setActiveTranslation] = useState<string | null>(null);
 
   // Cache fetched translations to avoid re-fetching
-  const translationCache = useRef<Map<string, { text: string; audio_url: string | null; audio_srt_url: string | null }>>(new Map());
+  const translationCache = useRef<Map<string, { text: string; audio_url: string | null; audio_srt_url: string | null; chapter_text: string | null }>>(new Map());
   const retryCountRef = useRef(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -114,6 +112,7 @@ export function useDailyContent(date?: string): UseDailyContentReturn {
           text: t.text,
           audio_url: t.audio_url ?? null,
           audio_srt_url: t.audio_srt_url ?? null,
+          chapter_text: t.chapter_text ?? null,
         });
       }
 
@@ -168,6 +167,7 @@ export function useDailyContent(date?: string): UseDailyContentReturn {
         text: data.text,
         audio_url: data.audio_url ?? null,
         audio_srt_url: data.audio_srt_url ?? null,
+        chapter_text: data.chapter_text ?? null,
       };
       translationCache.current.set(code, entry);
 
@@ -222,8 +222,8 @@ export function useDailyContent(date?: string): UseDailyContentReturn {
   const activeT = activeTranslation
     ? content?.translations.find((t) => t.code === activeTranslation)
     : null;
-  const resolvedAudioUrl = activeT?.audio_url || content?.audio_url || null;
-  const resolvedSrtUrl = activeT?.audio_srt_url || content?.audio_srt_url || null;
+  const resolvedAudioUrl = activeT?.audio_url || null;
+  const resolvedSrtUrl = activeT?.audio_srt_url || null;
 
   return {
     content,

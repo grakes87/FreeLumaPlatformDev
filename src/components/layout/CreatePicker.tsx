@@ -3,10 +3,10 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, Heart } from 'lucide-react';
+import { MessageSquare, Heart, Presentation } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
-type CreateType = 'post' | 'prayer_request';
+type CreateType = 'post' | 'prayer_request' | 'workshop';
 
 interface CreatePickerProps {
   isOpen: boolean;
@@ -26,6 +26,12 @@ const OPTIONS: { type: CreateType; icon: React.ElementType; label: string; descr
     icon: Heart,
     label: 'Prayer Request',
     description: 'Ask for prayer support',
+  },
+  {
+    type: 'workshop',
+    icon: Presentation,
+    label: 'Create Workshop',
+    description: 'Host a live workshop',
   },
 ];
 

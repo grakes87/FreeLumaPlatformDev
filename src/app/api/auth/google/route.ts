@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       const activationCode = await ActivationCode.findOne({
         where: {
           code: activation_code,
-          used: false,
+          status: 'pending',
           expires_at: { [Op.gt]: new Date() },
         },
         transaction: t,
@@ -159,6 +159,8 @@ export async function POST(req: NextRequest) {
       const avatarColor =
         AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 
+      // Auto-set mode from activation code's mode_hint
+      const userMode = activationCode.mode_hint === 'positivity' ? 'positivity' : 'bible';
       const newUser = await User.create(
         {
           email: normalizedEmail,
@@ -167,6 +169,7 @@ export async function POST(req: NextRequest) {
           username: tempUsername,
           avatar_url: picture,
           avatar_color: avatarColor,
+          mode: userMode,
           onboarding_complete: false,
         },
         { transaction: t }
@@ -174,9 +177,9 @@ export async function POST(req: NextRequest) {
 
       // Atomically mark activation code
       const [affectedRows] = await ActivationCode.update(
-        { used: true, used_by: newUser.id },
+        { used: true, used_by: newUser.id, status: 'activated' as const, used_at: new Date() },
         {
-          where: { id: activationCode.id, used: false },
+          where: { id: activationCode.id, status: 'pending' },
           transaction: t,
         }
       );

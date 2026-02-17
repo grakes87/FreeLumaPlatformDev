@@ -10,7 +10,7 @@ export interface ActivationCodeAttributes {
   mode_hint: 'bible' | 'positivity' | null;
   expires_at: Date;
   created_by: number | null;
-  source: 'generated' | 'imported';
+  status: 'pending' | 'generated' | 'activated';
   created_at: Date;
   updated_at: Date;
 }
@@ -22,7 +22,7 @@ export interface ActivationCodeCreationAttributes extends Optional<ActivationCod
   | 'used_at'
   | 'mode_hint'
   | 'created_by'
-  | 'source'
+  | 'status'
   | 'created_at'
   | 'updated_at'
 > {}
@@ -36,7 +36,7 @@ class ActivationCode extends Model<ActivationCodeAttributes, ActivationCodeCreat
   declare mode_hint: 'bible' | 'positivity' | null;
   declare expires_at: Date;
   declare created_by: number | null;
-  declare source: 'generated' | 'imported';
+  declare status: 'pending' | 'generated' | 'activated';
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
 }
@@ -86,8 +86,8 @@ ActivationCode.init(
         key: 'id',
       },
     },
-    source: {
-      type: DataTypes.ENUM('generated', 'imported'),
+    status: {
+      type: DataTypes.ENUM('pending', 'generated', 'activated'),
       defaultValue: 'generated',
       allowNull: false,
     },

@@ -13,8 +13,10 @@ import {
   Loader2,
   Hand,
   AlertTriangle,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { InitialsAvatar } from '@/components/profile/InitialsAvatar';
 import type { AttendeeInfo } from '@/hooks/useWorkshopSocket';
 
 // ---------------------------------------------------------------------------
@@ -24,8 +26,6 @@ import type { AttendeeInfo } from '@/hooks/useWorkshopSocket';
 // ---------------------------------------------------------------------------
 import AgoraRTC, {
   AgoraRTCProvider,
-  useRTCClient,
-  useJoin,
   useLocalMicrophoneTrack,
   useLocalCameraTrack,
   usePublish,
@@ -59,6 +59,11 @@ interface WorkshopVideoProps {
     revokeSpeaker: (userId: number) => void;
     muteUser: (userId: number) => void;
   };
+}
+
+interface DeviceInfo {
+  deviceId: string;
+  label: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,46 +128,163 @@ function VideoRoom({
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [handRaised, setHandRaised] = useState(false);
 
+  // Device picker state
+  const [showDevicePicker, setShowDevicePicker] = useState(false);
+  const [cameras, setCameras] = useState<DeviceInfo[]>([]);
+  const [microphones, setMicrophones] = useState<DeviceInfo[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
+  const [selectedMicId, setSelectedMicId] = useState<string>('');
+
   const screenClientRef = useRef<IAgoraRTCClient | null>(null);
   const screenTrackRef = useRef<ReturnType<typeof AgoraRTC.createScreenVideoTrack> | null>(null);
+  const devicePickerRef = useRef<HTMLDivElement>(null);
+  const videoAreaRef = useRef<HTMLDivElement>(null);
+
+  // Track portrait orientation for screen share rotation on mobile
+  const [isPortrait, setIsPortrait] = useState(false);
+  const [areaDims, setAreaDims] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const check = () => setIsPortrait(window.innerHeight > window.innerWidth);
+    check();
+    window.addEventListener('resize', check);
+    const onOrientationChange = () => setTimeout(check, 150);
+    window.addEventListener('orientationchange', onOrientationChange);
+    return () => {
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', onOrientationChange);
+    };
+  }, []);
+
+  // Measure the video area container for rotation calculations
+  useEffect(() => {
+    const el = videoAreaRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setAreaDims({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const isPublisher = role === 'host'; // host/co-host/speaker -> 'host' role from token
   const showCamera = isHost || isCoHost; // Only host/co-host get camera
   const showMic = isPublisher; // host/co-host/speaker get mic
 
-  // Set client role
-  useEffect(() => {
-    client.setClientRole(role).catch((err) => {
-      console.error('[WorkshopVideo] setClientRole error:', err);
-    });
-  }, [client, role]);
+  // Set client role THEN join — must be sequential because Agora live mode
+  // defaults to 'audience'. If join() resolves before setClientRole('host'),
+  // the host joins as audience and usePublish silently fails to publish,
+  // making the host invisible to all other participants.
+  const [joinLoading, setJoinLoading] = useState(true);
 
-  // Join channel
-  const { isConnected, isLoading: joinLoading, error: joinError } = useJoin(
-    {
-      appid: appId,
-      channel: channelName,
-      token: token,
-      uid: uid,
-    },
-    true,
-    client
-  );
-
-  // Set connection error from join
   useEffect(() => {
-    if (joinError) {
-      setConnectionError(joinError.message || 'Failed to connect to video');
+    let cancelled = false;
+    let attempt = 0;
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 3000;
+
+    async function setupAndJoin() {
+      try {
+        // 1. Set role FIRST — must resolve before join
+        await client.setClientRole(role);
+        if (cancelled) return;
+      } catch (err) {
+        console.error('[WorkshopVideo] setClientRole error:', err);
+        // Continue anyway — join may still work with default role
+      }
+
+      // 2. Then join with retry
+      while (attempt < MAX_RETRIES && !cancelled) {
+        attempt++;
+        try {
+          await client.join(appId, channelName, token, uid);
+          if (!cancelled) setJoinLoading(false);
+          return;
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(`[WorkshopVideo] Join attempt ${attempt}/${MAX_RETRIES} failed: ${msg}`);
+          if (cancelled) return;
+          if (attempt < MAX_RETRIES) {
+            await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+            if (cancelled) return;
+          } else {
+            setConnectionError(
+              'Unable to connect to video. Please check your network and try again.'
+            );
+            setJoinLoading(false);
+          }
+        }
+      }
     }
-  }, [joinError]);
+
+    setupAndJoin();
+
+    return () => {
+      cancelled = true;
+      client.leave().catch(() => {});
+    };
+  }, [client, appId, channelName, token, uid, role]);
 
   // Local tracks (only create if publisher)
   const { localMicrophoneTrack, isLoading: micLoading } = useLocalMicrophoneTrack(
-    isPublisher && showMic
+    isPublisher && showMic,
+    selectedMicId ? { microphoneId: selectedMicId } : undefined
   );
   const { localCameraTrack, isLoading: cameraLoading } = useLocalCameraTrack(
-    isPublisher && showCamera
+    isPublisher && showCamera,
+    selectedCameraId ? { cameraId: selectedCameraId } : undefined
   );
+
+  // Enumerate devices on mount (if publisher)
+  useEffect(() => {
+    if (!isPublisher) return;
+
+    async function enumerateDevices() {
+      try {
+        const devices = await AgoraRTC.getDevices();
+        const cams = devices
+          .filter((d) => d.kind === 'videoinput')
+          .map((d) => ({ deviceId: d.deviceId, label: d.label || `Camera ${d.deviceId.slice(0, 6)}` }));
+        const mics = devices
+          .filter((d) => d.kind === 'audioinput')
+          .map((d) => ({ deviceId: d.deviceId, label: d.label || `Mic ${d.deviceId.slice(0, 6)}` }));
+
+        setCameras(cams);
+        setMicrophones(mics);
+
+        // Restore from localStorage
+        const savedCam = localStorage.getItem('workshop_camera_id');
+        const savedMic = localStorage.getItem('workshop_mic_id');
+        if (savedCam && cams.some((c) => c.deviceId === savedCam)) {
+          setSelectedCameraId(savedCam);
+        }
+        if (savedMic && mics.some((m) => m.deviceId === savedMic)) {
+          setSelectedMicId(savedMic);
+        }
+      } catch (err) {
+        console.error('[WorkshopVideo] getDevices error:', err);
+      }
+    }
+
+    enumerateDevices();
+  }, [isPublisher]);
+
+  // Close device picker on outside click
+  useEffect(() => {
+    if (!showDevicePicker) return;
+    const handleClick = (e: MouseEvent) => {
+      if (devicePickerRef.current && !devicePickerRef.current.contains(e.target as Node)) {
+        setShowDevicePicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showDevicePicker]);
 
   // Build publish tracks array
   const publishTracks = useMemo(() => {
@@ -172,14 +294,15 @@ function VideoRoom({
     return tracks;
   }, [localCameraTrack, localMicrophoneTrack, showCamera, showMic]);
 
+  // Connection state
+  const connectionState = useConnectionState(client);
+  const isConnected = connectionState === 'CONNECTED';
+
   // Publish local tracks
   usePublish(publishTracks, isPublisher && isConnected, client);
 
   // Remote users
   const remoteUsers = useRemoteUsers(client);
-
-  // Connection state
-  const connectionState = useConnectionState(client);
 
   // Toggle mic
   const toggleMic = useCallback(async () => {
@@ -196,6 +319,31 @@ function VideoRoom({
       setCameraEnabled(!cameraEnabled);
     }
   }, [localCameraTrack, cameraEnabled]);
+
+  // Device change handlers
+  const handleCameraChange = useCallback(async (deviceId: string) => {
+    setSelectedCameraId(deviceId);
+    localStorage.setItem('workshop_camera_id', deviceId);
+    if (localCameraTrack) {
+      try {
+        await (localCameraTrack as unknown as { setDevice: (id: string) => Promise<void> }).setDevice(deviceId);
+      } catch (err) {
+        console.error('[WorkshopVideo] setDevice camera error:', err);
+      }
+    }
+  }, [localCameraTrack]);
+
+  const handleMicChange = useCallback(async (deviceId: string) => {
+    setSelectedMicId(deviceId);
+    localStorage.setItem('workshop_mic_id', deviceId);
+    if (localMicrophoneTrack) {
+      try {
+        await (localMicrophoneTrack as unknown as { setDevice: (id: string) => Promise<void> }).setDevice(deviceId);
+      } catch (err) {
+        console.error('[WorkshopVideo] setDevice mic error:', err);
+      }
+    }
+  }, [localMicrophoneTrack]);
 
   // Raise / lower hand (for attendees who are not speakers)
   const toggleHand = useCallback(() => {
@@ -246,23 +394,27 @@ function VideoRoom({
 
         const screenUid = uid + 100000;
 
-        // Fetch separate token for screen share UID
+        // Fetch a token minted for the screen-share UID (must match the uid
+        // passed to client.join or Agora rejects with "invalid token")
         const tokenRes = await fetch(
           `/api/workshops/${channelName.replace('workshop-', '')}/token?uid=${screenUid}`,
           { credentials: 'include' }
         );
-        let screenToken = token; // Fallback to same token
-        if (tokenRes.ok) {
-          const tokenJson = await tokenRes.json();
-          const tokenData = tokenJson.data ?? tokenJson;
-          screenToken = tokenData.token || token;
+        if (!tokenRes.ok) {
+          throw new Error('Failed to obtain screen-share token');
+        }
+        const tokenJson = await tokenRes.json();
+        const tokenData = tokenJson.data ?? tokenJson;
+        const screenToken = tokenData.token;
+        if (!screenToken) {
+          throw new Error('Screen-share token was empty');
         }
 
         await screenClient.join(appId, channelName, screenToken, screenUid);
 
         const screenTrack = await AgoraRTC.createScreenVideoTrack(
           { encoderConfig: '1080p_2' },
-          'disable'
+          'auto'
         );
 
         // Handle browser's native "Stop sharing" button
@@ -335,8 +487,16 @@ function VideoRoom({
     );
   }
 
-  // Total video feeds = local (if publisher+camera) + remote users
-  const videoCount = (isPublisher && showCamera ? 1 : 0) + remoteUsers.length;
+  // Split remote users into screen-share vs camera feeds
+  const screenShareUsers = remoteUsers.filter((u) => Number(u.uid) > 100000);
+  const cameraUsers = remoteUsers.filter((u) => Number(u.uid) <= 100000);
+  const hasScreenShare = screenShareUsers.length > 0 || isScreenSharing;
+
+  // On portrait mobile, rotate screen share to landscape orientation
+  const shouldRotateScreenShare = isPortrait && hasScreenShare && areaDims.width > 0;
+
+  // Total video feeds = local (if publisher+camera) + camera remote users
+  const cameraFeedCount = (isPublisher && showCamera ? 1 : 0) + cameraUsers.length;
 
   return (
     <div className="flex flex-1 flex-col">
@@ -355,140 +515,318 @@ function VideoRoom({
         </span>
       </div>
 
-      {/* Video grid */}
-      <div
-        className={cn(
-          'flex-1 grid gap-1 p-1',
-          videoCount <= 1 && 'grid-cols-1 grid-rows-1',
-          videoCount === 2 && 'grid-cols-2 grid-rows-1',
-          videoCount >= 3 && videoCount <= 4 && 'grid-cols-2 grid-rows-2',
-          videoCount >= 5 && 'grid-cols-3 grid-rows-2'
-        )}
-      >
-        {/* Local video (host/co-host with camera) */}
-        {isPublisher && showCamera && localCameraTrack && (
-          <div className="relative overflow-hidden rounded-lg bg-gray-800">
-            <LocalVideoTrack
-              track={localCameraTrack}
-              play
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-            <VideoOverlay
-              name="You"
-              isMuted={!micEnabled}
-              isHost={isHost}
-              isCoHost={isCoHost}
-            />
-          </div>
-        )}
+      {/* Video area */}
+      <div ref={videoAreaRef} className="relative flex flex-1 flex-col min-h-0">
+        {hasScreenShare ? (
+          /* ── Screen-share layout: full-screen share + PiP camera feeds ── */
+          <>
+            {/* Screen share — fills the area; rotated on portrait mobile */}
+            <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+              {screenShareUsers.map((user) => (
+                <div
+                  key={user.uid}
+                  className="overflow-hidden rounded-xl bg-gray-800"
+                  style={shouldRotateScreenShare ? {
+                    width: `${areaDims.height - 16}px`,
+                    height: `${areaDims.width - 16}px`,
+                    transform: 'rotate(90deg)',
+                    transformOrigin: 'center center',
+                  } : {
+                    width: '100%',
+                    height: '100%',
+                    margin: '8px',
+                  }}
+                >
+                  <RemoteUser
+                    user={user}
+                    playVideo
+                    playAudio
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                  <VideoOverlay
+                    name="Screen Share"
+                    isMuted={false}
+                    isScreenShare
+                  />
+                </div>
+              ))}
 
-        {/* Local audio-only placeholder (speaker without camera) */}
-        {isPublisher && !showCamera && (
-          <div className="relative flex items-center justify-center overflow-hidden rounded-lg bg-gray-800">
-            <div className="text-center">
-              <div className="mx-auto h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center">
-                <Mic className="h-8 w-8 text-primary" />
+              {/* Local screen share (host sees their own share here) */}
+              {isScreenSharing && screenShareUsers.length === 0 && (
+                <div
+                  className="flex items-center justify-center overflow-hidden rounded-xl bg-gray-800"
+                  style={shouldRotateScreenShare ? {
+                    width: `${areaDims.height - 16}px`,
+                    height: `${areaDims.width - 16}px`,
+                    transform: 'rotate(90deg)',
+                    transformOrigin: 'center center',
+                  } : {
+                    width: '100%',
+                    height: '100%',
+                    margin: '8px',
+                  }}
+                >
+                  <div className="text-center">
+                    <Monitor className="mx-auto h-8 w-8 text-green-400" />
+                    <p className="mt-2 text-xs text-white/50">You are sharing your screen</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* PiP camera feeds — always visible (NOT rotated) */}
+            <div className="absolute left-2 top-2 z-10 flex flex-col gap-2 sm:left-3 sm:top-3">
+              {/* Local camera PiP */}
+              {isPublisher && showCamera && localCameraTrack && (
+                <div className="relative h-20 w-28 overflow-hidden rounded-lg bg-gray-800 shadow-lg ring-1 ring-black/30 sm:h-28 sm:w-40">
+                  {cameraEnabled ? (
+                    <LocalVideoTrack
+                      track={localCameraTrack}
+                      play
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <CameraOffPlaceholder name="You" />
+                  )}
+                  <VideoOverlay
+                    name="You"
+                    isMuted={!micEnabled}
+                    isHost={isHost}
+                    isCoHost={isCoHost}
+                  />
+                </div>
+              )}
+
+              {/* Remote camera PiPs */}
+              {cameraUsers.map((user) => {
+                const attendee = attendees.find((a) => a.userId === Number(user.uid));
+                const displayName = attendee?.displayName || `User ${user.uid}`;
+                return (
+                  <div key={user.uid} className="relative h-20 w-28 overflow-hidden rounded-lg bg-gray-800 shadow-lg ring-1 ring-black/30 sm:h-28 sm:w-40">
+                    <RemoteUser
+                      user={user}
+                      playVideo
+                      playAudio
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <VideoOverlay
+                      name={displayName}
+                      isMuted={false}
+                      isHost={attendee?.isHost}
+                      isCoHost={attendee?.isCoHost}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          /* ── Normal grid layout (no screen share) ── */
+          <div
+            className={cn(
+              'flex-1 grid gap-2 p-2',
+              cameraFeedCount <= 1 && 'grid-cols-1 grid-rows-1',
+              cameraFeedCount === 2 && 'grid-cols-2 grid-rows-1',
+              cameraFeedCount >= 3 && cameraFeedCount <= 4 && 'grid-cols-2 grid-rows-2',
+              cameraFeedCount >= 5 && 'grid-cols-3 grid-rows-2'
+            )}
+          >
+            {/* Local video (host/co-host with camera) */}
+            {isPublisher && showCamera && localCameraTrack && (
+              <div className="relative overflow-hidden rounded-xl bg-gray-800">
+                {cameraEnabled ? (
+                  <LocalVideoTrack
+                    track={localCameraTrack}
+                    play
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <CameraOffPlaceholder name="You" />
+                )}
+                <VideoOverlay
+                  name="You"
+                  isMuted={!micEnabled}
+                  isHost={isHost}
+                  isCoHost={isCoHost}
+                />
               </div>
-              <p className="mt-2 text-xs text-white/60">You (audio only)</p>
-            </div>
-            <VideoOverlay
-              name="You"
-              isMuted={!micEnabled}
-            />
-          </div>
-        )}
+            )}
 
-        {/* Remote user videos */}
-        {remoteUsers.map((user) => {
-          const attendee = attendees.find((a) => a.userId === Number(user.uid));
-          const isScreenShare = Number(user.uid) > 100000;
-          const displayName = isScreenShare
-            ? 'Screen Share'
-            : attendee?.displayName || `User ${user.uid}`;
+            {/* Local audio-only placeholder (speaker without camera) */}
+            {isPublisher && !showCamera && (
+              <div className="relative flex items-center justify-center overflow-hidden rounded-xl bg-gray-800">
+                <CameraOffPlaceholder name="You" />
+                <VideoOverlay
+                  name="You"
+                  isMuted={!micEnabled}
+                />
+              </div>
+            )}
 
-          return (
-            <div key={user.uid} className="relative overflow-hidden rounded-lg bg-gray-800">
-              <RemoteUser
-                user={user}
-                playVideo
-                playAudio
-                style={{ width: '100%', height: '100%', objectFit: isScreenShare ? 'contain' : 'cover' }}
-              />
-              <VideoOverlay
-                name={displayName}
-                isMuted={false}
-                isHost={attendee?.isHost}
-                isCoHost={attendee?.isCoHost}
-                isScreenShare={isScreenShare}
-              />
-            </div>
-          );
-        })}
+            {/* Remote camera videos */}
+            {cameraUsers.map((user) => {
+              const attendee = attendees.find((a) => a.userId === Number(user.uid));
+              const displayName = attendee?.displayName || `User ${user.uid}`;
+              return (
+                <div key={user.uid} className="relative overflow-hidden rounded-xl bg-gray-800">
+                  <RemoteUser
+                    user={user}
+                    playVideo
+                    playAudio
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                  <VideoOverlay
+                    name={displayName}
+                    isMuted={false}
+                    isHost={attendee?.isHost}
+                    isCoHost={attendee?.isCoHost}
+                  />
+                </div>
+              );
+            })}
 
-        {/* No video feeds — audience with no publishers */}
-        {videoCount === 0 && (
-          <div className="flex items-center justify-center rounded-lg bg-gray-800/50">
-            <div className="text-center">
-              <VideoOff className="mx-auto h-8 w-8 text-white/30" />
-              <p className="mt-2 text-xs text-white/40">
-                {isPublisher
-                  ? 'Camera is off'
-                  : 'Waiting for host video...'}
-              </p>
-            </div>
+            {/* No video feeds — audience with no publishers */}
+            {cameraFeedCount === 0 && (
+              <div className="flex items-center justify-center rounded-xl bg-gray-800/50">
+                <div className="text-center">
+                  <VideoOff className="mx-auto h-8 w-8 text-white/30" />
+                  <p className="mt-2 text-xs text-white/40">
+                    {isPublisher
+                      ? 'Camera is off'
+                      : 'Waiting for host video...'}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Controls bar */}
-      <div className="flex shrink-0 items-center justify-center gap-3 border-t border-white/10 px-4 py-3">
-        {/* Mic toggle (publisher only) */}
-        {showMic && (
-          <ControlButton
-            active={micEnabled}
-            onClick={toggleMic}
-            icon={micEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-            label={micEnabled ? 'Mute' : 'Unmute'}
-            activeColor="bg-white/10"
-            inactiveColor="bg-red-500/80"
-          />
-        )}
+      {/* Controls bar — frosted glass */}
+      <div className="relative flex shrink-0 items-center justify-center gap-2 px-4 py-3">
+        <div className="absolute inset-0 rounded-t-2xl border-t border-white/10 backdrop-blur-md bg-black/40" />
 
-        {/* Camera toggle (host/co-host only) */}
-        {showCamera && (
-          <ControlButton
-            active={cameraEnabled}
-            onClick={toggleCamera}
-            icon={cameraEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-            label={cameraEnabled ? 'Camera Off' : 'Camera On'}
-            activeColor="bg-white/10"
-            inactiveColor="bg-red-500/80"
-          />
-        )}
+        <div className="relative z-10 flex items-center gap-2">
+          {/* Mic toggle (publisher only) */}
+          {showMic && (
+            <ControlButton
+              active={micEnabled}
+              onClick={toggleMic}
+              icon={micEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+              label={micEnabled ? 'Mute' : 'Unmute'}
+              activeColor="bg-white/10"
+              inactiveColor="bg-red-500/80"
+            />
+          )}
 
-        {/* Screen share (host/co-host only) */}
-        {(isHost || isCoHost) && (
-          <ControlButton
-            active={!isScreenSharing}
-            onClick={toggleScreenShare}
-            icon={isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
-            label={isScreenSharing ? 'Stop Share' : 'Share Screen'}
-            activeColor="bg-white/10"
-            inactiveColor="bg-green-600/80"
-          />
-        )}
+          {/* Camera toggle (host/co-host only) */}
+          {showCamera && (
+            <ControlButton
+              active={cameraEnabled}
+              onClick={toggleCamera}
+              icon={cameraEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+              label={cameraEnabled ? 'Camera Off' : 'Camera On'}
+              activeColor="bg-white/10"
+              inactiveColor="bg-red-500/80"
+            />
+          )}
 
-        {/* Raise hand (audience/non-speakers) */}
-        {!isPublisher && (
-          <ControlButton
-            active={!handRaised}
-            onClick={toggleHand}
-            icon={<Hand className="h-5 w-5" />}
-            label={handRaised ? 'Lower Hand' : 'Raise Hand'}
-            activeColor="bg-white/10"
-            inactiveColor="bg-amber-500/80"
-          />
-        )}
+          {/* Divider */}
+          {(showMic || showCamera) && (isHost || isCoHost) && (
+            <div className="mx-1 h-6 w-px bg-white/20" />
+          )}
+
+          {/* Screen share (host/co-host only) */}
+          {(isHost || isCoHost) && (
+            <ControlButton
+              active={!isScreenSharing}
+              onClick={toggleScreenShare}
+              icon={isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
+              label={isScreenSharing ? 'Stop Share' : 'Share Screen'}
+              activeColor="bg-white/10"
+              inactiveColor="bg-green-600/80"
+            />
+          )}
+
+          {/* Raise hand (audience/non-speakers) */}
+          {!isPublisher && (
+            <ControlButton
+              active={!handRaised}
+              onClick={toggleHand}
+              icon={<Hand className="h-5 w-5" />}
+              label={handRaised ? 'Lower Hand' : 'Raise Hand'}
+              activeColor="bg-white/10"
+              inactiveColor="bg-amber-500/80"
+            />
+          )}
+
+          {/* Settings / Device picker (publisher only) */}
+          {isPublisher && (cameras.length > 0 || microphones.length > 0) && (
+            <>
+              {(isHost || isCoHost || !isPublisher) ? null : null}
+              <div className="mx-1 h-6 w-px bg-white/20" />
+              <div className="relative" ref={devicePickerRef}>
+                <ControlButton
+                  active={!showDevicePicker}
+                  onClick={() => setShowDevicePicker(!showDevicePicker)}
+                  icon={<Settings className="h-5 w-5" />}
+                  label="Settings"
+                  activeColor="bg-white/10"
+                  inactiveColor="bg-white/20"
+                />
+
+                {/* Device picker popover */}
+                {showDevicePicker && (
+                  <div className="absolute bottom-full left-1/2 z-50 mb-3 w-64 -translate-x-1/2 rounded-xl border border-white/10 bg-gray-900/95 p-3 shadow-2xl backdrop-blur-lg">
+                    <div className="space-y-3">
+                      {/* Camera select */}
+                      {showCamera && cameras.length > 0 && (
+                        <div>
+                          <label className="mb-1 block text-[11px] font-medium text-white/50 uppercase tracking-wider">
+                            Camera
+                          </label>
+                          <select
+                            value={selectedCameraId}
+                            onChange={(e) => handleCameraChange(e.target.value)}
+                            className="w-full rounded-lg bg-white/10 px-3 py-2 text-xs text-white outline-none focus:ring-1 focus:ring-primary"
+                          >
+                            <option value="" className="bg-gray-900">Default</option>
+                            {cameras.map((cam) => (
+                              <option key={cam.deviceId} value={cam.deviceId} className="bg-gray-900">
+                                {cam.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Mic select */}
+                      {microphones.length > 0 && (
+                        <div>
+                          <label className="mb-1 block text-[11px] font-medium text-white/50 uppercase tracking-wider">
+                            Microphone
+                          </label>
+                          <select
+                            value={selectedMicId}
+                            onChange={(e) => handleMicChange(e.target.value)}
+                            className="w-full rounded-lg bg-white/10 px-3 py-2 text-xs text-white outline-none focus:ring-1 focus:ring-primary"
+                          >
+                            <option value="" className="bg-gray-900">Default</option>
+                            {microphones.map((mic) => (
+                              <option key={mic.deviceId} value={mic.deviceId} className="bg-gray-900">
+                                {mic.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -497,6 +835,26 @@ function VideoRoom({
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+
+function CameraOffPlaceholder({ name }: { name: string }) {
+  const initials = name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <div className="text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/20">
+          <span className="text-xl font-bold text-primary">{initials}</span>
+        </div>
+        <p className="mt-2 text-xs text-white/50">{name}</p>
+      </div>
+    </div>
+  );
+}
 
 function VideoOverlay({
   name,

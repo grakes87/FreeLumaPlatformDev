@@ -60,6 +60,9 @@ interface FeedResponse {
   has_more: boolean;
 }
 
+/** Max posts to keep in memory. Older entries are trimmed from front when exceeded. */
+const MAX_POSTS_IN_MEMORY = 50;
+
 /**
  * Feed hook managing FYP/Following tab state with cursor pagination,
  * pull-to-refresh, and local state mutation helpers.
@@ -78,6 +81,9 @@ export function useFeed() {
   const abortRef = useRef<AbortController | null>(null);
   // Track current tab to prevent stale responses from wrong tab
   const activeTabRef = useRef<FeedTab>(activeTab);
+
+  /** How many items were trimmed from the front on the last append. Component reads this to adjust scroll. */
+  const frontTrimRef = useRef(0);
 
   const fetchPage = useCallback(
     async (tab: FeedTab, pageCursor: string | null, isRefresh: boolean) => {
@@ -117,14 +123,21 @@ export function useFeed() {
 
         if (isRefresh || !pageCursor) {
           // First page or refresh: replace posts
+          frontTrimRef.current = 0;
           setPosts(data.posts);
         } else {
-          // Append next page
+          // Append next page with sliding window
           setPosts((prev) => {
-            // Deduplicate by id in case of race conditions
             const existingIds = new Set(prev.map((p) => p.id));
             const newPosts = data.posts.filter((p) => !existingIds.has(p.id));
-            return [...prev, ...newPosts];
+            const combined = [...prev, ...newPosts];
+            if (combined.length > MAX_POSTS_IN_MEMORY) {
+              const trimCount = combined.length - MAX_POSTS_IN_MEMORY;
+              frontTrimRef.current = trimCount;
+              return combined.slice(trimCount);
+            }
+            frontTrimRef.current = 0;
+            return combined;
           });
         }
 
@@ -208,5 +221,6 @@ export function useFeed() {
     setActiveTab,
     removePost,
     updatePost,
+    frontTrimRef,
   };
 }

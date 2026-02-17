@@ -137,15 +137,19 @@ export function ShareButton({
       try {
         return await canvasToBlob(canvas);
       } catch {
-        // Tainted canvas — clear and fall through to gradient
-        ctx.clearRect(0, 0, W, H);
+        // Tainted canvas stays tainted forever — must create a fresh one
       }
     }
 
     // Gradient fallback (no video or cross-origin taint)
-    drawGradientBg(ctx, W, H);
-    drawTextOverlay(ctx, W, H);
-    return canvasToBlob(canvas);
+    const fallback = document.createElement('canvas');
+    fallback.width = W;
+    fallback.height = H;
+    const fctx = fallback.getContext('2d');
+    if (!fctx) return null;
+    drawGradientBg(fctx, W, H);
+    drawTextOverlay(fctx, W, H);
+    return canvasToBlob(fallback);
   }, [videoRef, drawGradientBg, drawTextOverlay]);
 
   const handleShare = useCallback(async () => {

@@ -8,15 +8,15 @@
   --color-primary-dark: #4A9E9B;
   --color-accent: #EC4899;
   --color-surface: #FFFFFF;
-  --color-surface-dark: #1A1A2E;
+  --color-surface-dark: #1A1A1A;
   --color-background: #F8FAFC;
-  --color-background-dark: #0F0F23;
+  --color-background-dark: #0F0F0F;
   --color-text: #1E293B;
   --color-text-dark: #E2E8F0;
   --color-text-muted: #64748B;
   --color-text-muted-dark: #94A3B8;
   --color-border: #E2E8F0;
-  --color-border-dark: #334155;
+  --color-border-dark: #2A2A2A;
 }
 
 html {

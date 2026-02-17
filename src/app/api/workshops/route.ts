@@ -75,6 +75,12 @@ export const GET = withAuth(
         }
       }
 
+      // Filter by user's mode so bible users don't see positivity workshops and vice versa
+      const currentUser = await User.findByPk(userId, { attributes: ['mode'] });
+      if (currentUser?.mode) {
+        where.mode = currentUser.mode;
+      }
+
       // Handle cursor pagination
       if (cursor) {
         const cursorId = parseInt(cursor, 10);
@@ -214,7 +220,7 @@ export const POST = withAuth(
 
       // Check user has hosting privileges
       const user = await User.findByPk(context.user.id, {
-        attributes: ['id', 'can_host', 'status'],
+        attributes: ['id', 'can_host', 'status', 'mode'],
       });
 
       if (!user) {
@@ -263,6 +269,7 @@ export const POST = withAuth(
         duration_minutes: data.duration_minutes ?? null,
         is_private: data.is_private ?? false,
         max_capacity: data.max_capacity ?? null,
+        mode: user.mode || 'bible',
       });
 
       // Set agora_channel

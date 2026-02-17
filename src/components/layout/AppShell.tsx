@@ -15,7 +15,7 @@ function AppShellInner({ children }: { children: ReactNode }) {
   const { immersive } = useImmersive();
 
   // Daily post pages use transparent overlays (video shows through)
-  const isDailyPost = pathname === '/' || pathname.startsWith('/daily/');
+  const isDailyPost = pathname === '/' || pathname.startsWith('/daily/') || pathname === '/bible' || pathname === '/positivity';
   const isTransparent = isDailyPost || immersive;
 
   // Single DOM tree with conditional styles — avoids child remount when toggling immersive.

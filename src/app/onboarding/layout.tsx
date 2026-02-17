@@ -8,7 +8,6 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { cn } from '@/lib/utils/cn';
 
 const ONBOARDING_STEPS = [
-  { path: '/onboarding/mode', label: 'Mode' },
   { path: '/onboarding/profile', label: 'Profile' },
   { path: '/onboarding/interests', label: 'Interests' },
   { path: '/onboarding/follow', label: 'Follow' },

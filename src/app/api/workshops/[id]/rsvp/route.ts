@@ -16,7 +16,7 @@ export const POST = withAuth(
 
       const userId = context.user.id;
 
-      const { Workshop, WorkshopAttendee, WorkshopInvite } =
+      const { Workshop, WorkshopAttendee, WorkshopInvite, WorkshopBan } =
         await import('@/lib/db/models');
 
       // Validate workshop exists and is in RSVP-able state
@@ -43,6 +43,18 @@ export const POST = withAuth(
             403
           );
         }
+      }
+
+      // Check if user is banned by this host
+      const ban = await WorkshopBan.findOne({
+        where: { host_id: workshop.host_id, banned_user_id: userId },
+        attributes: ['id'],
+      });
+      if (ban) {
+        return errorResponse(
+          'You are not able to join this host\'s workshops',
+          403
+        );
       }
 
       // Check capacity

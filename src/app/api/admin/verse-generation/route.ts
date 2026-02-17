@@ -3,6 +3,7 @@ import { z } from 'zod';
 import Anthropic from '@anthropic-ai/sdk';
 import { withAdmin, type AuthContext } from '@/lib/auth/middleware';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
+import { fetchPassage } from '@/lib/bible-api';
 
 const postSchema = z.object({
   category_id: z.number().int().positive(),
@@ -102,8 +103,15 @@ Return ONLY the JSON array, no other text.`,
       (s) => !existingSet.has(s.toLowerCase().trim())
     );
 
+    // Fetch KJV text for each suggestion so admin can review
+    const withText: { ref: string; text: string | null }[] = [];
+    for (const ref of filtered) {
+      const text = await fetchPassage(ref, 'KJV', 'verse');
+      withText.push({ ref, text });
+    }
+
     return successResponse({
-      suggestions: filtered,
+      suggestions: withText,
       existing_count: existingRefs.length,
       filtered_count: suggestions.length - filtered.length,
     });

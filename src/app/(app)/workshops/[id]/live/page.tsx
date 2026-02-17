@@ -58,9 +58,9 @@ export default function WorkshopLivePage({
 
   if (isNaN(workshopId)) {
     return (
-      <div className="fixed inset-0 z-40 flex items-center justify-center bg-gray-950">
+      <div className="fixed inset-0 z-40 flex items-center justify-center bg-surface dark:bg-gray-950">
         <div className="text-center">
-          <p className="text-white">Invalid workshop ID</p>
+          <p className="text-text dark:text-white">Invalid workshop ID</p>
           <button
             type="button"
             onClick={() => router.push('/workshops')}
@@ -74,7 +74,7 @@ export default function WorkshopLivePage({
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-gray-950">
+    <div className="fixed inset-0 z-40 flex flex-col bg-surface dark:bg-gray-950">
       <WorkshopRoom
         workshopId={workshopId}
         onExit={handleExit}
@@ -120,10 +120,10 @@ export default function WorkshopLivePage({
 
 function WorkshopLoadingScreen() {
   return (
-    <div className="flex h-full w-full items-center justify-center bg-gray-950">
+    <div className="flex h-full w-full items-center justify-center bg-surface dark:bg-gray-950">
       <div className="text-center">
-        <Loader2 className="mx-auto h-8 w-8 animate-spin text-white/60" />
-        <p className="mt-3 text-sm text-white/60">Loading workshop room...</p>
+        <Loader2 className="mx-auto h-8 w-8 animate-spin text-text-muted dark:text-white/60" />
+        <p className="mt-3 text-sm text-text-muted dark:text-white/60">Loading workshop room...</p>
       </div>
     </div>
   );
