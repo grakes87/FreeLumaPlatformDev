@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 11 of 11 (Verse by Category System)
-Plan: 1 of 7 complete (01 done)
+Plan: 2 of 7 complete (01, 02 done)
 Status: In progress
-Last activity: 2026-02-17 — Completed 11-01-PLAN.md (Database schema and models)
+Last activity: 2026-02-17 — Completed 11-02-PLAN.md (User-facing API routes)
 
-Progress: [██████████████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░░] 86/92 plans (93%)
+Progress: [███████████████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░] 87/92 plans (95%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 86
+- Total plans completed: 87
 - Average duration: 4 min
-- Total execution time: 362 min
+- Total execution time: 369 min
 
 **By Phase:**
 
@@ -37,10 +37,10 @@ Progress: [███████████████████████
 | 08-database-migration-mapping | 2/3 | 14 min | 7 min |
 | 09-platform-refinements | 6/6 | 21 min | 4 min |
 | 10-email-system-sendgrid | 5/5 | 12 min | 2 min |
-| 11-verse-by-category-system | 1/7 | 4 min | 4 min |
+| 11-verse-by-category-system | 2/7 | 11 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 10-03 (2 min), 10-04 (2 min), 10-05 (2 min), 11-01 (4 min)
+- Last 5 plans: 10-04 (2 min), 10-05 (2 min), 11-01 (4 min), 11-02 (7 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -347,6 +347,8 @@ Recent decisions affecting current work:
 - **Verse comment reaction append-only:** VerseCategoryCommentReaction uses updatedAt:false; likes toggled via create/delete, not update
 - **User verse_mode default daily_verse:** Backward compatible default; existing users see current daily verse flow until opting into category mode
 - **Verse category media nullable FK:** verse_category_media.category_id uses ON DELETE SET NULL so media persists if category deleted
+- **Verse category view uses daily_view activity:** ActivityType union doesn't include verse_category_view; daily_view used for verse content viewing, social_activity for reactions/comments
+- **Bible mode gate on verse-by-category:** 403 for positivity-mode users; verse categories are bible-only feature
 
 ### Roadmap Evolution
 
@@ -419,5 +421,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 11-01-PLAN.md (Database schema and models)
+Stopped at: Completed 11-02-PLAN.md (User-facing API routes)
 Resume file: None
