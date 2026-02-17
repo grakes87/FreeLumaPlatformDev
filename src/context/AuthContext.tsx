@@ -26,6 +26,8 @@ export interface UserData {
   is_admin: boolean;
   can_host: boolean;
   preferred_translation: string;
+  verse_mode: 'daily_verse' | 'verse_by_category';
+  verse_category_id: number | null;
   language: string;
   timezone: string;
 }
@@ -148,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setAuthToken(null);
     sessionStorage.removeItem(TOKEN_KEY);
-    window.location.href = '/login';
+    window.location.href = '/bible';
   }, []);
 
   const refreshUser = useCallback(async () => {

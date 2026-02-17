@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
-import { User, UserSetting, BibleTranslation } from '@/lib/db/models';
+import { User, UserSetting, BibleTranslation, VerseCategory } from '@/lib/db/models';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 
 const timeRegex = /^\d{2}:\d{2}$/;
@@ -13,6 +13,8 @@ const updateSettingsSchema = z.object({
   quiet_hours_start: z.string().regex(timeRegex, 'Invalid time format (HH:MM)').nullable().optional(),
   quiet_hours_end: z.string().regex(timeRegex, 'Invalid time format (HH:MM)').nullable().optional(),
   mode: z.enum(['bible', 'positivity']).optional(),
+  verse_mode: z.enum(['daily_verse', 'verse_by_category']).optional(),
+  verse_category_id: z.union([z.number().int().positive(), z.null()]).optional(),
   language: z.enum(['en', 'es']).optional(),
   preferred_translation: z.string().max(10).optional(),
   timezone: z.string().max(50).optional(),
@@ -31,7 +33,7 @@ export const GET = withAuth(
   async (_req: NextRequest, context: AuthContext) => {
     try {
       const user = await User.findByPk(context.user.id, {
-        attributes: ['id', 'email', 'mode', 'language', 'preferred_translation', 'timezone', 'email_verified', 'google_id', 'apple_id'],
+        attributes: ['id', 'email', 'mode', 'language', 'preferred_translation', 'verse_mode', 'verse_category_id', 'timezone', 'email_verified', 'google_id', 'apple_id'],
       });
 
       if (!user) {
@@ -74,6 +76,8 @@ export const GET = withAuth(
           mode: user.mode,
           language: user.language,
           preferred_translation: user.preferred_translation,
+          verse_mode: user.verse_mode || 'daily_verse',
+          verse_category_id: user.verse_category_id ?? null,
           timezone: user.timezone,
           email: user.email,
           email_verified: user.email_verified,
@@ -123,6 +127,8 @@ export const PUT = withAuth(
 
       const userFields: Partial<{
         mode: 'bible' | 'positivity';
+        verse_mode: 'daily_verse' | 'verse_by_category';
+        verse_category_id: number | null;
         language: 'en' | 'es';
         preferred_translation: string;
         timezone: string;
@@ -143,6 +149,23 @@ export const PUT = withAuth(
       if (data.email_new_video_notifications !== undefined) settingFields.email_new_video_notifications = data.email_new_video_notifications;
 
       if (data.mode !== undefined) userFields.mode = data.mode;
+      if (data.verse_mode !== undefined) {
+        userFields.verse_mode = data.verse_mode;
+        // When switching to daily_verse, clear category selection
+        if (data.verse_mode === 'daily_verse') {
+          userFields.verse_category_id = null;
+        }
+      }
+      if (data.verse_category_id !== undefined) {
+        if (data.verse_category_id !== null) {
+          // Validate the category exists and is active
+          const category = await VerseCategory.findByPk(data.verse_category_id);
+          if (!category || !category.active) {
+            return errorResponse('Invalid or inactive category', 400);
+          }
+        }
+        userFields.verse_category_id = data.verse_category_id;
+      }
       if (data.language !== undefined) userFields.language = data.language;
       if (data.preferred_translation !== undefined) userFields.preferred_translation = data.preferred_translation;
       if (data.timezone !== undefined) userFields.timezone = data.timezone;
@@ -172,7 +195,7 @@ export const PUT = withAuth(
 
       // Fetch and return updated settings
       const user = await User.findByPk(context.user.id, {
-        attributes: ['id', 'email', 'mode', 'language', 'preferred_translation', 'timezone', 'email_verified'],
+        attributes: ['id', 'email', 'mode', 'language', 'preferred_translation', 'verse_mode', 'verse_category_id', 'timezone', 'email_verified'],
       });
 
       const settings = await UserSetting.findOne({
@@ -195,6 +218,8 @@ export const PUT = withAuth(
           email_workshop_notifications: settings?.email_workshop_notifications ?? true,
           email_new_video_notifications: settings?.email_new_video_notifications ?? true,
           mode: user?.mode || 'bible',
+          verse_mode: user?.verse_mode || 'daily_verse',
+          verse_category_id: user?.verse_category_id ?? null,
           language: user?.language || 'en',
           preferred_translation: user?.preferred_translation || 'KJV',
           timezone: user?.timezone || 'America/New_York',
