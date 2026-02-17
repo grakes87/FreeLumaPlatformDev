@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 12 of 12 (Content Production Platform)
-Plan: 9 of 14 complete (01, 02, 03, 04, 05, 06, 07, 08, 09 done)
+Plan: 10 of 14 complete (01, 02, 03, 04, 05, 06, 07, 08, 09, 11 done)
 Status: In progress
-Last activity: 2026-02-17 — Completed 12-09-PLAN.md (Admin content production UI)
+Last activity: 2026-02-17 — Completed 12-11-PLAN.md (Creator portal UI)
 
-Progress: [████████████████████████████████████████████████████████████████████████████████████████████████████░] 101/106 plans (95%)
+Progress: [█████████████████████████████████████████████████████████████████████████████████████████████████████░] 102/106 plans (96%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 101
+- Total plans completed: 102
 - Average duration: 4 min
-- Total execution time: 430 min
+- Total execution time: 433 min
 
 **By Phase:**
 
@@ -38,10 +38,10 @@ Progress: [███████████████████████
 | 09-platform-refinements | 6/6 | 21 min | 4 min |
 | 10-email-system-sendgrid | 5/5 | 12 min | 2 min |
 | 11-verse-by-category-system | 7/7 | 42 min | 6 min |
-| 12-content-production-platform | 9/14 | 30 min | 3 min |
+| 12-content-production-platform | 10/14 | 33 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 12-05 (2 min), 12-06 (6 min), 12-07 (2 min), 12-08 (2 min), 12-09 (4 min)
+- Last 5 plans: 12-06 (6 min), 12-07 (2 min), 12-08 (2 min), 12-09 (4 min), 12-11 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -361,6 +361,10 @@ Recent decisions affecting current work:
 - **Verse-by-category disables scroll snap:** Container scroll snap set to 'none' and overflow 'hidden' when in verse-by-category mode
 - **CategorySelector top-24 clearance:** Bumped from top-16 to top-24 to clear VerseModeToggle overlay
 
+- **Creator layout access check:** Verify creator status via /api/creator/stats on layout mount; 403 redirects to /feed
+- **Reuse admin MonthSelector:** Import MonthSelector from admin content-production components to avoid duplication
+- **Assignment detail full-screen overlay:** createPortal overlay (not modal) for better mobile UX when reading scripts
+
 ### Roadmap Evolution
 
 - Phase 9 added: Platform Refinements & Admin Tools (remove laugh reactions, repost views, admin font family, activation codes, video thumbnail regen, admin workshop creation)
@@ -433,5 +437,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 12-09-PLAN.md (Admin content production UI)
+Stopped at: Completed 12-11-PLAN.md (Creator portal UI)
 Resume file: None
