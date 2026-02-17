@@ -389,10 +389,16 @@ Plans:
   11. Verse category setting only visible in profile settings when "Verse by Category" mode is active
   12. Share functionality available on category verse display
 
-**Plans**: 0 plans
+**Plans**: 7 plans in 4 waves
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 11 to break down)
+- [ ] 11-01-PLAN.md — Database foundation: 8 migrations, 7 models (VerseCategory, VerseCategoryMedia, VerseCategoryContent, translations, reactions, comments, comment reactions), User model extensions, npm deps
+- [ ] 11-02-PLAN.md — User-facing API routes: verse-categories list, random verse endpoint, reaction toggle, threaded comments CRUD
+- [ ] 11-03-PLAN.md — Admin API routes: category CRUD, verse management with auto-fetch, media management, AI verse generation via Anthropic
+- [ ] 11-04-PLAN.md — Import script: old DB versebycategory data migration + CategoryPhotos.zip upload to B2
+- [ ] 11-05-PLAN.md — Client hooks (useVerseByCategoryFeed, useVerseCategoryReactions) + UI components (VerseByCategorySlide, CategorySelector, VerseModeToggle)
+- [ ] 11-06-PLAN.md — Daily tab integration (VerseModeToggle, conditional rendering) + profile settings (verse mode selector, category dropdown)
+- [ ] 11-07-PLAN.md — Admin UI: verse categories management page (categories, verses, media tabs) + AI generation workflow + admin nav link
 
 ## Progress
 
@@ -414,7 +420,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 8. Database Migration Mapping | 0/3 | Planned | - |
 | 9. Platform Refinements & Admin Tools | 6/6 | Complete | 2026-02-16 |
 | 10. Email System Setup with SendGrid | 5/5 | Complete | 2026-02-16 |
-| 11. Verse by Category System | 0/TBD | Not started | - |
+| 11. Verse by Category System | 0/7 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-11*
@@ -432,4 +438,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 *Phase 10 planned: 2026-02-16 (5 plans in 3 waves)*
 *Phase 10 executed: 2026-02-16 (5 plans in 3 waves, 12 min)*
 *Phase 11 added: 2026-02-16 (Verse by Category System)*
+*Phase 11 planned: 2026-02-16 (7 plans in 4 waves)*
 *Depth: Comprehensive (11 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category)*
