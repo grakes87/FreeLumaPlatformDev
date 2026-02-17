@@ -13,6 +13,16 @@ export function LumaShortSlide({ content, isActive = true }: LumaShortSlideProps
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasStarted, setHasStarted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Lazy load: only mount video element once the slide has been active
+  const [hasBeenActive, setHasBeenActive] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+
+  // Track first activation — once active, keep the video in DOM
+  useEffect(() => {
+    if (isActive && !hasBeenActive) {
+      setHasBeenActive(true);
+    }
+  }, [isActive, hasBeenActive]);
 
   // Pause video when card scrolls out of view
   useEffect(() => {
@@ -20,6 +30,10 @@ export function LumaShortSlide({ content, isActive = true }: LumaShortSlideProps
       videoRef.current.pause();
     }
   }, [isActive]);
+
+  const handleCanPlay = useCallback(() => {
+    setVideoReady(true);
+  }, []);
 
   // No LumaShort video available
   if (!content.lumashort_video_url) {
@@ -52,21 +66,28 @@ export function LumaShortSlide({ content, isActive = true }: LumaShortSlideProps
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black">
-      {/* Fullscreen video */}
-      <video
-        ref={videoRef}
-        playsInline
-        preload="metadata"
-        className="absolute inset-0 h-full w-full object-cover"
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onEnded={() => {
-          setIsPlaying(false);
-          setHasStarted(false);
-        }}
-      >
-        <source src={`${content.lumashort_video_url}#t=0.001`} type="video/mp4" />
-      </video>
+      {/* Fullscreen video — only mounted after slide becomes active */}
+      {hasBeenActive && (
+        <video
+          ref={videoRef}
+          playsInline
+          preload="metadata"
+          onCanPlay={handleCanPlay}
+          className={
+            'absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ' +
+            (videoReady ? 'opacity-100' : 'opacity-0')
+          }
+        >
+          <source src={`${content.lumashort_video_url}#t=0.001`} type="video/mp4" />
+        </video>
+      )}
+
+      {/* Loading spinner while video loads */}
+      {hasBeenActive && !videoReady && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+        </div>
+      )}
 
       {/* Gradient overlays for text readability */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination, Keyboard } from 'swiper/modules';
 import 'swiper/css';
@@ -192,6 +192,19 @@ function CarouselSwiper({
 }) {
   const [activeSlide, setActiveSlide] = useState(0);
 
+  // Stabilize content reference for DailyPostSlide — only changes when video URL
+  // or core content fields change, NOT when translations are added
+  const slideContent = useMemo(() => content, [
+    content.id,
+    content.video_background_url,
+    content.content_text,
+    content.verse_reference,
+    content.post_date,
+    content.mode,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    content.translations.length,
+  ]);
+
   return (
     <Swiper
       modules={[Pagination, Keyboard]}
@@ -215,7 +228,7 @@ function CarouselSwiper({
       {/* Slide 1: Video background with verse/quote overlay */}
       <SwiperSlide>
         <DailyPostSlide
-          content={content}
+          content={slideContent}
           activeTranslation={activeTranslation}
           isActive={isActive && activeSlide === 0}
           feedMode={feedMode}

@@ -123,20 +123,19 @@ export function DailyPostSlide({
       {hasVideo && (
         <video
           ref={bgVideoRef}
-          key={content.video_background_url}
+          src={content.video_background_url}
           crossOrigin="anonymous"
           autoPlay
           muted
           loop
           playsInline
+          preload="auto"
           onCanPlay={handleVideoCanPlay}
           className={
             'absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ' +
             (videoReady ? 'opacity-100' : 'opacity-0')
           }
-        >
-          <source src={content.video_background_url} type="video/mp4" />
-        </video>
+        />
       )}
 
       {/* Loading spinner while video buffers */}
