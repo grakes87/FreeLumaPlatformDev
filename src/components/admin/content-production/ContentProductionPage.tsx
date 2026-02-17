@@ -1,13 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Settings, Users } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useToast } from '@/components/ui/Toast';
+import { Modal } from '@/components/ui/Modal';
 import { MonthSelector } from './MonthSelector';
 import { StatsHeader, type ContentStats } from './StatsHeader';
 import { UnassignedTab } from './UnassignedTab';
+import { AssignedTab } from './AssignedTab';
 import { PendingTab } from './PendingTab';
+import { CompletedTab } from './CompletedTab';
+import { BackgroundVideosTab } from './BackgroundVideosTab';
+import { CreatorManager } from './CreatorManager';
+import PlatformSettingsSection from './PlatformSettingsSection';
 import type { DayData } from './DayCard';
 
 // ---------------------------------------------------------------------------
@@ -16,9 +22,26 @@ import type { DayData } from './DayCard';
 
 type TabKey = 'unassigned' | 'assigned' | 'pending' | 'completed' | 'background';
 
+interface Creator {
+  id: number;
+  name: string;
+  user_id: number;
+  user?: {
+    id: number;
+    username: string;
+    avatar_url: string | null;
+    avatar_color: string;
+  } | null;
+  monthly_capacity: number;
+  can_bible: boolean;
+  can_positivity: boolean;
+  active: boolean;
+}
+
 interface MonthData {
   stats: ContentStats;
   days: DayData[];
+  creators?: Creator[];
 }
 
 // ---------------------------------------------------------------------------
@@ -55,6 +78,10 @@ export default function ContentProductionPage() {
 
   const [data, setData] = useState<MonthData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Modal states
+  const [showSettings, setShowSettings] = useState(false);
+  const [showCreators, setShowCreators] = useState(false);
 
   // Fetch month overview
   const fetchData = useCallback(async () => {
@@ -110,16 +137,40 @@ export default function ContentProductionPage() {
     [fetchData, toast]
   );
 
+  const creators = data?.creators ?? [];
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold text-text dark:text-text-dark">
-          Content Production
-        </h1>
-        <p className="text-text-muted dark:text-text-muted-dark">
-          Manage daily content generation, creator assignments, and approvals
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text dark:text-text-dark">
+            Content Production
+          </h1>
+          <p className="text-text-muted dark:text-text-muted-dark">
+            Manage daily content generation, creator assignments, and approvals
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowCreators(true)}
+            className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-medium text-text transition-colors hover:bg-surface-hover dark:border-border-dark dark:bg-surface-dark dark:text-text-dark dark:hover:bg-surface-hover-dark"
+            title="Manage Creators"
+          >
+            <Users className="h-4 w-4" />
+            Creators
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-medium text-text transition-colors hover:bg-surface-hover dark:border-border-dark dark:bg-surface-dark dark:text-text-dark dark:hover:bg-surface-hover-dark"
+            title="Pipeline Settings"
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </button>
+        </div>
       </div>
 
       {/* Controls: month selector + mode toggle */}
@@ -181,7 +232,13 @@ export default function ContentProductionPage() {
             />
           )}
           {activeTab === 'assigned' && (
-            <PlaceholderTab label="Assigned" description="Days assigned to creators (coming in a future plan)" />
+            <AssignedTab
+              days={data?.days ?? []}
+              month={selectedMonth}
+              mode={selectedMode}
+              creators={creators}
+              onRefresh={fetchData}
+            />
           )}
           {activeTab === 'pending' && (
             <PendingTab
@@ -191,26 +248,40 @@ export default function ContentProductionPage() {
             />
           )}
           {activeTab === 'completed' && (
-            <PlaceholderTab label="Completed" description="Approved content (coming in a future plan)" />
+            <CompletedTab
+              days={data?.days ?? []}
+              onRefresh={fetchData}
+            />
           )}
           {activeTab === 'background' && (
-            <PlaceholderTab label="Background Videos" description="Background video management (coming in a future plan)" />
+            <BackgroundVideosTab
+              days={data?.days ?? []}
+              month={selectedMonth}
+              onRefresh={fetchData}
+            />
           )}
         </>
       )}
-    </div>
-  );
-}
 
-// ---------------------------------------------------------------------------
-// Placeholder for tabs that are not yet implemented
-// ---------------------------------------------------------------------------
+      {/* Settings Modal */}
+      <Modal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        title="Pipeline Settings"
+        size="lg"
+      >
+        <PlatformSettingsSection />
+      </Modal>
 
-function PlaceholderTab({ label, description }: { label: string; description: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border py-16 dark:border-border-dark">
-      <p className="text-lg font-medium text-text dark:text-text-dark">{label}</p>
-      <p className="text-sm text-text-muted dark:text-text-muted-dark">{description}</p>
+      {/* Creators Modal */}
+      <Modal
+        isOpen={showCreators}
+        onClose={() => setShowCreators(false)}
+        title="Content Creators"
+        size="xl"
+      >
+        <CreatorManager onCreatorChange={fetchData} />
+      </Modal>
     </div>
   );
 }

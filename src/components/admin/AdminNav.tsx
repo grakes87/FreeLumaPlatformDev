@@ -12,6 +12,7 @@ import {
   Video,
   BookOpen,
   BookMarked,
+  Clapperboard,
   ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -71,6 +72,11 @@ export function AdminNav({ pendingCount = 0 }: AdminNavProps) {
       label: 'Verse Categories',
       href: '/admin/verse-categories',
       icon: BookMarked,
+    },
+    {
+      label: 'Content Production',
+      href: '/admin/content-production',
+      icon: Clapperboard,
     },
     {
       label: 'Analytics',

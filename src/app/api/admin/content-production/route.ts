@@ -132,7 +132,34 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       };
     });
 
-    return successResponse({ stats, days });
+    // Fetch all active creators for assignment UI
+    const creators = await LumaShortCreator.findAll({
+      where: { active: true },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'username', 'avatar_url', 'avatar_color'],
+        },
+      ],
+      order: [['name', 'ASC']],
+    });
+
+    const creatorsData = creators.map((c) => {
+      const json = c.toJSON() as Record<string, unknown>;
+      return {
+        id: c.id,
+        name: c.name,
+        user_id: c.user_id,
+        user: json.user || null,
+        monthly_capacity: c.monthly_capacity,
+        can_bible: c.can_bible,
+        can_positivity: c.can_positivity,
+        active: c.active,
+      };
+    });
+
+    return successResponse({ stats, days, creators: creatorsData });
   } catch (error) {
     return serverError(error, 'Failed to fetch month overview');
   }
