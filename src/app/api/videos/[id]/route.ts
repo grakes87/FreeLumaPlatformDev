@@ -195,6 +195,14 @@ export const PUT = withAdmin(
       const isLiveNow = video.published && (!video.published_at || video.published_at <= new Date());
       if (data.published === true && !wasPublished && isLiveNow) {
         dispatchNewVideoNotifications(videoId, video.title, context.user.id).catch(() => {});
+
+        // Trigger broadcast email queue for newly published video
+        try {
+          const { triggerVideoBroadcast } = await import('@/lib/email/queue');
+          await triggerVideoBroadcast(videoId);
+        } catch (err) {
+          console.error('[Video] Failed to trigger broadcast email:', err);
+        }
       }
 
       // Reload with category

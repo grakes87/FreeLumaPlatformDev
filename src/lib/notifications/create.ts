@@ -119,5 +119,72 @@ export async function createNotification(
     // Socket.IO may not be initialized in test environments or during build
   }
 
+  // ---- Email dispatch (fire-and-forget, non-fatal) ----
+
+  // Workshop lifecycle emails
+  const workshopEmailTypes: Record<string, string> = {
+    'workshop_reminder': 'workshop_reminder',
+    'workshop_cancelled': 'workshop_cancelled',
+    'workshop_invite': 'workshop_invite',
+    'workshop_recording': 'workshop_recording',
+    'workshop_updated': 'workshop_updated',
+    'workshop_started': 'workshop_started',
+  };
+
+  if (workshopEmailTypes[type]) {
+    try {
+      const { processWorkshopEmail } = await import('@/lib/email/queue');
+      const { Workshop, User: UserModel } = await import('@/lib/db/models');
+      const workshop = await Workshop.findByPk(entity_id, {
+        attributes: ['id', 'title', 'scheduled_at'],
+        raw: true,
+      });
+      const host = await UserModel.findByPk(actor_id, {
+        attributes: ['display_name'],
+        raw: true,
+      });
+      if (workshop && host) {
+        const scheduledAt = workshop.scheduled_at
+          ? new Date(workshop.scheduled_at).toLocaleString('en-US', {
+              weekday: 'long', month: 'long', day: 'numeric',
+              hour: 'numeric', minute: '2-digit',
+            })
+          : undefined;
+        await processWorkshopEmail(
+          [recipient_id],
+          workshopEmailTypes[type] as 'workshop_reminder' | 'workshop_cancelled' | 'workshop_invite' | 'workshop_recording' | 'workshop_updated' | 'workshop_started',
+          {
+            workshopId: workshop.id,
+            workshopTitle: workshop.title,
+            hostName: host.display_name,
+            scheduledAt,
+          }
+        );
+      }
+    } catch (err) {
+      console.error('[Notification] Workshop email dispatch error:', err);
+    }
+  }
+
+  // Follow request/follow emails
+  if (type === NotificationType.FOLLOW_REQUEST || type === NotificationType.FOLLOW) {
+    try {
+      const { processFollowRequestEmail } = await import('@/lib/email/queue');
+      await processFollowRequestEmail(recipient_id, actor_id);
+    } catch (err) {
+      console.error('[Notification] Follow email dispatch error:', err);
+    }
+  }
+
+  // Prayer response emails
+  if (type === NotificationType.PRAYER) {
+    try {
+      const { processPrayerResponseEmail } = await import('@/lib/email/queue');
+      await processPrayerResponseEmail(recipient_id, actor_id, entity_id);
+    } catch (err) {
+      console.error('[Notification] Prayer email dispatch error:', err);
+    }
+  }
+
   return payload;
 }
