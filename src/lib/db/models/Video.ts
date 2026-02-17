@@ -12,6 +12,7 @@ export interface VideoAttributes {
   duration_seconds: number;
   view_count: number;
   is_hero: boolean;
+  min_age: number;
   published: boolean;
   published_at: Date | null;
   uploaded_by: number;
@@ -28,6 +29,7 @@ export interface VideoCreationAttributes extends Optional<VideoAttributes,
   | 'duration_seconds'
   | 'view_count'
   | 'is_hero'
+  | 'min_age'
   | 'published'
   | 'published_at'
   | 'created_at'
@@ -45,6 +47,7 @@ class Video extends Model<VideoAttributes, VideoCreationAttributes> implements V
   declare duration_seconds: number;
   declare view_count: number;
   declare is_hero: boolean;
+  declare min_age: number;
   declare published: boolean;
   declare published_at: Date | null;
   declare uploaded_by: number;
@@ -100,6 +103,11 @@ Video.init(
     is_hero: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+      allowNull: false,
+    },
+    min_age: {
+      type: DataTypes.TINYINT.UNSIGNED,
+      defaultValue: 0,
       allowNull: false,
     },
     published: {

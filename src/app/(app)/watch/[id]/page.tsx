@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Play, Eye, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, Play, Eye, Clock, ChevronDown, ChevronUp, ShieldAlert, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { VideoReactionBar } from '@/components/video/VideoReactionBar';
 import { ShareVideoButton } from '@/components/video/ShareVideoButton';
@@ -61,6 +62,11 @@ export default function VideoDetailPage({
   const [video, setVideo] = useState<VideoDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [ageRestriction, setAgeRestriction] = useState<{
+    min_age: number;
+    requires_dob?: boolean;
+    requires_login?: boolean;
+  } | null>(null);
   const [descExpanded, setDescExpanded] = useState(false);
   const [playerOpen, setPlayerOpen] = useState(false);
 
@@ -71,6 +77,22 @@ export default function VideoDetailPage({
         credentials: 'include',
       });
       if (res.status === 404) {
+        setNotFound(true);
+        return;
+      }
+      if (res.status === 403) {
+        const json = await res.json();
+        if (json.age_restricted) {
+          if (json.requires_login) {
+            router.push(`/login?redirect=/watch/${params.id}`);
+            return;
+          }
+          setAgeRestriction({
+            min_age: json.min_age,
+            requires_dob: json.requires_dob,
+          });
+          return;
+        }
         setNotFound(true);
         return;
       }
@@ -85,7 +107,7 @@ export default function VideoDetailPage({
     } finally {
       setLoading(false);
     }
-  }, [params.id]);
+  }, [params.id, router]);
 
   useEffect(() => {
     fetchVideo();
@@ -94,6 +116,45 @@ export default function VideoDetailPage({
   // Loading skeleton
   if (loading) {
     return <VideoDetailSkeleton />;
+  }
+
+  // Age restriction
+  if (ageRestriction) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
+        <div className="mb-4 rounded-full bg-red-100 p-4 dark:bg-red-500/10">
+          <ShieldAlert className="h-8 w-8 text-red-500" />
+        </div>
+        <h2 className="text-lg font-semibold text-text dark:text-text-dark">
+          Age Restricted Content
+        </h2>
+        {ageRestriction.requires_dob ? (
+          <>
+            <p className="mt-1.5 max-w-xs text-sm text-text-muted dark:text-text-muted-dark">
+              Please set your date of birth in Settings to watch this video.
+            </p>
+            <Link
+              href="/settings"
+              className="mt-4 flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-medium text-white"
+            >
+              <Settings className="h-4 w-4" />
+              Go to Settings
+            </Link>
+          </>
+        ) : (
+          <p className="mt-1.5 max-w-xs text-sm text-text-muted dark:text-text-muted-dark">
+            This video requires you to be {ageRestriction.min_age}+ to watch.
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => router.push('/watch')}
+          className="mt-3 text-sm font-medium text-primary"
+        >
+          Browse Videos
+        </button>
+      </div>
+    );
   }
 
   // 404

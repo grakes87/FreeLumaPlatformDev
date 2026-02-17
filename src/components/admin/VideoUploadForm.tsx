@@ -54,6 +54,7 @@ export function VideoUploadForm({
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [publishMode, setPublishMode] = useState<PublishMode>('draft');
   const [scheduledDate, setScheduledDate] = useState('');
+  const [minAge, setMinAge] = useState<number>(0);
   const [file, setFile] = useState<File | null>(null);
 
   // Minimum datetime for the scheduler (now + 5 minutes, rounded)
@@ -161,6 +162,7 @@ export function VideoUploadForm({
         video_url: publicUrl,
         duration_seconds: durationSeconds,
         published: publishMode !== 'draft',
+        min_age: minAge || undefined,
       };
       if (publishMode === 'schedule' && scheduledDate) {
         videoPayload.published_at = new Date(scheduledDate).toISOString();
@@ -354,6 +356,29 @@ export function VideoUploadForm({
                   {cat.name}
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Age Restriction */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-text dark:text-text-dark">
+              Age Restriction
+            </label>
+            <select
+              value={minAge}
+              onChange={(e) => setMinAge(parseInt(e.target.value, 10))}
+              disabled={uploading}
+              className={cn(
+                'w-full rounded-xl border border-border bg-surface px-4 py-3 text-text transition-colors',
+                'focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50',
+                'dark:border-border-dark dark:bg-surface-dark dark:text-text-dark',
+                'disabled:cursor-not-allowed disabled:opacity-60'
+              )}
+            >
+              <option value={0}>None</option>
+              <option value={13}>13+</option>
+              <option value={16}>16+</option>
+              <option value={18}>18+</option>
             </select>
           </div>
 

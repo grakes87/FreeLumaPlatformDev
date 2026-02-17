@@ -15,6 +15,7 @@ const createVideoSchema = z.object({
   duration_seconds: z.number().int().min(0).default(0),
   thumbnail_url: z.string().url().optional(),
   caption_url: z.string().url().optional(),
+  min_age: z.union([z.literal(0), z.literal(13), z.literal(16), z.literal(18)]).optional().default(0),
   is_hero: z.boolean().optional(),
   published: z.boolean().optional(),
   published_at: z.string().datetime().nullable().optional(),
@@ -63,6 +64,24 @@ export const GET = withOptionalAuth(
 
       const publishedFilter = (isAdmin && drafts) ? {} : publicVideoFilter();
 
+      // Age restriction filter: hide age-gated videos from underage or no-DOB users
+      let ageFilter: Record<string, unknown> = {};
+      if (!isAdmin && userId) {
+        const userRow = await User.findByPk(userId, { attributes: ['date_of_birth'] });
+        const dob = userRow?.date_of_birth;
+        if (dob) {
+          const age = Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+          // Only show videos where min_age <= user's age
+          ageFilter = { min_age: { [Op.lte]: age } };
+        } else {
+          // No DOB: exclude all age-restricted videos
+          ageFilter = { min_age: 0 };
+        }
+      } else if (!isAdmin && !userId) {
+        // Guest: exclude all age-restricted videos
+        ageFilter = { min_age: 0 };
+      }
+
       // If category_id provided: paginated list of videos in that category
       if (categoryId) {
         const catId = parseInt(categoryId, 10);
@@ -73,6 +92,7 @@ export const GET = withOptionalAuth(
         const where: Record<string, unknown> = {
           category_id: catId,
           ...publishedFilter,
+          ...ageFilter,
         };
 
         if (cursor) {
@@ -83,7 +103,7 @@ export const GET = withOptionalAuth(
           where,
           attributes: [
             'id', 'title', 'description', 'thumbnail_url',
-            'duration_seconds', 'view_count', 'is_hero', 'published', 'published_at', 'created_at',
+            'duration_seconds', 'view_count', 'is_hero', 'min_age', 'published', 'published_at', 'created_at',
           ],
           order: [['view_count', 'DESC'], ['id', 'DESC']],
           limit: limit + 1,
@@ -113,6 +133,7 @@ export const GET = withOptionalAuth(
             where: {
               category_id: cat.id,
               ...publishedFilter,
+              ...ageFilter,
             },
             attributes: [
               'id', 'title', 'description', 'thumbnail_url',
@@ -139,6 +160,7 @@ export const GET = withOptionalAuth(
         where: {
           category_id: null,
           ...publishedFilter,
+          ...ageFilter,
         },
         attributes: [
           'id', 'title', 'description', 'thumbnail_url',
@@ -150,7 +172,7 @@ export const GET = withOptionalAuth(
 
       // Top 10 most watched
       const top10 = await Video.findAll({
-        where: publishedFilter,
+        where: { ...publishedFilter, ...ageFilter },
         attributes: [
           'id', 'title', 'description', 'thumbnail_url',
           'duration_seconds', 'view_count', 'is_hero', 'published', 'published_at', 'created_at',
@@ -175,7 +197,7 @@ export const GET = withOptionalAuth(
                 'id', 'title', 'description', 'thumbnail_url',
                 'duration_seconds', 'view_count', 'is_hero', 'published', 'published_at', 'created_at',
               ],
-              where: publishedFilter,
+              where: { ...publishedFilter, ...ageFilter },
             },
           ],
           order: [['updated_at', 'DESC']],
@@ -257,6 +279,7 @@ export const POST = withAdmin(
         duration_seconds: data.duration_seconds,
         thumbnail_url: data.thumbnail_url ?? null,
         caption_url: data.caption_url ?? null,
+        min_age: data.min_age ?? 0,
         is_hero: data.is_hero ?? false,
         published: isPublished || publishedAt !== null,
         published_at: publishedAt,

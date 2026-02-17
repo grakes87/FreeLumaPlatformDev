@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middleware';
 import { withAdmin, type AuthContext } from '@/lib/auth/middleware';
@@ -13,6 +13,7 @@ const updateVideoSchema = z.object({
   duration_seconds: z.number().int().min(0).optional(),
   thumbnail_url: z.string().url().nullable().optional(),
   caption_url: z.string().url().nullable().optional(),
+  min_age: z.union([z.literal(0), z.literal(13), z.literal(16), z.literal(18)]).optional(),
   is_hero: z.boolean().optional(),
   published: z.boolean().optional(),
   published_at: z.string().datetime().nullable().optional(),
@@ -66,6 +67,34 @@ export const GET = withOptionalAuth(
         const isLive = video.published && (!video.published_at || video.published_at <= new Date());
         if (!isLive) {
           return errorResponse('Video not found', 404);
+        }
+      }
+
+      // Age restriction check (admins bypass)
+      if (video.min_age > 0 && !isAdmin) {
+        if (!userId) {
+          return NextResponse.json(
+            { error: 'Login required', age_restricted: true, min_age: video.min_age, requires_login: true },
+            { status: 403 }
+          );
+        }
+
+        const userRow = await User.findByPk(userId, { attributes: ['date_of_birth'] });
+        const dob = userRow?.date_of_birth;
+
+        if (!dob) {
+          return NextResponse.json(
+            { error: 'Date of birth required', age_restricted: true, min_age: video.min_age, requires_dob: true },
+            { status: 403 }
+          );
+        }
+
+        const age = Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+        if (age < video.min_age) {
+          return NextResponse.json(
+            { error: 'Age restricted', age_restricted: true, min_age: video.min_age, requires_dob: false },
+            { status: 403 }
+          );
         }
       }
 

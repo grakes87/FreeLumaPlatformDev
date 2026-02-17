@@ -41,6 +41,7 @@ interface Video {
   duration_seconds: number;
   view_count: number;
   is_hero: boolean;
+  min_age: number;
   published: boolean;
   published_at: string | null;
   created_at: string;
@@ -72,6 +73,7 @@ export default function AdminVideosPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editCategoryId, setEditCategoryId] = useState<number>(0);
+  const [editMinAge, setEditMinAge] = useState<number>(0);
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Delete confirm state
@@ -205,6 +207,7 @@ export default function AdminVideosPage() {
     setEditTitle(video.title);
     setEditDescription(video.description || '');
     setEditCategoryId(video.category_id ?? 0);
+    setEditMinAge(video.min_age ?? 0);
   };
 
   const cancelEdit = () => {
@@ -212,6 +215,7 @@ export default function AdminVideosPage() {
     setEditTitle('');
     setEditDescription('');
     setEditCategoryId(0);
+    setEditMinAge(0);
   };
 
   const handleSaveEdit = async () => {
@@ -227,6 +231,7 @@ export default function AdminVideosPage() {
           title: editTitle.trim(),
           description: editDescription.trim() || null,
           category_id: editCategoryId,
+          min_age: editMinAge,
         }),
       });
 
@@ -414,6 +419,28 @@ export default function AdminVideosPage() {
                           ))}
                         </select>
                       </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-text dark:text-text-dark">
+                          Age Restriction
+                        </label>
+                        <select
+                          value={editMinAge}
+                          onChange={(e) =>
+                            setEditMinAge(parseInt(e.target.value, 10))
+                          }
+                          disabled={savingEdit}
+                          className={cn(
+                            'w-full rounded-xl border border-border bg-surface px-4 py-2 text-sm text-text',
+                            'focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50',
+                            'dark:border-border-dark dark:bg-surface-dark dark:text-text-dark'
+                          )}
+                        >
+                          <option value={0}>None</option>
+                          <option value={13}>13+</option>
+                          <option value={16}>16+</option>
+                          <option value={18}>18+</option>
+                        </select>
+                      </div>
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -471,6 +498,11 @@ export default function AdminVideosPage() {
                           {!video.published && (
                             <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
                               Draft
+                            </span>
+                          )}
+                          {video.min_age > 0 && (
+                            <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                              {video.min_age}+
                             </span>
                           )}
                           {isScheduledFuture(video) && (
