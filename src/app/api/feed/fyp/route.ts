@@ -101,6 +101,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
     where: { [Op.and]: andConditions },
     order: [['created_at', 'DESC']],
     limit: 200,
+    subQuery: false,
     include: [
       {
         model: User,

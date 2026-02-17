@@ -246,6 +246,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
         ],
         order: [['created_at', 'DESC'], ['id', 'DESC']],
         limit: limit + 1,
+        subQuery: false,
       });
 
       const hasMore = postRows.length > limit;
