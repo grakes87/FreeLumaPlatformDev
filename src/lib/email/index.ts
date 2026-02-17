@@ -59,13 +59,11 @@ export async function sendEmail(
     return;
   }
 
-  // Dev whitelist guard: prevent accidental emails to real users in non-production
-  if (process.env.NODE_ENV !== 'production') {
-    const whitelist = getDevWhitelist();
-    if (whitelist && !whitelist.has(to.toLowerCase())) {
-      console.log(`[Email] Skipped (not in dev whitelist): ${to}`);
-      return;
-    }
+  // Email whitelist guard: if EMAIL_DEV_WHITELIST is set, only send to listed addresses
+  const whitelist = getDevWhitelist();
+  if (whitelist && !whitelist.has(to.toLowerCase())) {
+    console.log(`[Email] Skipped (not in whitelist): ${to}`);
+    return;
   }
 
   try {
