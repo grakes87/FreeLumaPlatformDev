@@ -8,6 +8,12 @@ import {
   prayerResponseEmail,
   dailyReminderEmail,
   reactionCommentBatchEmail,
+  workshopReminderEmail,
+  workshopCancelledEmail,
+  workshopInviteEmail,
+  workshopRecordingEmail,
+  workshopUpdatedEmail,
+  workshopStartedEmail,
 } from './templates';
 
 const APP_URL = 'https://freeluma.com';
@@ -695,5 +701,106 @@ export async function cleanupOldNotifications(): Promise<void> {
 
   if (notifCount > 0 || emailCount > 0) {
     console.log(`[Email Queue] Cleanup: ${notifCount} notifications, ${emailCount} email logs deleted`);
+  }
+}
+
+// ---- Workshop email dispatcher ----
+
+export type WorkshopEmailType =
+  | 'workshop_reminder'
+  | 'workshop_cancelled'
+  | 'workshop_invite'
+  | 'workshop_recording'
+  | 'workshop_updated'
+  | 'workshop_started';
+
+/**
+ * Send workshop lifecycle emails to an array of recipients.
+ * Called directly when workshop events occur (immediate, not batched).
+ *
+ * Respects email_workshop_notifications user setting, quiet hours, and rate limits.
+ */
+export async function processWorkshopEmail(
+  recipientIds: number[],
+  workshopEmailType: WorkshopEmailType,
+  workshopData: {
+    workshopId: number;
+    workshopTitle: string;
+    hostName: string;
+    scheduledAt?: string;
+    recordingUrl?: string;
+  }
+): Promise<void> {
+  const { User, UserSetting } = await import('@/lib/db/models');
+
+  const workshopUrl = `${APP_URL}/workshops/${workshopData.workshopId}`;
+
+  for (const recipientId of recipientIds) {
+    try {
+      // Load recipient with settings
+      const recipient = await User.findByPk(recipientId, {
+        attributes: ['id', 'email', 'display_name'],
+        include: [{
+          model: UserSetting,
+          as: 'settings',
+          attributes: ['email_workshop_notifications', 'quiet_hours_start', 'quiet_hours_end', 'reminder_timezone'],
+        }],
+      });
+
+      if (!recipient) continue;
+      const settings = (recipient as unknown as { settings: { email_workshop_notifications: boolean; quiet_hours_start: string | null; quiet_hours_end: string | null; reminder_timezone: string | null } | null }).settings;
+      if (!settings?.email_workshop_notifications) continue;
+
+      const trackingId = generateTrackingId();
+      const unsubscribeUrl = await generateUnsubscribeUrl(recipientId, 'workshop');
+
+      const commonParams = {
+        recipientName: recipient.display_name,
+        workshopTitle: workshopData.workshopTitle,
+        workshopUrl,
+        hostName: workshopData.hostName,
+        scheduledAt: workshopData.scheduledAt,
+        trackingId,
+        unsubscribeUrl,
+      };
+
+      let result: { html: string; subject: string; headers: Record<string, string> };
+
+      switch (workshopEmailType) {
+        case 'workshop_reminder':
+          result = workshopReminderEmail(commonParams);
+          break;
+        case 'workshop_cancelled':
+          result = workshopCancelledEmail(commonParams);
+          break;
+        case 'workshop_invite':
+          result = workshopInviteEmail(commonParams);
+          break;
+        case 'workshop_recording':
+          result = workshopRecordingEmail({ ...commonParams, recordingUrl: workshopData.recordingUrl });
+          break;
+        case 'workshop_updated':
+          result = workshopUpdatedEmail(commonParams);
+          break;
+        case 'workshop_started':
+          result = workshopStartedEmail(commonParams);
+          break;
+      }
+
+      await sendNotificationEmail({
+        userId: recipientId,
+        userEmail: recipient.email,
+        emailType: workshopEmailType,
+        subject: result.subject,
+        html: result.html,
+        headers: result.headers,
+        trackingId,
+        quietStart: settings.quiet_hours_start,
+        quietEnd: settings.quiet_hours_end,
+        reminderTimezone: settings.reminder_timezone,
+      });
+    } catch (err) {
+      console.error(`[Email Queue] Workshop email (${workshopEmailType}) error for user ${recipientId}:`, err);
+    }
   }
 }
