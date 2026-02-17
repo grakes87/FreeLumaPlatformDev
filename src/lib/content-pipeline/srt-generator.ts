@@ -125,8 +125,8 @@ export function characterAlignmentToWords(
 
   for (let i = 0; i < characters.length; i++) {
     const char = characters[i];
-    const charStart = characterStartTimesSeconds[i];
-    const charEnd = characterEndTimesSeconds[i];
+    const charStart = characterStartTimesSeconds[i] ?? 0;
+    const charEnd = characterEndTimesSeconds[i] ?? charStart;
 
     if (char === ' ' || char === '\n' || char === '\t') {
       // Whitespace boundary: emit the accumulated word if any
