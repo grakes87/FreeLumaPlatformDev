@@ -27,7 +27,7 @@ export interface EmailLogCreationAttributes extends Optional<EmailLogAttributes,
 class EmailLog extends Model<EmailLogAttributes, EmailLogCreationAttributes> implements EmailLogAttributes {
   declare id: number;
   declare recipient_id: number;
-  declare email_type: 'dm_batch' | 'follow_request' | 'prayer_response' | 'daily_reminder';
+  declare email_type: 'dm_batch' | 'follow_request' | 'prayer_response' | 'daily_reminder' | 'reaction_comment_batch' | 'workshop_reminder' | 'workshop_cancelled' | 'workshop_invite' | 'workshop_recording' | 'workshop_updated' | 'workshop_started' | 'new_video';
   declare subject: string;
   declare status: 'queued' | 'sent' | 'bounced' | 'opened';
   declare sent_at: Date | null;
