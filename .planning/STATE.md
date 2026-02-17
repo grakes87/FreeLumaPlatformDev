@@ -6,23 +6,23 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Daily inspirational content delivery and faith-based community connection — users come back every day for their daily post and stay to engage with their community.
 
-**Current focus:** Phase 9 - Platform Refinements & Admin Tools (In progress)
+**Current focus:** Phase 10 - Email System Setup with SendGrid (Executing)
 
 ## Current Position
 
-Phase: 9 of 9 (Platform Refinements & Admin Tools)
-Plan: 6 of 6 complete (01-06 done)
-Status: Phase complete
-Last activity: 2026-02-16 — Completed 09-06-PLAN.md (admin font family configuration UI)
+Phase: 10 of 10 (Email System Setup with SendGrid)
+Plan: 1 of 5 complete (01 done)
+Status: In progress
+Last activity: 2026-02-17 — Completed 10-01-PLAN.md (SendGrid foundation & schema extension)
 
-Progress: [████████████████████████████████████████████████████████████████████████████] 80/80 plans (100%)
+Progress: [█████████████████████████████████████████████████████████████████████████████░░░░] 81/85 plans (95%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 80
+- Total plans completed: 81
 - Average duration: 4 min
-- Total execution time: 346 min
+- Total execution time: 350 min
 
 **By Phase:**
 
@@ -36,9 +36,10 @@ Progress: [███████████████████████
 | 06-bug-fixes | 5/6 | 13 min | 3 min |
 | 08-database-migration-mapping | 2/3 | 14 min | 7 min |
 | 09-platform-refinements | 6/6 | 21 min | 4 min |
+| 10-email-system-sendgrid | 1/5 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 09-01 (4 min), 09-04 (3 min), 09-03 (5 min), 09-05 (3 min), 09-06 (3 min)
+- Last 5 plans: 09-04 (3 min), 09-03 (5 min), 09-05 (3 min), 09-06 (3 min), 10-01 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -331,9 +332,16 @@ Recent decisions affecting current work:
 - **Font picker inline sub-component:** FontPicker defined inside FontFamilySection (not separate file); admin-only, not needed elsewhere
 - **Platform settings upsert for font_config:** PUT API changed from find-or-404 to PlatformSetting.set() upsert; font_config not seeded in migration
 
+- **SendGrid replaces Nodemailer:** sgMail.send() with disabled click/open tracking; console fallback when SENDGRID_API_KEY not set
+- **Dev email whitelist guard:** EMAIL_DEV_WHITELIST env var (comma-separated) prevents accidental emails to real users in non-production
+- **Hardcoded email domain:** All email URLs use https://freeluma.com regardless of environment; from address hello@freeluma.com
+- **Email notification preferences extended:** 3 new user_settings columns (reaction_comment, workshop, new_video) all default true
+- **Email log types extended:** email_logs.email_type ENUM expanded from 4 to 12 values for new notification categories
+
 ### Roadmap Evolution
 
 - Phase 9 added: Platform Refinements & Admin Tools (remove laugh reactions, repost views, admin font family, activation codes, video thumbnail regen, admin workshop creation)
+- Phase 10 added: Email System Setup with SendGrid (configure SendGrid API, migrate from SMTP, wire up all transactional and notification emails)
 - 09-01: QuickReactionPicker made configurable via reactionTypes prop (shared component serves daily/prayer/post contexts with different reaction sets)
 
 ### Pending Todos
@@ -399,6 +407,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-16
-Stopped at: Completed 09-06-PLAN.md (admin font family configuration UI) -- Phase 9 COMPLETE
+Last session: 2026-02-17
+Stopped at: Completed 10-01-PLAN.md (SendGrid foundation & schema extension)
 Resume file: None
