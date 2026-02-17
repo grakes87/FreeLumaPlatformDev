@@ -15,6 +15,12 @@ app.prepare().then(() => {
   // Initialize Socket.IO (namespace setup happens lazily in src/lib/socket/index.ts)
   if (!globalThis.__io) {
     const io = new SocketServer(httpServer, {
+      cors: {
+        origin: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        credentials: true,
+        methods: ["GET", "POST"],
+      },
+      transports: ["websocket"],
       connectionStateRecovery: {
         maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
       },
@@ -31,8 +37,13 @@ app.prepare().then(() => {
     io.of('/chat');
     io.of('/notifications');
 
+    // Log connection errors for production debugging
+    io.engine.on("connection_error", (err) => {
+      console.error("[Socket.IO] connection_error:", err.code, err.message);
+    });
+
     globalThis.__io = io;
-    console.log("> Socket.IO server initialized");
+    console.log("> Socket.IO server initialized (websocket-only)");
   }
 
   httpServer.listen(port, hostname, () => {

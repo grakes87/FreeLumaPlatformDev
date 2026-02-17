@@ -55,6 +55,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       const socketOpts = {
         autoConnect: true,
         withCredentials: true,
+        transports: ['websocket'] as ('websocket')[],
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
