@@ -1,6 +1,8 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../index';
 
+export type DailyContentStatus = 'empty' | 'generated' | 'assigned' | 'submitted' | 'rejected' | 'approved';
+
 export interface DailyContentAttributes {
   id: number;
   post_date: string;
@@ -13,6 +15,15 @@ export interface DailyContentAttributes {
   lumashort_video_url: string | null;
   language: 'en' | 'es';
   published: boolean;
+  status: DailyContentStatus;
+  creator_id: number | null;
+  camera_script: string | null;
+  devotional_reflection: string | null;
+  meditation_script: string | null;
+  background_prompt: string | null;
+  rejection_note: string | null;
+  creator_video_url: string | null;
+  creator_video_thumbnail: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -24,6 +35,15 @@ export interface DailyContentCreationAttributes extends Optional<DailyContentAtt
   | 'lumashort_video_url'
   | 'language'
   | 'published'
+  | 'status'
+  | 'creator_id'
+  | 'camera_script'
+  | 'devotional_reflection'
+  | 'meditation_script'
+  | 'background_prompt'
+  | 'rejection_note'
+  | 'creator_video_url'
+  | 'creator_video_thumbnail'
   | 'created_at'
   | 'updated_at'
 > {}
@@ -40,6 +60,15 @@ class DailyContent extends Model<DailyContentAttributes, DailyContentCreationAtt
   declare lumashort_video_url: string | null;
   declare language: 'en' | 'es';
   declare published: boolean;
+  declare status: DailyContentStatus;
+  declare creator_id: number | null;
+  declare camera_script: string | null;
+  declare devotional_reflection: string | null;
+  declare meditation_script: string | null;
+  declare background_prompt: string | null;
+  declare rejection_note: string | null;
+  declare creator_video_url: string | null;
+  declare creator_video_thumbnail: string | null;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
 }
@@ -93,6 +122,47 @@ DailyContent.init(
       defaultValue: true,
       allowNull: false,
     },
+    status: {
+      type: DataTypes.ENUM('empty', 'generated', 'assigned', 'submitted', 'rejected', 'approved'),
+      allowNull: false,
+      defaultValue: 'empty',
+    },
+    creator_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'luma_short_creators',
+        key: 'id',
+      },
+    },
+    camera_script: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    devotional_reflection: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    meditation_script: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    background_prompt: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    rejection_note: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    creator_video_url: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
+    creator_video_thumbnail: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE,
   },
@@ -106,6 +176,10 @@ DailyContent.init(
         unique: true,
         fields: ['post_date', 'mode', 'language'],
         name: 'unique_post_date_mode_language',
+      },
+      {
+        fields: ['status', 'mode', 'post_date'],
+        name: 'idx_status_mode_date',
       },
     ],
   }

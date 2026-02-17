@@ -57,6 +57,8 @@ import { VerseCategoryContentTranslation } from './VerseCategoryContentTranslati
 import { VerseCategoryReaction } from './VerseCategoryReaction';
 import { VerseCategoryComment } from './VerseCategoryComment';
 import { VerseCategoryCommentReaction } from './VerseCategoryCommentReaction';
+import { UsedBibleVerse } from './UsedBibleVerse';
+import { LumaShortCreator } from './LumaShortCreator';
 
 // ---- Associations ----
 
@@ -1060,6 +1062,38 @@ VerseCategoryCommentReaction.belongsTo(User, {
   as: 'user',
 });
 
+// ---- Phase 12: Content Production Platform Associations ----
+
+// User -> LumaShortCreator (one-to-many)
+User.hasMany(LumaShortCreator, {
+  foreignKey: 'user_id',
+  as: 'creatorProfiles',
+});
+LumaShortCreator.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// LumaShortCreator -> DailyContent (one-to-many)
+LumaShortCreator.hasMany(DailyContent, {
+  foreignKey: 'creator_id',
+  as: 'assignments',
+});
+DailyContent.belongsTo(LumaShortCreator, {
+  foreignKey: 'creator_id',
+  as: 'creator',
+});
+
+// DailyContent -> UsedBibleVerse (one-to-many)
+DailyContent.hasMany(UsedBibleVerse, {
+  foreignKey: 'daily_content_id',
+  as: 'usedVerses',
+});
+UsedBibleVerse.belongsTo(DailyContent, {
+  foreignKey: 'daily_content_id',
+  as: 'dailyContent',
+});
+
 export {
   sequelize,
   User,
@@ -1120,4 +1154,6 @@ export {
   VerseCategoryReaction,
   VerseCategoryComment,
   VerseCategoryCommentReaction,
+  UsedBibleVerse,
+  LumaShortCreator,
 };
