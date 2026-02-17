@@ -74,6 +74,7 @@ VerseCategory.init(
   },
   {
     sequelize,
+    modelName: 'VerseCategory',
     tableName: 'verse_categories',
     timestamps: true,
     underscored: true,
