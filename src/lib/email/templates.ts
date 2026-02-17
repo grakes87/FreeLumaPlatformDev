@@ -361,6 +361,94 @@ export function passwordChangeAlertTemplate(email: string): string {
   return baseTemplate(content);
 }
 
+export interface ReactionCommentBatchEmailParams {
+  recipientName: string;
+  items: Array<{
+    type: 'reaction' | 'comment' | 'reply';
+    actorName: string;
+    contentPreview: string;
+    emoji?: string;
+    contentUrl: string;
+  }>;
+  trackingId?: string;
+  unsubscribeUrl?: string;
+}
+
+export function reactionCommentBatchEmail(params: ReactionCommentBatchEmailParams): { html: string; subject: string; headers: Record<string, string> } {
+  const { recipientName, items, trackingId, unsubscribeUrl } = params;
+
+  // Count reactions and comments/replies separately for subject line
+  const reactionCount = items.filter(i => i.type === 'reaction').length;
+  const commentCount = items.filter(i => i.type === 'comment' || i.type === 'reply').length;
+
+  const parts: string[] = [];
+  if (reactionCount > 0) parts.push(`${reactionCount} new reaction${reactionCount > 1 ? 's' : ''}`);
+  if (commentCount > 0) parts.push(`${commentCount} new comment${commentCount > 1 ? 's' : ''}`);
+  const subject = `You have ${parts.join(' and ')} - ${BRAND_NAME}`;
+
+  // Show max 5 items, with overflow
+  const displayItems = items.slice(0, 5);
+  const overflowCount = items.length - displayItems.length;
+
+  const itemsHtml = displayItems.map(item => {
+    const borderColor = item.type === 'reaction' ? BRAND_COLOR : '#3b82f6';
+
+    let description: string;
+    if (item.type === 'reaction') {
+      description = `<strong>${item.actorName}</strong> reacted ${item.emoji || ''} to your post`;
+    } else if (item.type === 'comment') {
+      description = `<strong>${item.actorName}</strong> commented on your post`;
+    } else {
+      description = `<strong>${item.actorName}</strong> replied to your comment`;
+    }
+
+    const preview = item.contentPreview.length > 80
+      ? item.contentPreview.slice(0, 77) + '...'
+      : item.contentPreview;
+
+    return `
+      <div style="padding:12px 16px;background:#f9fafb;border-radius:8px;border-left:3px solid ${borderColor};margin:0 0 8px;">
+        <p style="margin:0 0 4px;font-size:14px;color:#3f3f46;line-height:1.5;">
+          ${description}
+        </p>
+        <p style="margin:0;font-size:13px;color:#71717a;line-height:1.4;font-style:italic;">
+          "${preview}"
+        </p>
+        <a href="${item.contentUrl}" style="font-size:12px;color:${BRAND_COLOR};text-decoration:none;margin-top:4px;display:inline-block;">View &rarr;</a>
+      </div>`;
+  }).join('');
+
+  const overflowHtml = overflowCount > 0
+    ? `<p style="margin:8px 0 0;font-size:13px;color:#71717a;text-align:center;">and ${overflowCount} more...</p>`
+    : '';
+
+  const content = `
+    <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Activity on Your Content</h2>
+    <p style="margin:0 0 8px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Hi ${recipientName},
+    </p>
+    <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+      Here's what happened while you were away:
+    </p>
+    ${itemsHtml}
+    ${overflowHtml}
+    ${actionButton(`${APP_URL}/notifications`, 'View Activity')}
+    <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
+      Stay connected with your community.
+    </p>
+  `;
+
+  const footer = notificationFooter({ trackingId, unsubscribeUrl, category: 'Reaction & Comment' });
+
+  const headers: Record<string, string> = {};
+  if (unsubscribeUrl) {
+    headers['List-Unsubscribe'] = `<${unsubscribeUrl}>`;
+    headers['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+  }
+
+  return { html: baseTemplate(content, footer), subject, headers };
+}
+
 export interface DailyReminderEmailParams {
   recipientName: string;
   verseText: string;
