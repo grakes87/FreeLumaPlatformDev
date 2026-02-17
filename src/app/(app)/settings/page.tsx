@@ -26,11 +26,11 @@ import {
   MessageSquare,
   Presentation,
   Play,
+  Layers,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils/cn';
 import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { LANGUAGES, MODES } from '@/lib/utils/constants';
 import { StatsPage } from '@/components/settings/StatsPage';
@@ -46,6 +46,12 @@ interface TranslationOption {
   language: string;
 }
 
+interface VerseCategoryOption {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 interface Settings {
   dark_mode: 'light' | 'dark' | 'system';
   email_notifications: boolean;
@@ -53,6 +59,8 @@ interface Settings {
   quiet_hours_start: string | null;
   quiet_hours_end: string | null;
   mode: 'bible' | 'positivity';
+  verse_mode: 'daily_verse' | 'verse_by_category';
+  verse_category_id: number | null;
   language: 'en' | 'es';
   preferred_translation: string;
   timezone: string;
@@ -114,6 +122,7 @@ export default function SettingsPage() {
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [verseCategories, setVerseCategories] = useState<VerseCategoryOption[]>([]);
 
   // Debounce timer ref
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -145,6 +154,25 @@ export default function SettingsPage() {
       }
     }
     fetchSettings();
+
+    // Fetch verse categories for bible-mode users
+    async function fetchVerseCategories() {
+      try {
+        const res = await fetch('/api/verse-categories', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          const cats = Array.isArray(data.data) ? data.data : [];
+          setVerseCategories(cats.map((c: { id: number; name: string; slug: string }) => ({
+            id: c.id,
+            name: c.name,
+            slug: c.slug,
+          })));
+        }
+      } catch {
+        // Silently fail
+      }
+    }
+    fetchVerseCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -369,6 +397,73 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Verse Display Mode (only for bible mode) */}
+        {settings?.mode === 'bible' && (
+          <>
+            <Divider />
+            <div className="px-4 py-3.5">
+              <div className="flex items-center gap-2 mb-3">
+                <Layers className="h-4 w-4 text-text-muted dark:text-text-muted-dark" />
+                <p className="text-sm font-medium text-text dark:text-text-dark">
+                  Verse Display Mode
+                </p>
+              </div>
+              <div className="flex rounded-lg border border-border dark:border-border-dark overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => saveSettings({ verse_mode: 'daily_verse' })}
+                  className={cn(
+                    'flex-1 px-3 py-2 text-xs font-medium transition-colors',
+                    settings.verse_mode === 'daily_verse'
+                      ? 'bg-primary text-white'
+                      : 'bg-background text-text-muted hover:bg-slate-100 dark:bg-background-dark dark:text-text-muted-dark dark:hover:bg-slate-700'
+                  )}
+                >
+                  Daily Verse
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveSettings({ verse_mode: 'verse_by_category' })}
+                  className={cn(
+                    'flex-1 px-3 py-2 text-xs font-medium transition-colors',
+                    settings.verse_mode === 'verse_by_category'
+                      ? 'bg-primary text-white'
+                      : 'bg-background text-text-muted hover:bg-slate-100 dark:bg-background-dark dark:text-text-muted-dark dark:hover:bg-slate-700'
+                  )}
+                >
+                  Verse by Category
+                </button>
+              </div>
+
+              {/* Category dropdown -- shown when verse_by_category is selected */}
+              {settings.verse_mode === 'verse_by_category' && verseCategories.length > 0 && (
+                <div className="mt-3">
+                  <label className="block text-xs text-text-muted dark:text-text-muted-dark mb-1.5">
+                    Default Category
+                  </label>
+                  <select
+                    value={settings.verse_category_id ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      saveSettings({
+                        verse_category_id: val ? Number(val) : null,
+                      });
+                    }}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text dark:border-border-dark dark:bg-background-dark dark:text-text-dark focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="">All Categories</option>
+                    {verseCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         <Divider />

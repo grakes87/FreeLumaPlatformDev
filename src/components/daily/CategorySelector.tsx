@@ -34,7 +34,7 @@ export function CategorySelector({
   // Collapsed view: horizontal row with active category
   if (collapsed) {
     return (
-      <div className="absolute top-16 left-0 right-0 z-20 px-4">
+      <div className="absolute top-24 left-0 right-0 z-20 px-4">
         <button
           type="button"
           onClick={onToggle}
@@ -72,7 +72,7 @@ export function CategorySelector({
 
   // Expanded view: backdrop-blur grid
   return (
-    <div className="absolute top-16 left-0 right-0 z-20 px-4 transition-all duration-200">
+    <div className="absolute top-24 left-0 right-0 z-20 px-4 transition-all duration-200">
       <div className="rounded-2xl bg-black/40 p-4 backdrop-blur-xl">
         {/* Header with collapse button */}
         <div className="mb-3 flex items-center justify-between">
