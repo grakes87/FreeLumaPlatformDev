@@ -171,18 +171,6 @@ export function GenerationQueue({ onRef }: GenerationQueueProps) {
                   : i
               )
             );
-          } else {
-            // If the item has been running for more than 5 minutes, mark as potentially stale
-            const age = Date.now() - item.started_at;
-            if (age > 5 * 60 * 1000) {
-              setItems((prev) =>
-                prev.map((i) =>
-                  i.id === item.id
-                    ? { ...i, status: 'failed', error: 'Timed out (no response after 5m)', completed_at: Date.now() }
-                    : i
-                )
-              );
-            }
           }
         } catch {
           // Network error — will retry next interval
