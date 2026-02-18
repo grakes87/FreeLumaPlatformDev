@@ -24,6 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 10: Email System Setup with SendGrid** - Configure SendGrid as email provider, migrate from SMTP to SendGrid API, wire up all transactional and notification emails
 - [ ] **Phase 11: Verse by Category System** - Add verse-by-category mode to daily content tab with category selector, new DB tables (verse_category_content/translations/media), media upload from CategoryPhotos.zip to B2, profile settings integration (daily verse vs verse-by-category), random verse display per category on refresh, dedicated reactions/comments, and old DB versebycategory data migration
 - [ ] **Phase 12: Content Production Platform** - Creator management (LumaShortCreator), daily content generation pipeline (bible verse selection, positivity quotes, multi-translation fetch, TTS via ElevenLabs/Murf, SRT generation, background video prompts, 45s camera scripts), auto-assignment to creators, admin content management UI (unassigned/assigned/pending/completed/background tabs), HeyGen AI video integration for Spanish content, and content approval workflow
+- [ ] **Phase 13: SMS Notifications & Phone Number** - Add phone number field to user profiles (onboarding + settings), integrate SMS provider (Twilio/SendGrid), enable text message notifications as user-configurable option alongside email/in-app, SMS preferences per notification category
 
 ## Phase Details
 
@@ -447,10 +448,40 @@ Plans:
 - [ ] 12-13-PLAN.md — Creator email notifications: assignment and rejection emails via SendGrid
 - [ ] 12-14-PLAN.md — Integration: admin nav link, platform settings for API keys, creator attribution on daily content, build verification
 
+### Phase 13: SMS Notifications & Phone Number
+**Goal**: Phone number collection and SMS notification delivery — users can add their phone number during onboarding or in settings, verify it via OTP, and opt into text message notifications per category (daily reminders, prayer responses, new followers, DMs, workshop reminders). Admin can manage SMS settings and view delivery analytics.
+
+**Depends on**: Phase 12 (all prior phases complete)
+
+**Requirements**: None (feature enhancement phase)
+
+**Success Criteria** (what must be TRUE):
+  1. User can add phone number to profile during onboarding or in settings
+  2. Phone number verified via SMS OTP code before enabling SMS notifications
+  3. User can enable/disable SMS notifications per category (daily reminder, follow, prayer, DM, workshop)
+  4. SMS notifications delivered via provider API (Twilio or SendGrid SMS)
+  5. SMS respects user quiet hours setting (same as email)
+  6. Phone number displayed on profile (own profile only, not public)
+  7. Admin can view SMS delivery stats in dashboard
+  8. Unsubscribe via SMS reply (STOP) honored and synced to user preferences
+  9. Phone number stored with country code, validated for format
+  10. SMS templates are concise with deep links back to app content
+
+**Plans**: 7 plans in 4 waves
+
+Plans:
+- [ ] 13-01-PLAN.md — Database migrations (phone_verified, SMS toggles, sms_logs) + models + npm deps
+- [ ] 13-02-PLAN.md — SMS library core (Twilio client, OTP verification, phone utils)
+- [ ] 13-03-PLAN.md — SMS templates, dispatch queue, OTP API routes, Twilio webhook
+- [ ] 13-04-PLAN.md — Settings API extension + createNotification SMS wiring
+- [ ] 13-05-PLAN.md — Settings UI (PhoneNumberSection + SMS notification toggles)
+- [ ] 13-06-PLAN.md — Daily reminder SMS dispatch + admin SMS analytics
+- [ ] 13-07-PLAN.md — Build verification + human UX verification checkpoint
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13
 
 **Parallel Opportunities:**
 - Phase 3 (Real-Time) and Phase 4 (Enhanced Content) are mostly independent and can be partially parallelized after Phase 2 completes
@@ -469,6 +500,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 10. Email System Setup with SendGrid | 5/5 | Complete | 2026-02-16 |
 | 11. Verse by Category System | 7/7 | Complete | 2026-02-17 |
 | 12. Content Production Platform | 14/14 | Complete | 2026-02-17 |
+| 13. SMS Notifications & Phone Number | 0/7 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-11*
@@ -491,4 +523,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 *Phase 12 added: 2026-02-17 (Content Production Platform)*
 *Phase 12 planned: 2026-02-17 (14 plans in 6 waves)*
 *Phase 12 executed: 2026-02-17 (14 plans in 6 waves, 52 min)*
-*Depth: Comprehensive (12 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category + content production)*
+*Phase 13 added: 2026-02-18 (SMS Notifications & Phone Number)*
+*Phase 13 planned: 2026-02-18 (7 plans in 4 waves)*
+*Depth: Comprehensive (13 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category + content production + SMS notifications)*
