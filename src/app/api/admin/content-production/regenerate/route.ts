@@ -132,8 +132,66 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
       return successResponse({ content: content.toJSON(), log_id: logEntry.id });
     }
 
-    // Handle chapter_text regeneration (re-fetch verse translation from Bible API)
+    // Handle chapter_text regeneration
     if (field === 'chapter_text') {
+      // Positivity mode: regenerate the motivational quote (no bible verse)
+      if (content.mode === 'positivity') {
+        const { generatePositivityQuote } = await import('@/lib/content-pipeline/text-generation');
+        const { Op } = await import('sequelize');
+
+        // Fetch existing quotes for deduplication
+        const existingRows = await DailyContent.findAll({
+          attributes: ['content_text'],
+          where: {
+            mode: 'positivity',
+            content_text: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] },
+            id: { [Op.ne]: daily_content_id }, // exclude current row
+          },
+          order: [['post_date', 'DESC']],
+          raw: true,
+        });
+        const existingQuotes = existingRows
+          .map((r: { content_text: string }) => r.content_text)
+          .filter(Boolean);
+
+        const newQuote = await generatePositivityQuote(existingQuotes);
+
+        // Update the main content row
+        await content.update({
+          content_text: newQuote,
+          title: newQuote.substring(0, 100),
+        });
+
+        // Update or create the EN translation row
+        let translation = await DailyContentTranslation.findOne({
+          where: { daily_content_id, translation_code: translation_code! },
+        });
+
+        if (translation) {
+          await translation.update({
+            translated_text: newQuote,
+            chapter_text: newQuote,
+            source: 'database',
+          });
+        } else {
+          await DailyContentTranslation.create({
+            daily_content_id,
+            translation_code: translation_code!,
+            translated_text: newQuote,
+            chapter_text: newQuote,
+            source: 'database',
+          });
+        }
+
+        await content.reload({
+          include: [{ model: DailyContentTranslation, as: 'translations' }],
+        });
+
+        await logEntry.update({ status: 'success', duration_ms: Date.now() - startTime });
+        return successResponse({ content: content.toJSON(), log_id: logEntry.id });
+      }
+
+      // Bible mode: re-fetch verse translation from Bible API
       if (!content.verse_reference) {
         await logEntry.update({ status: 'failed', error_message: 'No verse reference set', duration_ms: Date.now() - startTime });
         return errorResponse('No verse reference set for this content', 400);

@@ -43,10 +43,25 @@ function extractText(response: Anthropic.Message): string {
  * Generate an original positivity/motivational quote.
  *
  * Returns 1-3 sentences of original, uplifting content suitable for
- * a daily devotional app. Not a famous quote -- always original.
+ * a daily devotional app. Draws thematic inspiration from famous
+ * motivational speakers and thought leaders. Checks existing quotes
+ * to ensure uniqueness.
+ *
+ * @param existingQuotes - Previously generated quotes to avoid repetition
  */
-export async function generatePositivityQuote(): Promise<string> {
+export async function generatePositivityQuote(
+  existingQuotes: string[] = []
+): Promise<string> {
   const client = getClient();
+
+  // Build dedup context — include up to 30 recent quotes so the model avoids them
+  const dedupBlock =
+    existingQuotes.length > 0
+      ? `\n\nIMPORTANT — The following quotes have ALREADY been used. Your new quote must be completely DIFFERENT in both wording and theme from ALL of these:\n\n${existingQuotes
+          .slice(-30)
+          .map((q, i) => `${i + 1}. "${q}"`)
+          .join('\n')}\n`
+      : '';
 
   const response = await client.messages.create({
     model: MODEL,
@@ -54,14 +69,36 @@ export async function generatePositivityQuote(): Promise<string> {
     messages: [
       {
         role: 'user',
-        content: `Write an original motivational and inspirational quote (1-3 sentences).
+        content: `Write an original motivational and inspirational message (1-3 sentences).
 
+Draw thematic inspiration from the teachings and styles of motivational speakers and thought leaders like:
+- Tony Robbins (personal power, taking massive action, state management)
+- Brené Brown (vulnerability, courage, worthiness, shame resilience)
+- Les Brown (believing in yourself, overcoming limitations, "it's possible")
+- Simon Sinek (purpose, starting with why, leadership)
+- Mel Robbins (the 5-second rule, confidence, habits)
+- Jay Shetty (mindfulness, purpose, relationships, monk wisdom)
+- Inky Johnson (perseverance through adversity, gratitude, purpose)
+- Lisa Nichols (self-worth, abundance mindset, personal transformation)
+- Eric Thomas (hustle, discipline, "when you want to succeed as bad as you want to breathe")
+- Brendon Burchard (high performance, clarity, energy, productivity)
+- Oprah Winfrey (living your best life, self-discovery, gratitude)
+- Wayne Dyer (intention, manifesting, inner peace)
+- Deepak Chopra (mindfulness, consciousness, inner healing)
+
+Each day, pick a DIFFERENT theme. Rotate through topics like:
+discipline, self-belief, gratitude, resilience, taking action, vulnerability,
+purpose, mindfulness, letting go, courage, growth mindset, abundance,
+self-love, perseverance, living in the present, relationships, forgiveness,
+leadership, habit building, overcoming fear, inner peace, compassion.
+${dedupBlock}
 Requirements:
-- Must be ORIGINAL -- do NOT use or paraphrase any famous quotes
+- Must be ORIGINAL — do NOT copy or closely paraphrase any famous quotes
+- Capture the SPIRIT and energy of motivational speaking, not exact words
 - Positive, uplifting, and encouraging tone
-- Suitable for a daily devotional and inspirational app
-- Speak to universal human experiences: hope, perseverance, growth, gratitude, inner strength
-- Simple and accessible language -- not academic or preachy
+- Suitable for a daily inspirational app (NOT religious — this is about positivity)
+- Simple and accessible language — not academic or preachy
+- Each message should feel fresh and cover a different angle than previous days
 - Return ONLY the quote text, no attribution, no quotation marks, no preamble`,
       },
     ],

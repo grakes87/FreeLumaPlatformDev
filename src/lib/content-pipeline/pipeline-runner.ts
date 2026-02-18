@@ -290,7 +290,21 @@ export async function generateDayContent(
     // Step 2c: Positivity mode — generate quote
     // -----------------------------------------------------------------------
     if (mode === 'positivity' && !content.content_text) {
-      const quote = await generatePositivityQuote();
+      // Fetch all existing positivity quotes for deduplication
+      const existingRows = await DailyContent.findAll({
+        attributes: ['content_text'],
+        where: {
+          mode: 'positivity',
+          content_text: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] },
+        },
+        order: [['post_date', 'DESC']],
+        raw: true,
+      });
+      const existingQuotes = existingRows
+        .map((r: { content_text: string }) => r.content_text)
+        .filter(Boolean);
+
+      const quote = await generatePositivityQuote(existingQuotes);
 
       await content.update({
         content_text: quote,
