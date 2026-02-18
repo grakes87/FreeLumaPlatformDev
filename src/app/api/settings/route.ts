@@ -27,7 +27,8 @@ const updateSettingsSchema = z.object({
   email_reaction_comment_notifications: z.boolean().optional(),
   email_workshop_notifications: z.boolean().optional(),
   email_new_video_notifications: z.boolean().optional(),
-  // Phase 13 SMS notification preferences
+  // Phase 13 phone + SMS notification preferences
+  phone: z.null().optional(),  // null to clear phone number
   sms_notifications_enabled: z.boolean().optional(),
   sms_dm_notifications: z.boolean().optional(),
   sms_follow_notifications: z.boolean().optional(),
@@ -194,6 +195,18 @@ export const PUT = withAuth(
       if (data.sms_prayer_notifications !== undefined) settingFields.sms_prayer_notifications = data.sms_prayer_notifications;
       if (data.sms_daily_reminder !== undefined) settingFields.sms_daily_reminder = data.sms_daily_reminder;
       if (data.sms_workshop_notifications !== undefined) settingFields.sms_workshop_notifications = data.sms_workshop_notifications;
+
+      // Phone clear: setting phone to null clears phone + phone_verified + disables all SMS
+      if (data.phone === null) {
+        await User.update(
+          { phone: null, phone_verified: false },
+          { where: { id: context.user.id } },
+        );
+        await UserSetting.update(
+          { sms_notifications_enabled: false },
+          { where: { user_id: context.user.id } },
+        );
+      }
 
       if (data.mode !== undefined) userFields.mode = data.mode;
       if (data.verse_mode !== undefined) {

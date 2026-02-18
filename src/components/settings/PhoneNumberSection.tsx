@@ -126,7 +126,19 @@ export function PhoneNumberSection({
     }
   };
 
-  const handleChangeNumber = () => {
+  const handleChangeNumber = async () => {
+    // Clear phone_verified on server so the UI exits the verified state
+    try {
+      await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone: null }),
+      });
+    } catch {
+      // Continue to reset local state even if server call fails
+    }
+
     setOtpSent(false);
     setOtp('');
     setPhone('');
@@ -136,6 +148,9 @@ export function PhoneNumberSection({
       clearInterval(cooldownRef.current);
       cooldownRef.current = null;
     }
+
+    // Refresh parent to get updated phoneVerified=false
+    onPhoneVerified();
   };
 
   // State 3: Phone verified
