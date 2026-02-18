@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 13 of 13 (SMS Notifications & Phone Number)
-Plan: 1 of 7 complete (01 done)
+Plan: 2 of 7 complete (01, 02 done)
 Status: In progress
-Last activity: 2026-02-18 — Completed 13-01-PLAN.md (SMS Database Schema)
+Last activity: 2026-02-18 — Completed 13-02-PLAN.md (SMS Library Core)
 
-Progress: [████████████████████████████████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░░] 107/113 plans (95%)
+Progress: [████████████████████████████████████████████████████████████████████████████████████████████████████████░░░░░░░░░░] 108/113 plans (96%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 107
+- Total plans completed: 108
 - Average duration: 4 min
-- Total execution time: 454 min
+- Total execution time: 456 min
 
 **By Phase:**
 
@@ -39,10 +39,10 @@ Progress: [███████████████████████
 | 10-email-system-sendgrid | 5/5 | 12 min | 2 min |
 | 11-verse-by-category-system | 7/7 | 42 min | 6 min |
 | 12-content-production-platform | 14/14 | 52 min | 4 min |
-| 13-sms-notifications | 1/7 | 2 min | 2 min |
+| 13-sms-notifications | 2/7 | 4 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 12-13 (2 min), 12-12 (5 min), 12-14 (7 min), 13-01 (2 min)
+- Last 5 plans: 12-12 (5 min), 12-14 (7 min), 13-01 (2 min), 13-02 (2 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -366,6 +366,9 @@ Recent decisions affecting current work:
 - **Creator layout access check:** Verify creator status via /api/creator/stats on layout mount; 403 redirects to /feed
 - **Reuse admin MonthSelector:** Import MonthSelector from admin content-production components to avoid duplication
 - **Assignment detail full-screen overlay:** createPortal overlay (not modal) for better mobile UX when reading scripts
+- **SMS console fallback pattern:** sendSMS() logs to console when Twilio not configured, matching email console fallback pattern
+- **OTP dev magic code:** checkOTP() accepts '000000' in dev mode when Twilio not configured; sendOTP() simulates success
+- **US/Canada SMS restriction:** isUSOrCanada() checks +1 prefix; SMS notifications restricted to US/Canada numbers only
 
 ### Roadmap Evolution
 
@@ -440,5 +443,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 13-01-PLAN.md (SMS Database Schema) -- Phase 13 in progress
+Stopped at: Completed 13-02-PLAN.md (SMS Library Core) -- Phase 13 in progress
 Resume file: None
