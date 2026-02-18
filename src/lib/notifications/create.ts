@@ -186,5 +186,19 @@ export async function createNotification(
     }
   }
 
+  // ---- SMS dispatch (fire-and-forget, non-fatal) ----
+  try {
+    const { dispatchSMSNotification } = await import('@/lib/sms/queue');
+    await dispatchSMSNotification(
+      recipient_id,
+      type,
+      entity_type,
+      entity_id,
+      preview_text ?? null
+    );
+  } catch (err) {
+    console.error('[Notification] SMS dispatch error:', err);
+  }
+
   return payload;
 }
