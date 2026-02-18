@@ -21,6 +21,17 @@ interface SettingGroup {
 
 const SETTINGS_GROUPS: SettingGroup[] = [
   {
+    title: 'Platform',
+    fields: [
+      {
+        key: 'platform_base_url',
+        label: 'Base URL (for webhooks)',
+        type: 'text',
+        placeholder: 'https://freeluma.app',
+      },
+    ],
+  },
+  {
     title: 'ElevenLabs',
     fields: [
       {
