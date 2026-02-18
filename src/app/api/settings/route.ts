@@ -27,13 +27,20 @@ const updateSettingsSchema = z.object({
   email_reaction_comment_notifications: z.boolean().optional(),
   email_workshop_notifications: z.boolean().optional(),
   email_new_video_notifications: z.boolean().optional(),
+  // Phase 13 SMS notification preferences
+  sms_notifications_enabled: z.boolean().optional(),
+  sms_dm_notifications: z.boolean().optional(),
+  sms_follow_notifications: z.boolean().optional(),
+  sms_prayer_notifications: z.boolean().optional(),
+  sms_daily_reminder: z.boolean().optional(),
+  sms_workshop_notifications: z.boolean().optional(),
 });
 
 export const GET = withAuth(
   async (_req: NextRequest, context: AuthContext) => {
     try {
       const user = await User.findByPk(context.user.id, {
-        attributes: ['id', 'email', 'mode', 'language', 'preferred_translation', 'verse_mode', 'verse_category_id', 'timezone', 'email_verified', 'google_id', 'apple_id'],
+        attributes: ['id', 'email', 'mode', 'language', 'preferred_translation', 'verse_mode', 'verse_category_id', 'timezone', 'email_verified', 'google_id', 'apple_id', 'phone', 'phone_verified'],
       });
 
       if (!user) {
@@ -72,7 +79,16 @@ export const GET = withAuth(
           email_reaction_comment_notifications: settings.email_reaction_comment_notifications,
           email_workshop_notifications: settings.email_workshop_notifications,
           email_new_video_notifications: settings.email_new_video_notifications,
+          // SMS notification preferences
+          sms_notifications_enabled: settings.sms_notifications_enabled,
+          sms_dm_notifications: settings.sms_dm_notifications,
+          sms_follow_notifications: settings.sms_follow_notifications,
+          sms_prayer_notifications: settings.sms_prayer_notifications,
+          sms_daily_reminder: settings.sms_daily_reminder,
+          sms_workshop_notifications: settings.sms_workshop_notifications,
           // From User
+          phone: user.phone,
+          phone_verified: user.phone_verified,
           mode: user.mode,
           language: user.language,
           preferred_translation: user.preferred_translation,
@@ -123,6 +139,12 @@ export const PUT = withAuth(
         email_reaction_comment_notifications: boolean;
         email_workshop_notifications: boolean;
         email_new_video_notifications: boolean;
+        sms_notifications_enabled: boolean;
+        sms_dm_notifications: boolean;
+        sms_follow_notifications: boolean;
+        sms_prayer_notifications: boolean;
+        sms_daily_reminder: boolean;
+        sms_workshop_notifications: boolean;
       }> = {};
 
       const userFields: Partial<{
@@ -147,6 +169,31 @@ export const PUT = withAuth(
       if (data.email_reaction_comment_notifications !== undefined) settingFields.email_reaction_comment_notifications = data.email_reaction_comment_notifications;
       if (data.email_workshop_notifications !== undefined) settingFields.email_workshop_notifications = data.email_workshop_notifications;
       if (data.email_new_video_notifications !== undefined) settingFields.email_new_video_notifications = data.email_new_video_notifications;
+
+      // SMS toggle fields — guard: phone must be verified before enabling any SMS toggle
+      const smsToggles = [
+        data.sms_notifications_enabled,
+        data.sms_dm_notifications,
+        data.sms_follow_notifications,
+        data.sms_prayer_notifications,
+        data.sms_daily_reminder,
+        data.sms_workshop_notifications,
+      ];
+      const anySmsEnabling = smsToggles.some((v) => v === true);
+      if (anySmsEnabling) {
+        const smsUser = await User.findByPk(context.user.id, {
+          attributes: ['phone_verified'],
+        });
+        if (!smsUser?.phone_verified) {
+          return errorResponse('Phone number must be verified before enabling SMS notifications', 400);
+        }
+      }
+      if (data.sms_notifications_enabled !== undefined) settingFields.sms_notifications_enabled = data.sms_notifications_enabled;
+      if (data.sms_dm_notifications !== undefined) settingFields.sms_dm_notifications = data.sms_dm_notifications;
+      if (data.sms_follow_notifications !== undefined) settingFields.sms_follow_notifications = data.sms_follow_notifications;
+      if (data.sms_prayer_notifications !== undefined) settingFields.sms_prayer_notifications = data.sms_prayer_notifications;
+      if (data.sms_daily_reminder !== undefined) settingFields.sms_daily_reminder = data.sms_daily_reminder;
+      if (data.sms_workshop_notifications !== undefined) settingFields.sms_workshop_notifications = data.sms_workshop_notifications;
 
       if (data.mode !== undefined) userFields.mode = data.mode;
       if (data.verse_mode !== undefined) {
@@ -195,7 +242,7 @@ export const PUT = withAuth(
 
       // Fetch and return updated settings
       const user = await User.findByPk(context.user.id, {
-        attributes: ['id', 'email', 'mode', 'language', 'preferred_translation', 'verse_mode', 'verse_category_id', 'timezone', 'email_verified'],
+        attributes: ['id', 'email', 'mode', 'language', 'preferred_translation', 'verse_mode', 'verse_category_id', 'timezone', 'email_verified', 'phone', 'phone_verified'],
       });
 
       const settings = await UserSetting.findOne({
@@ -217,6 +264,14 @@ export const PUT = withAuth(
           email_reaction_comment_notifications: settings?.email_reaction_comment_notifications ?? true,
           email_workshop_notifications: settings?.email_workshop_notifications ?? true,
           email_new_video_notifications: settings?.email_new_video_notifications ?? true,
+          sms_notifications_enabled: settings?.sms_notifications_enabled ?? false,
+          sms_dm_notifications: settings?.sms_dm_notifications ?? true,
+          sms_follow_notifications: settings?.sms_follow_notifications ?? true,
+          sms_prayer_notifications: settings?.sms_prayer_notifications ?? true,
+          sms_daily_reminder: settings?.sms_daily_reminder ?? true,
+          sms_workshop_notifications: settings?.sms_workshop_notifications ?? true,
+          phone: user?.phone ?? null,
+          phone_verified: user?.phone_verified ?? false,
           mode: user?.mode || 'bible',
           verse_mode: user?.verse_mode || 'daily_verse',
           verse_category_id: user?.verse_category_id ?? null,
