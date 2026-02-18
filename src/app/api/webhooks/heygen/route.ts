@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * HeyGen webhook payload shape (partial, based on HeyGen docs).
- * The callback sends event_type + data with video_id and status.
+ * HeyGen webhook payload — actual format from HeyGen's servers:
+ *
+ * Success: { event_type: "avatar_video.success", event_data: { video_id, url, gif_download_url, ... } }
+ * Failed:  { event_type: "avatar_video.fail", event_data: { video_id, error, ... } }
+ *
+ * Also handles legacy/per-video callback format:
+ *   { data: { video_id, status, video_url, error } }
+ *   { video_id, status, url, error }
  */
 interface HeygenWebhookPayload {
   event_type?: string;
+  event_data?: {
+    video_id?: string;
+    url?: string;
+    gif_download_url?: string;
+    error?: string;
+    [key: string]: unknown;
+  };
   data?: {
     video_id?: string;
     status?: string;
@@ -13,7 +26,6 @@ interface HeygenWebhookPayload {
     error?: string;
     thumbnail_url?: string;
   };
-  // Some webhook formats send these at top level
   video_id?: string;
   status?: string;
   url?: string;
@@ -33,6 +45,25 @@ interface PendingVideoMap {
 }
 
 /**
+ * Derive a normalized status from any HeyGen payload format.
+ */
+function deriveStatus(body: HeygenWebhookPayload): 'completed' | 'failed' | 'processing' | 'unknown' {
+  // 1. event_type format (actual HeyGen webhook)
+  const eventType = (body.event_type || '').toLowerCase();
+  if (eventType.includes('success') || eventType.includes('complete')) return 'completed';
+  if (eventType.includes('fail') || eventType.includes('error')) return 'failed';
+  if (eventType.includes('processing') || eventType.includes('pending')) return 'processing';
+
+  // 2. Legacy data.status or top-level status
+  const rawStatus = (body.data?.status || body.status || '').toLowerCase();
+  if (rawStatus === 'completed' || rawStatus === 'done') return 'completed';
+  if (rawStatus === 'failed' || rawStatus === 'error') return 'failed';
+  if (rawStatus === 'processing' || rawStatus === 'pending' || rawStatus === 'rendering') return 'processing';
+
+  return 'unknown';
+}
+
+/**
  * POST /api/webhooks/heygen
  * HeyGen completion webhook - called when video generation completes or fails.
  *
@@ -46,19 +77,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body: HeygenWebhookPayload = await req.json();
 
-    // Extract video ID and status from either nested or flat format
-    const videoId = body.data?.video_id || body.video_id;
-    const status = body.data?.status || body.status;
-    const videoUrl = body.data?.video_url || body.url;
-    const errorMsg = body.data?.error || body.error;
-    const thumbnailUrl = body.data?.thumbnail_url;
+    console.log('[HeyGen Webhook] Received:', JSON.stringify(body).slice(0, 500));
+
+    // Extract video ID from any format: event_data, data, or top-level
+    const videoId = body.event_data?.video_id || body.data?.video_id || body.video_id;
+    // Extract video URL from any format
+    const videoUrl = body.event_data?.url || body.data?.video_url || body.url;
+    // Extract error from any format
+    const errorMsg = body.event_data?.error || body.data?.error || body.error;
+    // Extract thumbnail/gif
+    const thumbnailUrl = body.event_data?.gif_download_url || body.data?.thumbnail_url;
 
     if (!videoId) {
-      console.warn('[HeyGen Webhook] Received callback without video_id:', JSON.stringify(body));
+      console.warn('[HeyGen Webhook] No video_id found in payload');
       return NextResponse.json({ ok: true, message: 'No video_id found' }, { status: 200 });
     }
 
-    console.log(`[HeyGen Webhook] video_id=${videoId} status=${status}`);
+    const status = deriveStatus(body);
+    console.log(`[HeyGen Webhook] video_id=${videoId} status=${status} url=${videoUrl ? 'yes' : 'no'}`);
+
+    // Skip non-video events (e.g. gif generation)
+    const eventType = (body.event_type || '').toLowerCase();
+    if (eventType && !eventType.includes('avatar_video.')) {
+      console.log(`[HeyGen Webhook] Ignoring non-video event: ${body.event_type}`);
+      return NextResponse.json({ ok: true, message: 'Non-video event ignored' }, { status: 200 });
+    }
 
     // Lazy-import models
     const { DailyContent, PlatformSetting, ContentGenerationLog } = await import('@/lib/db/models');
@@ -78,9 +121,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ ok: true, message: 'Video not tracked' }, { status: 200 });
     }
 
-    const normalizedStatus = (status || '').toLowerCase();
-
-    if (normalizedStatus === 'completed' || normalizedStatus === 'done') {
+    if (status === 'completed') {
       // Video completed -- update DailyContent with video URL
       if (videoUrl) {
         await DailyContent.update(
@@ -115,8 +156,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // Remove from pending map
       delete pendingMap[videoId];
       await PlatformSetting.set('heygen_pending_videos', JSON.stringify(pendingMap));
-    } else if (normalizedStatus === 'failed' || normalizedStatus === 'error') {
-      // Video failed -- log error and remove from pending
+    } else if (status === 'failed') {
       console.error(
         `[HeyGen Webhook] Video failed: video_id=${videoId}, content=${entry.dailyContentId}, ` +
         `creator=${entry.creatorName}, error=${errorMsg || 'unknown'}`,
@@ -139,7 +179,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       delete pendingMap[videoId];
       await PlatformSetting.set('heygen_pending_videos', JSON.stringify(pendingMap));
     } else {
-      // Processing/pending -- just log, keep in pending map
+      // Processing/pending/unknown -- just log, keep in pending map
       console.log(
         `[HeyGen Webhook] In-progress status="${status}" for video_id=${videoId}, content=${entry.dailyContentId}`,
       );
