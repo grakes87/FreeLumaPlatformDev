@@ -547,6 +547,20 @@ export async function processDailyReminders(): Promise<void> {
         quietEnd: settings.quiet_hours_end,
         reminderTimezone: settings.reminder_timezone,
       });
+
+      // ---- SMS daily reminder dispatch (fire-and-forget) ----
+      try {
+        const { dispatchSMSNotification } = await import('@/lib/sms/queue');
+        await dispatchSMSNotification(
+          user.id,
+          'daily_reminder',
+          'daily_content',
+          0, // no specific entity
+          null
+        );
+      } catch (smsErr) {
+        console.error(`[Email Queue] Daily SMS error for user ${user.id}:`, smsErr);
+      }
     } catch (err) {
       console.error(`[Email Queue] Daily reminder error for user ${user.id}:`, err);
     }
@@ -686,22 +700,26 @@ export async function processPrayerResponseEmail(
  * - Delete email_logs older than 90 days
  */
 export async function cleanupOldNotifications(): Promise<void> {
-  const { Notification, EmailLog } = await import('@/lib/db/models');
+  const { Notification, EmailLog, SmsLog } = await import('@/lib/db/models');
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
-  const [notifCount, emailCount] = await Promise.all([
+  const [notifCount, emailCount, smsCount] = await Promise.all([
     Notification.destroy({
       where: { created_at: { [Op.lt]: thirtyDaysAgo } },
     }),
     EmailLog.destroy({
       where: { created_at: { [Op.lt]: ninetyDaysAgo } },
     }),
+    // Also clean up old SMS logs
+    SmsLog.destroy({
+      where: { created_at: { [Op.lt]: ninetyDaysAgo } },
+    }),
   ]);
 
-  if (notifCount > 0 || emailCount > 0) {
-    console.log(`[Email Queue] Cleanup: ${notifCount} notifications, ${emailCount} email logs deleted`);
+  if (notifCount > 0 || emailCount > 0 || smsCount > 0) {
+    console.log(`[Email Queue] Cleanup: ${notifCount} notifications, ${emailCount} email logs, ${smsCount} SMS logs deleted`);
   }
 }
 
