@@ -84,6 +84,63 @@ export async function generateVideoThumbnail(file: File): Promise<Blob | null> {
 }
 
 /**
+ * Generate a JPEG thumbnail from a video URL by loading it and capturing a frame.
+ * Returns { blob, dataUrl } on success, or null if capture fails (CORS, timeout, etc.).
+ */
+export async function generateThumbnailFromUrl(
+  videoUrl: string
+): Promise<{ blob: Blob; dataUrl: string } | null> {
+  return new Promise<{ blob: Blob; dataUrl: string } | null>((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'auto';
+    video.muted = true;
+    video.playsInline = true;
+    video.crossOrigin = 'anonymous';
+
+    let settled = false;
+
+    const finish = (result: { blob: Blob; dataUrl: string } | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      video.removeAttribute('src');
+      video.load();
+      resolve(result);
+    };
+
+    const timer = setTimeout(() => finish(null), THUMBNAIL_TIMEOUT_MS);
+
+    video.onloadeddata = () => {
+      video.currentTime = SEEK_TIME;
+    };
+
+    video.onseeked = () => {
+      try {
+        const width = video.videoWidth || FALLBACK_WIDTH;
+        const height = video.videoHeight || FALLBACK_HEIGHT;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { finish(null); return; }
+        ctx.drawImage(video, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+        canvas.toBlob(
+          (blob) => finish(blob ? { blob, dataUrl } : null),
+          'image/jpeg',
+          JPEG_QUALITY
+        );
+      } catch {
+        finish(null);
+      }
+    };
+
+    video.onerror = () => finish(null);
+    video.src = videoUrl;
+  });
+}
+
+/**
  * Convert a Blob to a data URL string for use in img src or video poster attributes.
  */
 export async function blobToDataUrl(blob: Blob): Promise<string> {

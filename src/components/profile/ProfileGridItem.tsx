@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useRef, useState } from 'react';
 import { Eye, Heart, Play } from 'lucide-react';
 import type { ProfileTab } from './ProfileTabs';
 
@@ -21,6 +22,186 @@ function formatCount(count: number): string {
   if (count >= 10_000) return `${(count / 1_000).toFixed(0)}K`;
   if (count >= 1_000) return `${(count / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
   return count.toString();
+}
+
+// Track which media IDs have had thumbnail capture attempted (avoids retries across re-renders)
+const attemptedCaptures = new Set<number>();
+
+function uploadThumbnail(mediaId: number, blob: Blob) {
+  const form = new FormData();
+  form.append('file', blob, 'thumbnail.jpg');
+  fetch(`/api/posts/media/${mediaId}/thumbnail`, {
+    method: 'PATCH',
+    credentials: 'include',
+    body: form,
+  }).catch(() => {
+    // Fire-and-forget — failure is non-critical
+  });
+}
+
+/**
+ * Renders a video's first frame and auto-captures it as a cached thumbnail.
+ * First load uses <video> to display + capture. On capture success, swaps to <img>.
+ * Falls back gracefully if CORS blocks canvas capture.
+ */
+function VideoThumbnailCapture({
+  videoUrl,
+  mediaId,
+  className,
+}: {
+  videoUrl: string;
+  mediaId: number;
+  className: string;
+}) {
+  const [capturedSrc, setCapturedSrc] = useState<string | null>(null);
+  const [corsBlocked, setCorsBlocked] = useState(false);
+  const attemptedRef = useRef(false);
+
+  const handleLoadedData = useCallback(
+    (e: React.SyntheticEvent<HTMLVideoElement>) => {
+      if (attemptedRef.current || attemptedCaptures.has(mediaId)) return;
+      attemptedRef.current = true;
+      attemptedCaptures.add(mediaId);
+      const video = e.currentTarget;
+      video.currentTime = 0.5;
+    },
+    [mediaId]
+  );
+
+  const handleSeeked = useCallback(
+    (e: React.SyntheticEvent<HTMLVideoElement>) => {
+      const video = e.currentTarget;
+      try {
+        const w = video.videoWidth || 640;
+        const h = video.videoHeight || 360;
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(video, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setCapturedSrc(dataUrl);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) uploadThumbnail(mediaId, blob);
+          },
+          'image/jpeg',
+          0.7
+        );
+      } catch {
+        // CORS or SecurityError — keep showing the video element
+      }
+    },
+    [mediaId]
+  );
+
+  if (capturedSrc) {
+    return <img src={capturedSrc} alt="" className={className} loading="lazy" />;
+  }
+
+  // If crossOrigin="anonymous" caused a load failure, fall back to no-CORS video display
+  if (corsBlocked) {
+    return (
+      <video
+        src={`${videoUrl}#t=0.001`}
+        className={className}
+        muted
+        playsInline
+        preload="metadata"
+      />
+    );
+  }
+
+  return (
+    <video
+      src={`${videoUrl}#t=0.001`}
+      className={className}
+      muted
+      playsInline
+      preload="metadata"
+      crossOrigin="anonymous"
+      onLoadedData={handleLoadedData}
+      onSeeked={handleSeeked}
+      onError={() => setCorsBlocked(true)}
+    />
+  );
+}
+
+/** Max thumbnail dimension (covers retina at ~200px grid cells) */
+const THUMB_MAX_SIZE = 400;
+const THUMB_QUALITY = 0.7;
+
+/**
+ * Renders an image and auto-captures a downsized thumbnail for the grid.
+ * First load shows the full image; once loaded, generates a smaller JPEG,
+ * uploads it, and subsequent visits use the cached thumbnail.
+ */
+function ImageThumbnailCapture({
+  imageUrl,
+  mediaId,
+  className,
+}: {
+  imageUrl: string;
+  mediaId: number;
+  className: string;
+}) {
+  const attemptedRef = useRef(false);
+
+  const handleLoad = useCallback(
+    (e: React.SyntheticEvent<HTMLImageElement>) => {
+      if (attemptedRef.current || attemptedCaptures.has(mediaId)) return;
+      attemptedRef.current = true;
+      attemptedCaptures.add(mediaId);
+
+      const img = e.currentTarget;
+      try {
+        const { naturalWidth: nw, naturalHeight: nh } = img;
+        // Skip if image is already small enough
+        if (nw <= THUMB_MAX_SIZE && nh <= THUMB_MAX_SIZE) return;
+
+        const scale = Math.min(THUMB_MAX_SIZE / nw, THUMB_MAX_SIZE / nh);
+        const w = Math.round(nw * scale);
+        const h = Math.round(nh * scale);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) uploadThumbnail(mediaId, blob);
+          },
+          'image/jpeg',
+          THUMB_QUALITY
+        );
+      } catch {
+        // CORS or SecurityError — non-critical
+      }
+    },
+    [mediaId]
+  );
+
+  return (
+    <img
+      src={imageUrl}
+      alt=""
+      className={className}
+      loading="lazy"
+      crossOrigin="anonymous"
+      onLoad={handleLoad}
+      onError={(e) => {
+        // If crossOrigin blocked loading, retry without it
+        const img = e.currentTarget;
+        if (img.crossOrigin) {
+          img.crossOrigin = '';
+          img.src = imageUrl;
+        }
+      }}
+    />
+  );
 }
 
 interface ProfileGridItemProps {
@@ -61,15 +242,16 @@ export function ProfileGridItem({ item, tab, onClick }: ProfileGridItemProps) {
   const firstVideo = media.find((m) => m.media_type === 'video');
   const firstImage = media.find((m) => m.media_type === 'image');
   const hasVideoThumbnail = firstVideo && firstVideo.thumbnail_url;
+  const hasImageThumbnail = firstImage && firstImage.thumbnail_url;
   const isVideo = !!firstVideo;
   const isImage = !isVideo && !!firstImage;
   const isTextOnly = !isVideo && !isImage;
 
-  // Get thumbnail URL for images or videos with thumbnails
+  // Get cached thumbnail URL (video thumbnail or downsized image thumbnail)
   const thumbnailUrl = hasVideoThumbnail
     ? (firstVideo!.thumbnail_url as string)
-    : isImage
-    ? (firstImage!.url as string)
+    : hasImageThumbnail
+    ? (firstImage!.thumbnail_url as string)
     : null;
 
   const gradientClass = isTextOnly
@@ -90,16 +272,21 @@ export function ProfileGridItem({ item, tab, onClick }: ProfileGridItemProps) {
             </p>
           </div>
         ) : isVideo && !hasVideoThumbnail ? (
-          // Video without thumbnail: use <video> to grab first frame
-          <video
-            src={`${firstVideo!.url as string}#t=0.001`}
+          // Video without thumbnail: capture first frame and cache as thumbnail
+          <VideoThumbnailCapture
+            videoUrl={firstVideo!.url as string}
+            mediaId={firstVideo!.id as number}
             className="h-full w-full object-cover"
-            muted
-            playsInline
-            preload="metadata"
+          />
+        ) : isImage && !hasImageThumbnail ? (
+          // Image without thumbnail: show full image + capture downsized version
+          <ImageThumbnailCapture
+            imageUrl={firstImage!.url as string}
+            mediaId={firstImage!.id as number}
+            className="h-full w-full object-cover"
           />
         ) : (
-          // Image or video with thumbnail
+          // Cached thumbnail available (video or image)
           <img
             src={thumbnailUrl!}
             alt=""

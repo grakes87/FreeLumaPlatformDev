@@ -8,6 +8,7 @@ import { SocketProvider } from '@/context/SocketContext';
 import { NotificationProvider } from '@/context/NotificationContext';
 import { DailyTranslationProvider } from '@/context/DailyTranslationContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useStaleSession } from '@/hooks/useStaleSession';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { AppShell } from '@/components/layout/AppShell';
 import { TopBar } from '@/components/layout/TopBar';
@@ -26,6 +27,9 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  // Auto-refresh after 30 min backgrounded to prevent memory bloat
+  useStaleSession();
 
   // Daily post routes and mode landing pages are accessible to guests
   const isGuestAllowedRoute =
