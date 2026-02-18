@@ -70,6 +70,7 @@ interface Settings {
   email: string;
   email_verified: boolean;
   has_google: boolean;
+  google_email: string | null;
   has_apple: boolean;
   // Notification preferences (from UserSetting)
   messaging_access: 'everyone' | 'followers' | 'mutual' | 'nobody';
@@ -314,6 +315,7 @@ export default function SettingsPage() {
       <div className="mb-6">
         <ConnectedAccountsSection
           hasGoogleId={settings?.has_google ?? false}
+          googleEmail={settings?.google_email ?? null}
           hasAppleId={settings?.has_apple ?? false}
           onProviderChange={() => refreshUser()}
         />

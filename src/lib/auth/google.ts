@@ -50,3 +50,32 @@ export async function verifyGoogleCredential(
     googleId: payload.sub,
   };
 }
+
+/**
+ * Verifies a Google access token by calling Google's userinfo endpoint.
+ * Used by the link-provider flow where useGoogleLogin returns an access token.
+ */
+export async function verifyGoogleAccessToken(
+  accessToken: string
+): Promise<GoogleUserInfo> {
+  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!res.ok) {
+    throw new Error('Invalid Google access token');
+  }
+
+  const userinfo = await res.json();
+
+  if (!userinfo.sub || !userinfo.email) {
+    throw new Error('Invalid Google access token: missing user info');
+  }
+
+  return {
+    email: userinfo.email,
+    name: userinfo.name || userinfo.email.split('@')[0],
+    picture: userinfo.picture || null,
+    googleId: userinfo.sub,
+  };
+}

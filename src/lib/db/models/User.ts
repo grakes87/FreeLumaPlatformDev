@@ -6,6 +6,7 @@ export interface UserAttributes {
   email: string;
   password_hash: string | null;
   google_id: string | null;
+  google_email: string | null;
   apple_id: string | null;
   display_name: string;
   username: string;
@@ -49,6 +50,7 @@ export interface UserCreationAttributes extends Optional<UserAttributes,
   | 'id'
   | 'password_hash'
   | 'google_id'
+  | 'google_email'
   | 'apple_id'
   | 'avatar_url'
   | 'bio'
@@ -90,6 +92,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   declare email: string;
   declare password_hash: string | null;
   declare google_id: string | null;
+  declare google_email: string | null;
   declare apple_id: string | null;
   declare display_name: string;
   declare username: string;
@@ -148,6 +151,10 @@ User.init(
     google_id: {
       type: DataTypes.STRING(255),
       unique: true,
+      allowNull: true,
+    },
+    google_email: {
+      type: DataTypes.STRING(255),
       allowNull: true,
     },
     apple_id: {

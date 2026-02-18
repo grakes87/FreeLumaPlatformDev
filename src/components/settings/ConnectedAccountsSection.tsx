@@ -2,12 +2,12 @@
 
 import { useState, useCallback } from 'react';
 import { Link2, Unlink } from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
+import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 
-// ---- Provider Icons ----
+// ---- Provider Icon ----
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -32,102 +32,101 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-function AppleIcon({ className }: { className?: string }) {
-  return (
-    <svg className={cn('fill-current', className)} viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.32 2.32-2.12 4.53-3.74 4.25z" />
-    </svg>
-  );
-}
-
 // ---- Types ----
-
-interface ProviderInfo {
-  provider: 'google' | 'apple';
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  connected: boolean;
-}
 
 interface ConnectedAccountsSectionProps {
   hasGoogleId: boolean;
+  googleEmail?: string | null;
   hasAppleId: boolean;
   onProviderChange?: () => void;
 }
 
-// ---- Component ----
+// ---- Inner Component (needs GoogleOAuthProvider context) ----
 
-export function ConnectedAccountsSection({
+function ConnectedAccountsInner({
   hasGoogleId,
-  hasAppleId,
+  googleEmail: initialGoogleEmail,
   onProviderChange,
-}: ConnectedAccountsSectionProps) {
+}: {
+  hasGoogleId: boolean;
+  googleEmail?: string | null;
+  onProviderChange?: () => void;
+}) {
   const toast = useToast();
   const [googleConnected, setGoogleConnected] = useState(hasGoogleId);
-  const [appleConnected, setAppleConnected] = useState(hasAppleId);
-  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const [googleEmail, setGoogleEmail] = useState<string | null>(initialGoogleEmail ?? null);
+  const [loading, setLoading] = useState(false);
 
-  const providers: ProviderInfo[] = [
-    {
-      provider: 'google',
-      label: 'Google',
-      icon: GoogleIcon,
-      connected: googleConnected,
-    },
-    {
-      provider: 'apple',
-      label: 'Apple',
-      icon: AppleIcon,
-      connected: appleConnected,
-    },
-  ];
-
-  const handleUnlink = useCallback(
-    async (provider: 'google' | 'apple') => {
-      setLoadingProvider(provider);
+  const googleLogin = useGoogleLogin({
+    flow: 'implicit',
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
       try {
-        const res = await fetch('/api/auth/unlink-provider', {
+        const res = await fetch('/api/auth/link-provider', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ provider }),
+          body: JSON.stringify({
+            provider: 'google',
+            token: tokenResponse.access_token,
+            token_type: 'access_token',
+          }),
         });
 
         const result = await res.json();
 
         if (!res.ok) {
-          if (res.status === 400 && result.error?.includes('password')) {
-            toast.warning('You need to set a password before unlinking this provider.');
-          } else {
-            toast.error(result.error || `Failed to unlink ${provider}.`);
-          }
+          toast.error(result.error || 'Failed to link Google account');
           return;
         }
 
-        if (provider === 'google') setGoogleConnected(false);
-        else setAppleConnected(false);
-        toast.success(`${provider === 'google' ? 'Google' : 'Apple'} account unlinked.`);
+        setGoogleConnected(true);
+        setGoogleEmail(result.email || null);
+        toast.success('Google account linked!');
         onProviderChange?.();
       } catch {
         toast.error('Something went wrong. Please try again.');
       } finally {
-        setLoadingProvider(null);
+        setLoading(false);
       }
     },
-    [toast, onProviderChange]
-  );
-
-  const handleLink = useCallback(
-    async (provider: 'google' | 'apple') => {
-      // For linking, we need to trigger the OAuth flow and get a token.
-      // Google uses @react-oauth/google, Apple uses their JS SDK.
-      // Since these are complex flows, we provide a simpler indication.
-      toast.info(
-        `To link ${provider === 'google' ? 'Google' : 'Apple'}, use the "${provider === 'google' ? 'Sign in with Google' : 'Sign in with Apple'}" button on the login page while signed into this account.`
-      );
+    onError: (error) => {
+      console.error('[Google Link] Error:', error);
+      toast.error('Google Sign-In failed. Please try again.');
     },
-    [toast]
-  );
+  });
+
+  const handleUnlink = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/unlink-provider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ provider: 'google' }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 400 && result.error?.includes('password')) {
+          toast.warning('You need to set a password before unlinking Google.');
+        } else {
+          toast.error(result.error || 'Failed to unlink Google.');
+        }
+        return;
+      }
+
+      setGoogleConnected(false);
+      setGoogleEmail(null);
+      toast.success('Google account unlinked.');
+      onProviderChange?.();
+    } catch {
+      toast.error('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [toast, onProviderChange]);
 
   return (
     <Card padding="sm" className="!p-0 overflow-hidden">
@@ -137,50 +136,68 @@ export function ConnectedAccountsSection({
         </h4>
       </div>
 
-      {providers.map((p, index) => {
-        const ProviderIcon = p.icon;
-        const isLoading = loadingProvider === p.provider;
-
-        return (
-          <div key={p.provider}>
-            {index > 0 && (
-              <div className="mx-4 border-t border-border dark:border-border-dark" />
-            )}
-            <div className="flex items-center gap-3 px-4 py-3.5">
-              <ProviderIcon className="h-5 w-5 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-text dark:text-text-dark">
-                  {p.label}
-                </p>
-                <p className="text-xs text-text-muted dark:text-text-muted-dark">
-                  {p.connected ? 'Connected' : 'Not connected'}
-                </p>
-              </div>
-              {p.connected ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  loading={isLoading}
-                  onClick={() => handleUnlink(p.provider)}
-                  className="text-red-500 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
-                >
-                  <Unlink className="h-3.5 w-3.5" />
-                  Unlink
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleLink(p.provider)}
-                >
-                  <Link2 className="h-3.5 w-3.5" />
-                  Link
-                </Button>
-              )}
-            </div>
-          </div>
-        );
-      })}
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        <GoogleIcon className="h-5 w-5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-text dark:text-text-dark">
+            Google
+          </p>
+          {googleConnected && googleEmail && (
+            <p className="text-xs text-text dark:text-text-dark truncate">
+              {googleEmail}
+            </p>
+          )}
+          <p className="text-xs text-text-muted dark:text-text-muted-dark">
+            {googleConnected ? 'Connected' : 'Not connected'}
+          </p>
+        </div>
+        {googleConnected ? (
+          <Button
+            variant="outline"
+            size="sm"
+            loading={loading}
+            onClick={handleUnlink}
+            className="text-red-500 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+          >
+            <Unlink className="h-3.5 w-3.5" />
+            Unlink
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            loading={loading}
+            onClick={() => googleLogin()}
+          >
+            <Link2 className="h-3.5 w-3.5" />
+            Link
+          </Button>
+        )}
+      </div>
     </Card>
+  );
+}
+
+// ---- Exported Component ----
+
+export function ConnectedAccountsSection({
+  hasGoogleId,
+  googleEmail,
+  onProviderChange,
+}: ConnectedAccountsSectionProps) {
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+  if (!clientId) {
+    return null;
+  }
+
+  return (
+    <GoogleOAuthProvider clientId={clientId}>
+      <ConnectedAccountsInner
+        hasGoogleId={hasGoogleId}
+        googleEmail={googleEmail}
+        onProviderChange={onProviderChange}
+      />
+    </GoogleOAuthProvider>
   );
 }

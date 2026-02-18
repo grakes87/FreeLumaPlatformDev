@@ -5,7 +5,6 @@ import { AuthProvider } from '@/context/AuthContext';
 import { SignupForm } from '@/components/auth/SignupForm';
 import { SocialDivider } from '@/components/auth/SocialDivider';
 import { GoogleButton } from '@/components/auth/GoogleButton';
-import { AppleButton } from '@/components/auth/AppleButton';
 
 function SignupContent() {
   return (
@@ -23,7 +22,6 @@ function SignupContent() {
 
       <div className="space-y-3">
         <GoogleButton mode="signup" />
-        <AppleButton mode="signup" />
       </div>
     </div>
   );

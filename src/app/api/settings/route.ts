@@ -41,7 +41,7 @@ export const GET = withAuth(
   async (_req: NextRequest, context: AuthContext) => {
     try {
       const user = await User.findByPk(context.user.id, {
-        attributes: ['id', 'email', 'mode', 'language', 'preferred_translation', 'verse_mode', 'verse_category_id', 'timezone', 'email_verified', 'google_id', 'apple_id', 'phone', 'phone_verified'],
+        attributes: ['id', 'email', 'mode', 'language', 'preferred_translation', 'verse_mode', 'verse_category_id', 'timezone', 'email_verified', 'google_id', 'google_email', 'apple_id', 'phone', 'phone_verified'],
       });
 
       if (!user) {
@@ -99,6 +99,7 @@ export const GET = withAuth(
           email: user.email,
           email_verified: user.email_verified,
           has_google: Boolean(user.google_id),
+          google_email: user.google_email ?? null,
           has_apple: Boolean(user.apple_id),
         },
         translations: bibleTranslations.map((t) => ({

@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
 
       await user.update({
         google_id: googleId,
+        google_email: normalizedEmail,
         avatar_url: user.avatar_url || picture,
         last_login_at: new Date(),
       });
@@ -165,6 +166,7 @@ export async function POST(req: NextRequest) {
         {
           email: normalizedEmail,
           google_id: googleId,
+          google_email: normalizedEmail,
           display_name: name,
           username: tempUsername,
           avatar_url: picture,

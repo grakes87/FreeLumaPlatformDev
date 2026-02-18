@@ -2,13 +2,14 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import { User } from '@/lib/db/models';
-import { verifyGoogleCredential } from '@/lib/auth/google';
+import { verifyGoogleCredential, verifyGoogleAccessToken } from '@/lib/auth/google';
 import { verifyAppleToken } from '@/lib/auth/apple';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 
 const linkProviderSchema = z.object({
   provider: z.enum(['google', 'apple']),
   token: z.string().min(1, 'Token is required'),
+  token_type: z.enum(['id_token', 'access_token']).optional().default('id_token'),
   // Apple may provide user name on first auth
   user_name: z
     .object({
@@ -28,10 +29,11 @@ export const POST = withAuth(
         return errorResponse(parsed.error.issues[0]?.message || 'Invalid input');
       }
 
-      const { provider, token, user_name } = parsed.data;
+      const { provider, token, token_type, user_name } = parsed.data;
 
       // Verify the OAuth token server-side
       let providerId: string;
+      let providerEmail: string | null = null;
 
       if (provider === 'google') {
         if (!process.env.GOOGLE_CLIENT_ID) {
@@ -39,8 +41,11 @@ export const POST = withAuth(
         }
 
         try {
-          const googleUser = await verifyGoogleCredential(token);
+          const googleUser = token_type === 'access_token'
+            ? await verifyGoogleAccessToken(token)
+            : await verifyGoogleCredential(token);
           providerId = googleUser.googleId;
+          providerEmail = googleUser.email;
         } catch {
           return errorResponse('Invalid Google credential', 401);
         }
@@ -97,11 +102,16 @@ export const POST = withAuth(
       }
 
       // Link the provider
-      await user.update({ [providerIdColumn]: providerId });
+      const updateData: Record<string, string | null> = { [providerIdColumn]: providerId };
+      if (provider === 'google' && providerEmail) {
+        updateData.google_email = providerEmail;
+      }
+      await user.update(updateData);
 
       return successResponse({
         message: 'Provider linked successfully',
         provider,
+        email: providerEmail,
       });
     } catch (error) {
       return serverError(error, 'Failed to link provider');
