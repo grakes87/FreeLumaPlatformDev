@@ -60,6 +60,7 @@ import { VerseCategoryCommentReaction } from './VerseCategoryCommentReaction';
 import { UsedBibleVerse } from './UsedBibleVerse';
 import { LumaShortCreator } from './LumaShortCreator';
 import ContentGenerationLog from './ContentGenerationLog';
+import { SmsLog } from './SmsLog';
 
 // ---- Associations ----
 
@@ -1105,6 +1106,18 @@ ContentGenerationLog.belongsTo(DailyContent, {
   as: 'dailyContent',
 });
 
+// ---- Phase 13: SMS Notification Associations ----
+
+// User -> SmsLog (one-to-many)
+User.hasMany(SmsLog, {
+  foreignKey: 'recipient_id',
+  as: 'smsLogs',
+});
+SmsLog.belongsTo(User, {
+  foreignKey: 'recipient_id',
+  as: 'recipient',
+});
+
 export {
   sequelize,
   User,
@@ -1168,4 +1181,5 @@ export {
   UsedBibleVerse,
   LumaShortCreator,
   ContentGenerationLog,
+  SmsLog,
 };

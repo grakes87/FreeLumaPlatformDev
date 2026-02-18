@@ -25,6 +25,8 @@ export interface UserAttributes {
   verse_mode: 'daily_verse' | 'verse_by_category';
   verse_category_id: number | null;
   language: 'en' | 'es';
+  phone: string | null;
+  phone_verified: boolean;
   email_verified: boolean;
   email_verification_token: string | null;
   onboarding_complete: boolean;
@@ -63,6 +65,8 @@ export interface UserCreationAttributes extends Optional<UserAttributes,
   | 'verse_mode'
   | 'verse_category_id'
   | 'language'
+  | 'phone'
+  | 'phone_verified'
   | 'email_verified'
   | 'email_verification_token'
   | 'onboarding_complete'
@@ -105,6 +109,8 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   declare verse_mode: 'daily_verse' | 'verse_by_category';
   declare verse_category_id: number | null;
   declare language: 'en' | 'es';
+  declare phone: string | null;
+  declare phone_verified: boolean;
   declare email_verified: boolean;
   declare email_verification_token: string | null;
   declare onboarding_complete: boolean;
@@ -230,6 +236,15 @@ User.init(
     language: {
       type: DataTypes.ENUM('en', 'es'),
       defaultValue: 'en',
+      allowNull: false,
+    },
+    phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    phone_verified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
       allowNull: false,
     },
     email_verified: {

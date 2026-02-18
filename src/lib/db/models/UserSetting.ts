@@ -18,6 +18,12 @@ export interface UserSettingAttributes {
   email_reaction_comment_notifications: boolean;
   email_workshop_notifications: boolean;
   email_new_video_notifications: boolean;
+  sms_notifications_enabled: boolean;
+  sms_dm_notifications: boolean;
+  sms_follow_notifications: boolean;
+  sms_prayer_notifications: boolean;
+  sms_daily_reminder: boolean;
+  sms_workshop_notifications: boolean;
   reminder_timezone: string | null;
   created_at: Date;
   updated_at: Date;
@@ -39,6 +45,12 @@ export interface UserSettingCreationAttributes extends Optional<UserSettingAttri
   | 'email_reaction_comment_notifications'
   | 'email_workshop_notifications'
   | 'email_new_video_notifications'
+  | 'sms_notifications_enabled'
+  | 'sms_dm_notifications'
+  | 'sms_follow_notifications'
+  | 'sms_prayer_notifications'
+  | 'sms_daily_reminder'
+  | 'sms_workshop_notifications'
   | 'reminder_timezone'
   | 'created_at'
   | 'updated_at'
@@ -61,6 +73,12 @@ class UserSetting extends Model<UserSettingAttributes, UserSettingCreationAttrib
   declare email_reaction_comment_notifications: boolean;
   declare email_workshop_notifications: boolean;
   declare email_new_video_notifications: boolean;
+  declare sms_notifications_enabled: boolean;
+  declare sms_dm_notifications: boolean;
+  declare sms_follow_notifications: boolean;
+  declare sms_prayer_notifications: boolean;
+  declare sms_daily_reminder: boolean;
+  declare sms_workshop_notifications: boolean;
   declare reminder_timezone: string | null;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
@@ -146,6 +164,36 @@ UserSetting.init(
       defaultValue: true,
     },
     email_new_video_notifications: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    sms_notifications_enabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    sms_dm_notifications: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    sms_follow_notifications: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    sms_prayer_notifications: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    sms_daily_reminder: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    sms_workshop_notifications: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
