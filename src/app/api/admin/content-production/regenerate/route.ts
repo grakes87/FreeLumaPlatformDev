@@ -137,21 +137,19 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
       // Positivity mode: regenerate the motivational quote (no bible verse)
       if (content.mode === 'positivity') {
         const { generatePositivityQuote } = await import('@/lib/content-pipeline/text-generation');
-        const { Op } = await import('sequelize');
+        const { literal } = await import('sequelize');
 
         // Fetch existing quotes for deduplication
         const existingRows = await DailyContent.findAll({
           attributes: ['content_text'],
-          where: {
-            mode: 'positivity',
-            content_text: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] },
-            id: { [Op.ne]: daily_content_id }, // exclude current row
-          },
+          where: literal(
+            `mode = 'positivity' AND content_text IS NOT NULL AND content_text != '' AND id != ${Number(daily_content_id)}`
+          ),
           order: [['post_date', 'DESC']],
           raw: true,
         });
-        const existingQuotes = existingRows
-          .map((r: { content_text: string }) => r.content_text)
+        const existingQuotes = (existingRows as Array<{ content_text: string }>)
+          .map((r) => r.content_text)
           .filter(Boolean);
 
         const newQuote = await generatePositivityQuote(existingQuotes);
