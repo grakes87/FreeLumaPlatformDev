@@ -13,7 +13,7 @@
  * - Rate limiting delays between API calls (ESV 200ms, TTS 500ms)
  */
 
-import { Op } from 'sequelize';
+import { Op, literal } from 'sequelize';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 
 import { selectRandomUnusedVerse } from './verse-selection';
@@ -293,15 +293,12 @@ export async function generateDayContent(
       // Fetch all existing positivity quotes for deduplication
       const existingRows = await DailyContent.findAll({
         attributes: ['content_text'],
-        where: {
-          mode: 'positivity',
-          content_text: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] },
-        },
+        where: literal("mode = 'positivity' AND content_text IS NOT NULL AND content_text != ''"),
         order: [['post_date', 'DESC']],
         raw: true,
       });
-      const existingQuotes = existingRows
-        .map((r: { content_text: string }) => r.content_text)
+      const existingQuotes = (existingRows as Array<{ content_text: string }>)
+        .map((r) => r.content_text)
         .filter(Boolean);
 
       const quote = await generatePositivityQuote(existingQuotes);
