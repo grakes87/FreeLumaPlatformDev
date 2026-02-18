@@ -51,7 +51,7 @@ async function generateUnsubscribeUrl(userId: number, category: string): Promise
  * Check if user is within quiet hours.
  * Returns true if emails should be suppressed.
  */
-function isInQuietHours(
+export function isInQuietHours(
   quietStart: string | null,
   quietEnd: string | null,
   reminderTimezone: string | null
