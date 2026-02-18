@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { User, Ban } from '@/lib/db/models';
+import { User, Ban, LumaShortCreator } from '@/lib/db/models';
 import { loginSchema } from '@/lib/utils/validation';
 import { comparePassword } from '@/lib/auth/password';
 import { signJWT, AUTH_COOKIE_OPTIONS } from '@/lib/auth/jwt';
@@ -108,6 +108,12 @@ export async function POST(req: NextRequest) {
     // Sign JWT
     const token = await signJWT({ id: user.id, email: user.email });
 
+    // Check if user is an active creator
+    const creatorProfile = await LumaShortCreator.findOne({
+      where: { user_id: user.id, active: true },
+      attributes: ['id'],
+    });
+
     // Build response (include token for Socket.IO auth fallback)
     const response = successResponse({
       user: {
@@ -121,6 +127,7 @@ export async function POST(req: NextRequest) {
         mode: user.mode,
         email_verified: user.email_verified,
         is_admin: user.is_admin,
+        is_creator: !!creatorProfile,
         onboarding_complete: user.onboarding_complete,
         preferred_translation: user.preferred_translation,
         language: user.language,

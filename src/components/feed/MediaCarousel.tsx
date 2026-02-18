@@ -33,6 +33,7 @@ function VideoItem({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoLoading, setVideoLoading] = useState(true);
   const [paused, setPaused] = useState(true);
+  const [contain, setContain] = useState(false);
 
   const handlePlaying = useCallback(() => {
     setVideoLoading(false);
@@ -41,10 +42,6 @@ function VideoItem({
 
   const handlePause = useCallback(() => {
     setPaused(true);
-  }, []);
-
-  const handleWaiting = useCallback(() => {
-    setVideoLoading(true);
   }, []);
 
   const handleCanPlayThrough = useCallback(() => {
@@ -74,17 +71,28 @@ function VideoItem({
         loop
         playsInline
         preload="metadata"
-        className="h-full w-full object-cover"
+        className={cn(
+          'h-full w-full',
+          contain ? 'object-contain' : 'object-cover'
+        )}
         onPlaying={handlePlaying}
         onPause={handlePause}
-        onWaiting={handleWaiting}
         onCanPlayThrough={handleCanPlayThrough}
+        onLoadedMetadata={(e) => {
+          if (!item.width || !item.height) {
+            const v = e.currentTarget;
+            if (v.videoWidth && v.videoHeight) {
+              const ratio = v.videoWidth / v.videoHeight;
+              if (ratio > 0.8 && ratio < 1.2) setContain(true);
+            }
+          }
+        }}
       />
 
-      {/* Centered loading spinner — visible until video starts playing */}
+      {/* Loading spinner overlay */}
       {videoLoading && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-white/70" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
         </div>
       )}
 
@@ -96,7 +104,7 @@ function VideoItem({
         aria-label={paused ? 'Play video' : 'Pause video'}
       />
 
-      {/* Play icon — shown while paused, immediately removed on play */}
+      {/* Play icon — shown while paused */}
       {paused && !videoLoading && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="rounded-full bg-black/40 p-4 backdrop-blur-sm">
@@ -110,6 +118,43 @@ function VideoItem({
         <span className="absolute right-2 bottom-2 z-10 rounded bg-black/60 px-1.5 py-0.5 text-xs font-medium text-white">
           {formatDuration(item.duration)}
         </span>
+      )}
+    </div>
+  );
+}
+
+// ---- Image item with loading spinner + fade-in ----
+
+function ImageItem({ item, index }: { item: FeedMedia; index: number }) {
+  const [loaded, setLoaded] = useState(false);
+  const [contain, setContain] = useState(false);
+
+  return (
+    <div className="relative h-full w-full bg-black">
+      <img
+        src={item.url}
+        alt={`Media ${index + 1}`}
+        loading="lazy"
+        className={cn(
+          'h-full w-full transition-opacity duration-300',
+          contain ? 'object-contain' : 'object-cover',
+          loaded ? 'opacity-100' : 'opacity-0'
+        )}
+        onLoad={(e) => {
+          setLoaded(true);
+          if (!item.width || !item.height) {
+            const img = e.currentTarget;
+            if (img.naturalWidth && img.naturalHeight) {
+              const ratio = img.naturalWidth / img.naturalHeight;
+              if (ratio > 0.8 && ratio < 1.2) setContain(true);
+            }
+          }
+        }}
+      />
+      {!loaded && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+        </div>
       )}
     </div>
   );
@@ -201,12 +246,7 @@ export function MediaCarousel({ media, rounded = true, aspectRatio: aspectRatioO
               style={{ aspectRatio }}
             >
               {item.media_type === 'image' ? (
-                <img
-                  src={item.url}
-                  alt={`Media ${i + 1}`}
-                  loading="lazy"
-                  className="h-full w-full object-cover"
-                />
+                <ImageItem item={item} index={i} />
               ) : (
                 <VideoItem item={item} onVideoRef={handleVideoRef} />
               )}

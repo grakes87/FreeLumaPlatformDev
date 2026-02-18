@@ -247,11 +247,10 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
     ? encodeCursor({ created_at: lastPost.created_at, id: lastPost.id })
     : null;
 
-  return NextResponse.json({
-    posts: formatted,
-    next_cursor: nextCursor,
-    has_more: hasMore,
-  });
+  return NextResponse.json(
+    { posts: formatted, next_cursor: nextCursor, has_more: hasMore },
+    { headers: { 'Cache-Control': 'private, no-store' } }
+  );
   } catch (error) {
     return serverError(error, 'Failed to fetch feed');
   }

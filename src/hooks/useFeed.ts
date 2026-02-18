@@ -61,7 +61,7 @@ interface FeedResponse {
 }
 
 /** Max posts to keep in memory. Older entries are trimmed from front when exceeded. */
-const MAX_POSTS_IN_MEMORY = 50;
+const MAX_POSTS_IN_MEMORY = 500;
 
 /**
  * Feed hook managing FYP/Following tab state with cursor pagination,
@@ -95,7 +95,7 @@ export function useFeed() {
       const endpoint = tab === 'fyp' ? '/api/feed/fyp' : '/api/feed';
       const params = new URLSearchParams();
       if (pageCursor) params.set('cursor', pageCursor);
-      params.set('limit', '10');
+      params.set('limit', '20');
 
       const url = `${endpoint}?${params.toString()}`;
 
@@ -110,6 +110,7 @@ export function useFeed() {
         const res = await fetch(url, {
           credentials: 'include',
           signal: controller.signal,
+          headers: isRefresh ? { 'Cache-Control': 'no-cache' } : undefined,
         });
 
         if (!res.ok) {

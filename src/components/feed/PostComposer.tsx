@@ -11,7 +11,7 @@ import {
 import { cn } from '@/lib/utils/cn';
 import { compressMediaFile } from '@/lib/utils/compressMedia';
 import { uploadWithProgress } from '@/lib/utils/uploadWithProgress';
-import { generateVideoThumbnail, blobToDataUrl } from '@/lib/utils/generateVideoThumbnail';
+import { generateVideoThumbnail } from '@/lib/utils/generateVideoThumbnail';
 import { useAuth } from '@/hooks/useAuth';
 import { useDraft, type DraftData } from '@/hooks/useDraft';
 
@@ -519,36 +519,99 @@ export function PostComposer({
 
       setMediaItems((prev) => [...prev, newItem]);
 
-      // Fire-and-forget thumbnail generation for videos
-      if (mediaType === 'video') {
-        generateVideoThumbnail(file).then((blob) => {
-          if (!blob) return;
-          blobToDataUrl(blob).then((dataUrl) => {
-            setMediaItems((prev) =>
-              prev.map((m) =>
-                m.id === itemId ? { ...m, thumbnail_url: dataUrl } : m
-              )
-            );
-          });
-        });
-      }
-
       try {
         // Compress image before upload (videos pass through as-is)
         const compressed = await compressMediaFile(file);
 
-        // Upload with real progress tracking
-        const { public_url } = await uploadWithProgress(compressed, (percent) => {
+        // Start main file upload
+        const uploadPromise = uploadWithProgress(compressed, (percent) => {
           setMediaItems((prev) =>
             prev.map((m) => (m.id === itemId ? { ...m, progress: percent } : m))
           );
         });
 
-        // Update item with public URL, preserving thumbnail_url from async generation
+        // For videos: generate thumbnail + extract dimensions in parallel with upload
+        let thumbnailCdnUrl: string | null = null;
+        let videoWidth: number | null = null;
+        let videoHeight: number | null = null;
+
+        if (mediaType === 'video') {
+          const thumbPromise = generateVideoThumbnail(file).then(async (blob) => {
+            if (!blob) return;
+            // Upload thumbnail to B2
+            const thumbFile = new File([blob], 'thumbnail.jpg', { type: 'image/jpeg' });
+            const formData = new FormData();
+            formData.append('file', thumbFile);
+            const res = await fetch('/api/upload/post-media', {
+              method: 'POST',
+              credentials: 'include',
+              body: formData,
+            });
+            if (res.ok) {
+              const data = await res.json();
+              thumbnailCdnUrl = data.public_url;
+            }
+          });
+
+          // Extract video dimensions
+          const dimsPromise = new Promise<void>((resolve) => {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = () => {
+              if (video.videoWidth && video.videoHeight) {
+                videoWidth = video.videoWidth;
+                videoHeight = video.videoHeight;
+              }
+              URL.revokeObjectURL(video.src);
+              resolve();
+            };
+            video.onerror = () => {
+              URL.revokeObjectURL(video.src);
+              resolve();
+            };
+            video.src = URL.createObjectURL(file);
+          });
+
+          // Wait for thumbnail + dimensions (don't block on failure)
+          await Promise.allSettled([thumbPromise, dimsPromise]);
+        }
+
+        // For images: extract dimensions
+        if (mediaType === 'image') {
+          await new Promise<void>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              if (img.naturalWidth && img.naturalHeight) {
+                videoWidth = img.naturalWidth;
+                videoHeight = img.naturalHeight;
+              }
+              URL.revokeObjectURL(img.src);
+              resolve();
+            };
+            img.onerror = () => {
+              URL.revokeObjectURL(img.src);
+              resolve();
+            };
+            img.src = URL.createObjectURL(file);
+          });
+        }
+
+        // Wait for main upload
+        const { public_url } = await uploadPromise;
+
+        // Update item with public URL, thumbnail, and dimensions
         setMediaItems((prev) =>
           prev.map((m) =>
             m.id === itemId
-              ? { ...m, url: public_url, uploading: false, progress: 100 }
+              ? {
+                  ...m,
+                  url: public_url,
+                  thumbnail_url: thumbnailCdnUrl,
+                  width: videoWidth,
+                  height: videoHeight,
+                  uploading: false,
+                  progress: 100,
+                }
               : m
           )
         );
@@ -557,6 +620,9 @@ export function PostComposer({
           id: itemId,
           url: public_url,
           media_type: mediaType,
+          thumbnail_url: thumbnailCdnUrl,
+          width: videoWidth,
+          height: videoHeight,
           duration,
           uploading: false,
           progress: 100,

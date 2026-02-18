@@ -1,7 +1,9 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { Op } from 'sequelize';
 import { withAdmin, type AuthContext } from '@/lib/auth/middleware';
 import { successResponse, serverError } from '@/lib/utils/api';
+import { hashPassword } from '@/lib/auth/password';
+import { AVATAR_COLORS } from '@/lib/utils/constants';
 
 /**
  * GET /api/admin/users - List users with search, filtering, and pagination
@@ -120,5 +122,80 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
     });
   } catch (error) {
     return serverError(error, 'Failed to fetch users');
+  }
+});
+
+/**
+ * POST /api/admin/users - Admin creates a new user account
+ *
+ * Body: { email, username, display_name, password, mode? }
+ */
+export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) => {
+  try {
+    const { User } = await import('@/lib/db/models');
+    const body = await req.json();
+
+    const { email, username, display_name, password, mode } = body as {
+      email?: string;
+      username?: string;
+      display_name?: string;
+      password?: string;
+      mode?: string;
+    };
+
+    if (!email?.trim() || !username?.trim() || !display_name?.trim() || !password?.trim()) {
+      return NextResponse.json(
+        { error: 'email, username, display_name, and password are required' },
+        { status: 400 }
+      );
+    }
+
+    // Check duplicates
+    const existing = await User.findOne({
+      where: {
+        [Op.or]: [
+          { email: email.trim().toLowerCase() },
+          { username: username.trim().toLowerCase() },
+        ],
+      },
+      paranoid: false,
+    });
+
+    if (existing) {
+      const field = existing.email === email.trim().toLowerCase() ? 'email' : 'username';
+      return NextResponse.json(
+        { error: `A user with that ${field} already exists` },
+        { status: 409 }
+      );
+    }
+
+    const password_hash = await hashPassword(password.trim());
+    const avatar_color = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+
+    const user = await User.create({
+      email: email.trim().toLowerCase(),
+      username: username.trim().toLowerCase(),
+      display_name: display_name.trim(),
+      password_hash,
+      avatar_color,
+      mode: mode === 'positivity' ? 'positivity' : 'bible',
+      is_verified: true,
+      email_verified: true,
+      status: 'active',
+      role: 'user',
+    });
+
+    return NextResponse.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        display_name: user.display_name,
+        avatar_url: user.avatar_url,
+        avatar_color: user.avatar_color,
+      },
+    }, { status: 201 });
+  } catch (error) {
+    return serverError(error, 'Failed to create user');
   }
 });

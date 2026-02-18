@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Heart, Loader2, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,29 +13,8 @@ import { PrayerComposer } from '@/components/prayer/PrayerComposer';
 import { EmptyState } from '@/components/common/EmptyState';
 import type { PrayerItem } from '@/hooks/usePrayerWall';
 
-function PrayerCardSkeleton() {
-  return (
-    <div className="animate-pulse rounded-2xl border border-border/50 bg-surface/60 p-4 dark:border-white/10 dark:bg-white/5">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-border dark:bg-white/10" />
-        <div className="space-y-2">
-          <div className="h-3 w-24 rounded bg-border dark:bg-white/10" />
-          <div className="h-2 w-12 rounded bg-border dark:bg-white/10" />
-        </div>
-      </div>
-      <div className="mt-3 space-y-2">
-        <div className="h-3 w-full rounded bg-border dark:bg-white/10" />
-        <div className="h-3 w-4/5 rounded bg-border dark:bg-white/10" />
-        <div className="h-3 w-3/5 rounded bg-border dark:bg-white/10" />
-      </div>
-      <div className="mt-4 flex gap-3">
-        <div className="h-8 w-20 rounded-full bg-border dark:bg-white/10" />
-        <div className="h-8 w-8 rounded-full bg-border dark:bg-white/10" />
-        <div className="h-8 w-8 rounded-full bg-border dark:bg-white/10" />
-      </div>
-    </div>
-  );
-}
+/** Per-card stagger delay in ms */
+const CARD_STAGGER_MS = 80;
 
 export default function PrayerWallPage() {
   const { user } = useAuth();
@@ -93,6 +72,106 @@ export default function PrayerWallPage() {
   const handleComposerSubmit = useCallback(() => {
     onPrayerCreated();
   }, [onPrayerCreated]);
+
+  // Fade-in after data + images are ready
+  const [contentReady, setContentReady] = useState(false);
+  // Track how many cards were already visible (so infinite-scroll appends don't re-animate)
+  const revealedCountRef = useRef(0);
+
+  useEffect(() => {
+    // Reset when loading starts on a fresh fetch (tab/filter change)
+    if (loading && prayers.length === 0) {
+      setContentReady(false);
+      revealedCountRef.current = 0;
+      return;
+    }
+
+    // Still loading initial batch — keep showing spinner
+    if (loading) return;
+
+    // No prayers = nothing to preload, show empty state
+    if (prayers.length === 0) {
+      setContentReady(true);
+      return;
+    }
+
+    // Already revealed — infinite scroll appended cards, no need to re-preload
+    if (contentReady) {
+      return;
+    }
+
+    // Collect image URLs from the initial page of prayers
+    const urls: string[] = [];
+    for (const prayer of prayers) {
+      const author = prayer.post.user;
+      if (!prayer.post.is_anonymous && author.avatar_url) {
+        urls.push(author.avatar_url);
+      }
+      for (const m of prayer.post.media) {
+        if (m.media_type === 'image') {
+          urls.push(m.url);
+        }
+      }
+    }
+
+    const uniqueUrls = [...new Set(urls)];
+
+    if (uniqueUrls.length === 0) {
+      setContentReady(true);
+      return;
+    }
+
+    let settled = 0;
+    const total = uniqueUrls.length;
+    let cancelled = false;
+
+    for (const url of uniqueUrls) {
+      const img = new Image();
+      const onDone = () => {
+        if (cancelled) return;
+        settled++;
+        if (settled >= total) {
+          setContentReady(true);
+        }
+      };
+      img.onload = onDone;
+      img.onerror = onDone;
+      img.src = url;
+    }
+
+    // Safety timeout — show content after 3s even if images are slow
+    const timer = setTimeout(() => {
+      if (!cancelled) {
+        setContentReady(true);
+      }
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, prayers.length, contentReady]);
+
+  // After new cards render from infinite scroll, mark them as revealed
+  // so they only animate once
+  useEffect(() => {
+    if (contentReady && prayers.length > revealedCountRef.current) {
+      // Wait for the animation to complete before marking as revealed
+      const newCards = prayers.length - revealedCountRef.current;
+      const totalAnimTime = newCards * CARD_STAGGER_MS + 400;
+      const timer = setTimeout(() => {
+        revealedCountRef.current = prayers.length;
+      }, totalAnimTime);
+      return () => clearTimeout(timer);
+    }
+  }, [contentReady, prayers.length]);
+
+  // Reset fade state when tab or filter changes
+  useEffect(() => {
+    setContentReady(false);
+    revealedCountRef.current = 0;
+  }, [activeTab, statusFilter]);
 
   // Pull-to-refresh (touch-based)
   const [pullStartY, setPullStartY] = useState<number | null>(null);
@@ -212,11 +291,9 @@ export default function PrayerWallPage() {
       </div>
 
       {/* Prayer list */}
-      {loading && prayers.length === 0 ? (
-        <div className="space-y-4">
-          <PrayerCardSkeleton />
-          <PrayerCardSkeleton />
-          <PrayerCardSkeleton />
+      {(loading && prayers.length === 0) || !contentReady ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-7 w-7 animate-spin text-primary/60" />
         </div>
       ) : prayers.length === 0 ? (
         <EmptyState
@@ -227,15 +304,25 @@ export default function PrayerWallPage() {
         />
       ) : (
         <div className="space-y-4">
-          {prayers.map((prayer) => (
-            <PrayerCard
-              key={prayer.id}
-              prayer={prayer}
-              currentUserId={user?.id ?? 0}
-              onPrayerUpdate={handlePrayerUpdate}
-              onDelete={handleDelete}
-            />
-          ))}
+          {prayers.map((prayer, i) => {
+            const alreadyRevealed = i < revealedCountRef.current;
+            return (
+              <div
+                key={prayer.id}
+                style={alreadyRevealed ? undefined : {
+                  opacity: 0,
+                  animation: `fadeInUp 400ms ease-out ${(i - revealedCountRef.current) * CARD_STAGGER_MS}ms forwards`,
+                }}
+              >
+                <PrayerCard
+                  prayer={prayer}
+                  currentUserId={user?.id ?? 0}
+                  onPrayerUpdate={handlePrayerUpdate}
+                  onDelete={handleDelete}
+                />
+              </div>
+            );
+          })}
 
           {/* Infinite scroll sentinel */}
           <div ref={scrollRef} className="h-1" />

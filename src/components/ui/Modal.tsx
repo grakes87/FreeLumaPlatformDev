@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -28,16 +28,16 @@ export function Modal({
   children,
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-
-  const handleEscape = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    },
-    [onClose]
-  );
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!isOpen) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCloseRef.current();
+    };
+
     document.addEventListener('keydown', handleEscape);
     document.body.style.overflow = 'hidden';
     return () => {
@@ -52,7 +52,7 @@ export function Modal({
         window.scrollTo(0, 0);
       });
     };
-  }, [isOpen, handleEscape]);
+  }, [isOpen]);
 
   // Focus the panel when opened
   useEffect(() => {

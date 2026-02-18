@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { MessageSquare, Heart, Presentation } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { useAuth } from '@/hooks/useAuth';
+import { workshopLabel } from '@/lib/utils/workshopLabel';
 
 type CreateType = 'post' | 'prayer_request' | 'workshop';
 
@@ -14,29 +16,31 @@ interface CreatePickerProps {
   onSelect: (type: CreateType) => void;
 }
 
-const OPTIONS: { type: CreateType; icon: React.ElementType; label: string; description: string }[] = [
-  {
-    type: 'post',
-    icon: MessageSquare,
-    label: 'Feed Post',
-    description: 'Share with your community',
-  },
-  {
-    type: 'prayer_request',
-    icon: Heart,
-    label: 'Prayer Request',
-    description: 'Ask for prayer support',
-  },
-  {
-    type: 'workshop',
-    icon: Presentation,
-    label: 'Create Workshop',
-    description: 'Host a live workshop',
-  },
-];
-
 export function CreatePicker({ isOpen, onClose, onSelect }: CreatePickerProps) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const wl = workshopLabel(user?.mode);
+
+  const OPTIONS: { type: CreateType; icon: React.ElementType; label: string; description: string }[] = [
+    {
+      type: 'post',
+      icon: MessageSquare,
+      label: 'Feed Post',
+      description: 'Share with your community',
+    },
+    {
+      type: 'prayer_request',
+      icon: Heart,
+      label: 'Prayer Request',
+      description: 'Ask for prayer support',
+    },
+    {
+      type: 'workshop',
+      icon: Presentation,
+      label: `Create ${wl.singular}`,
+      description: `Host a live ${wl.singular.toLowerCase()}`,
+    },
+  ];
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Determine default highlight based on current route

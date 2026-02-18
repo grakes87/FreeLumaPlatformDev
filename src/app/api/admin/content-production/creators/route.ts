@@ -16,6 +16,7 @@ const createCreatorSchema = z.object({
   can_positivity: z.boolean(),
   is_ai: z.boolean(),
   heygen_avatar_id: z.string().max(255).optional(),
+  heygen_voice_id: z.string().max(255).optional(),
 });
 
 /**
@@ -101,6 +102,7 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
       can_positivity: data.can_positivity,
       is_ai: data.is_ai,
       heygen_avatar_id: data.heygen_avatar_id ?? null,
+      heygen_voice_id: data.heygen_voice_id ?? null,
     });
 
     return successResponse({ creator: creator.toJSON() }, 201);

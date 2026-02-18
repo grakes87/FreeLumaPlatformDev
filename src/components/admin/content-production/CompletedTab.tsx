@@ -18,23 +18,58 @@ import type { DayData } from './DayCard';
 
 interface CompletedTabProps {
   days: DayData[];
+  mode: 'bible' | 'positivity';
+  expectedTranslations: string[];
   onRefresh: () => void;
 }
 
-export function CompletedTab({ days, onRefresh }: CompletedTabProps) {
+/**
+ * Check if a day has ALL required content fields filled.
+ */
+function isDayComplete(
+  day: DayData,
+  mode: 'bible' | 'positivity',
+  expectedTranslations: string[]
+): boolean {
+  if (day.status === 'empty') return false;
+  if (!day.has_camera_script) return false;
+  if (!day.has_background_prompt) return false;
+  if (mode === 'positivity' && !day.has_meditation) return false;
+  if (mode === 'positivity' && !day.has_meditation_audio) return false;
+
+  if (mode === 'bible') {
+    const existing = new Map(day.translations.map((t) => [t.translation_code, t]));
+    for (const code of expectedTranslations) {
+      const t = existing.get(code);
+      if (!t || !t.has_translated_text || !t.has_audio || !t.has_srt || !t.has_chapter_text) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+export function CompletedTab({ days, mode, expectedTranslations, onRefresh }: CompletedTabProps) {
   const toast = useToast();
   const [actionId, setActionId] = useState<number | null>(null);
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [rejectionNote, setRejectionNote] = useState('');
   const [previewDay, setPreviewDay] = useState<DayData | null>(null);
 
-  const awaiting = useMemo(
-    () => days.filter((d) => d.status === 'submitted'),
-    [days]
+  // All days with every field filled
+  const completeDays = useMemo(
+    () => days.filter((d) => isDayComplete(d, mode, expectedTranslations)),
+    [days, mode, expectedTranslations]
   );
+
   const approved = useMemo(
-    () => days.filter((d) => d.status === 'approved'),
-    [days]
+    () => completeDays.filter((d) => d.status === 'approved'),
+    [completeDays]
+  );
+  const awaiting = useMemo(
+    () => completeDays.filter((d) => d.status !== 'approved'),
+    [completeDays]
   );
 
   const formatDate = (postDate: string) =>
@@ -82,11 +117,11 @@ export function CompletedTab({ days, onRefresh }: CompletedTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Awaiting Review */}
+      {/* Awaiting Review — complete but not yet approved */}
       <section>
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
           <MessageSquare className="h-4 w-4" />
-          Awaiting Review ({awaiting.length})
+          Ready for Review ({awaiting.length})
         </h3>
 
         {awaiting.length === 0 ? (
@@ -313,13 +348,19 @@ function ContentPreview({ day }: { day: DayData }) {
           Slide 3 - Video
         </p>
         <div className="mt-2">
-          {day.has_creator_video ? (
-            <span className="rounded-lg bg-green-50 px-2 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-              Creator video uploaded
-            </span>
+          {day.lumashort_video_url ? (
+            <video
+              src={day.lumashort_video_url}
+              controls
+              playsInline
+              preload="metadata"
+              className="mt-2 aspect-[9/16] max-h-[500px] w-auto rounded-lg object-cover"
+            >
+              Your browser does not support the video element.
+            </video>
           ) : (
             <span className="rounded-lg bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-              No creator video
+              No video
             </span>
           )}
         </div>
@@ -336,19 +377,30 @@ function ContentPreview({ day }: { day: DayData }) {
           <p className="text-xs font-medium uppercase text-text-muted dark:text-text-muted-dark">
             Translations
           </p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-2 space-y-3">
             {day.translations.map((t) => (
-              <span
-                key={t.translation_code}
-                className={cn(
-                  'rounded-lg px-2 py-1 text-xs font-medium',
-                  t.has_audio && t.has_srt && t.has_chapter_text
-                    ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                    : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+              <div key={t.translation_code} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'rounded-lg px-2 py-1 text-xs font-medium',
+                      t.has_audio && t.has_srt && t.has_chapter_text
+                        ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    )}
+                  >
+                    {t.translation_code}
+                  </span>
+                </div>
+                {t.audio_url && (
+                  <audio
+                    src={t.audio_url}
+                    controls
+                    preload="metadata"
+                    className="h-8 w-full max-w-sm"
+                  />
                 )}
-              >
-                {t.translation_code}
-              </span>
+              </div>
             ))}
           </div>
         </div>

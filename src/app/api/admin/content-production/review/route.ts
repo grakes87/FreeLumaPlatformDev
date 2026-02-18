@@ -21,9 +21,9 @@ const reviewSchema = z.object({
  *   rejection_note?: string (required when action is 'reject')
  *
  * Valid status transitions:
- *   approve: submitted -> approved
- *   reject:  submitted -> rejected
- *   revert:  approved  -> submitted  (admin un-approves to swap content)
+ *   approve: any status -> approved
+ *   reject:  any status -> rejected
+ *   revert:  approved   -> submitted  (admin un-approves to swap content)
  */
 export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) => {
   try {
@@ -52,28 +52,14 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
       return errorResponse('Daily content not found', 404);
     }
 
-    // Validate status transitions
+    // Process review action (approve/reject allowed from any status)
     switch (action) {
       case 'approve': {
-        if (content.status !== 'submitted') {
-          return errorResponse(
-            `Cannot approve content with status "${content.status}". Only "submitted" content can be approved.`,
-            400
-          );
-        }
-
         await content.update({ status: 'approved', rejection_note: null });
         break;
       }
 
       case 'reject': {
-        if (content.status !== 'submitted') {
-          return errorResponse(
-            `Cannot reject content with status "${content.status}". Only "submitted" content can be rejected.`,
-            400
-          );
-        }
-
         await content.update({
           status: 'rejected',
           rejection_note: rejection_note!,

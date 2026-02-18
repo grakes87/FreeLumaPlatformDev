@@ -91,8 +91,8 @@ export function PostFeed({
       const currentIndex = Math.round(container.scrollTop / cardHeight);
       setTiktokActiveIndex(currentIndex);
 
-      // Preload next batch when 3 posts from end
-      const threshold = posts.length - 3;
+      // Preload next batch when 5 posts from end
+      const threshold = posts.length - 5;
       if (currentIndex >= threshold && hasMore && !loading && !preloadTriggeredRef.current) {
         preloadTriggeredRef.current = true;
         onLoadMore();
@@ -203,7 +203,7 @@ export function PostFeed({
             className="w-full snap-start snap-always"
             style={{ height: '100svh' }}
           >
-            {Math.abs(index - tiktokActiveIndex) <= 2 ? (
+            {Math.abs(index - tiktokActiveIndex) <= 3 ? (
               <PostCard
                 post={post}
                 feedStyle="tiktok"

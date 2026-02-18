@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
-import { User, UserSetting } from '@/lib/db/models';
+import { User, UserSetting, LumaShortCreator } from '@/lib/db/models';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 
 export const GET = withAuth(
@@ -22,7 +22,15 @@ export const GET = withAuth(
         return errorResponse('User not found', 404);
       }
 
-      return successResponse({ user, token: context.token });
+      // Check if user is an active creator
+      const creatorProfile = await LumaShortCreator.findOne({
+        where: { user_id: user.id, active: true },
+        attributes: ['id'],
+      });
+
+      const userData = { ...user.toJSON(), is_creator: !!creatorProfile };
+
+      return successResponse({ user: userData, token: context.token });
     } catch (error) {
       return serverError(error, 'Failed to get user data');
     }

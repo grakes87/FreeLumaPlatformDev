@@ -24,6 +24,7 @@ interface PendingVideoEntry {
   dailyContentId: number;
   creatorId: number;
   creatorName: string;
+  logId?: number;
   triggeredAt: string;
 }
 
@@ -37,6 +38,9 @@ interface PendingVideoMap {
  *
  * NO auth middleware - this is called by HeyGen's servers.
  * Always returns 200 to acknowledge receipt.
+ *
+ * Updates the ContentGenerationLog entry (if logId tracked) so the
+ * admin Generation Queue UI reflects the final status.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
@@ -57,7 +61,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     console.log(`[HeyGen Webhook] video_id=${videoId} status=${status}`);
 
     // Lazy-import models
-    const { DailyContent, PlatformSetting } = await import('@/lib/db/models');
+    const { DailyContent, PlatformSetting, ContentGenerationLog } = await import('@/lib/db/models');
 
     // Load pending videos map
     const pendingJson = await PlatformSetting.get('heygen_pending_videos');
@@ -81,7 +85,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (videoUrl) {
         await DailyContent.update(
           {
-            creator_video_url: videoUrl,
+            lumashort_video_url: videoUrl,
             ...(thumbnailUrl ? { creator_video_thumbnail: thumbnailUrl } : {}),
             status: 'submitted',
           },
@@ -96,6 +100,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         );
       }
 
+      // Update generation log
+      if (entry.logId) {
+        const logEntry = await ContentGenerationLog.findByPk(entry.logId);
+        if (logEntry) {
+          const durationMs = Date.now() - new Date(entry.triggeredAt).getTime();
+          await logEntry.update({
+            status: 'success',
+            duration_ms: durationMs,
+          });
+        }
+      }
+
       // Remove from pending map
       delete pendingMap[videoId];
       await PlatformSetting.set('heygen_pending_videos', JSON.stringify(pendingMap));
@@ -105,6 +121,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         `[HeyGen Webhook] Video failed: video_id=${videoId}, content=${entry.dailyContentId}, ` +
         `creator=${entry.creatorName}, error=${errorMsg || 'unknown'}`,
       );
+
+      // Update generation log
+      if (entry.logId) {
+        const logEntry = await ContentGenerationLog.findByPk(entry.logId);
+        if (logEntry) {
+          const durationMs = Date.now() - new Date(entry.triggeredAt).getTime();
+          await logEntry.update({
+            status: 'failed',
+            error_message: errorMsg || 'HeyGen video generation failed',
+            duration_ms: durationMs,
+          });
+        }
+      }
 
       // Remove from pending map
       delete pendingMap[videoId];

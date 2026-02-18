@@ -29,6 +29,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { workshopLabel } from '@/lib/utils/workshopLabel';
 import { cn } from '@/lib/utils/cn';
 import { Card } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
@@ -110,6 +111,7 @@ const LANGUAGE_LABELS: Record<string, string> = {
 
 export default function SettingsPage() {
   const { user, logout, refreshUser } = useAuth();
+  const wl = workshopLabel(user?.mode);
   const { theme, setTheme } = useTheme();
   const toast = useToast();
   const router = useRouter();
@@ -689,7 +691,7 @@ export default function SettingsPage() {
 
         <ToggleRow
           icon={Presentation}
-          label="Workshop Events"
+          label={`${wl.singular} Events`}
           checked={settings?.email_workshop_notifications ?? true}
           onChange={(val) => saveSettings({ email_workshop_notifications: val })}
         />

@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Play, Film } from 'lucide-react';
 import type { DailyContentData } from '@/hooks/useDailyContent';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 interface LumaShortSlideProps {
   content: DailyContentData;
@@ -118,6 +119,19 @@ export function LumaShortSlide({ content, isActive = true }: LumaShortSlideProps
             });
           })()}
         </h2>
+        {content.creator && (
+          <div className="mt-2 flex items-center justify-center gap-2">
+            <UserAvatar
+              src={content.creator.avatar_url}
+              name={content.creator.name}
+              color={content.creator.avatar_color}
+              size={24}
+            />
+            <span className="text-xs font-medium text-white/60 drop-shadow-md">
+              Recorded by {content.creator.name}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Play/Pause tap area */}

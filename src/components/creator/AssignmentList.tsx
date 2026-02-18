@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
 import { Calendar, BookOpen, Sparkles, Video, FileText, Music, Subtitles, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import type { Assignment } from './CreatorDashboard';
-import { AssignmentDetail } from './AssignmentDetail';
 
 interface AssignmentListProps {
   assignments: Assignment[];
   loading?: boolean;
+  onSelectAssignment?: (id: number) => void;
 }
 
 const STATUS_CONFIG: Record<
@@ -29,7 +29,6 @@ function sortByStatus(a: Assignment, b: Assignment): number {
   const ai = STATUS_ORDER.indexOf(a.status);
   const bi = STATUS_ORDER.indexOf(b.status);
   if (ai !== bi) return ai - bi;
-  // Within same status, sort by date ascending
   return a.post_date.localeCompare(b.post_date);
 }
 
@@ -59,9 +58,7 @@ function SkeletonCard() {
   );
 }
 
-export function AssignmentList({ assignments, loading }: AssignmentListProps) {
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-
+export function AssignmentList({ assignments, loading, onSelectAssignment }: AssignmentListProps) {
   if (loading) {
     return (
       <div className="space-y-3">
@@ -84,102 +81,119 @@ export function AssignmentList({ assignments, loading }: AssignmentListProps) {
   }
 
   const sorted = [...assignments].sort(sortByStatus);
+  const canRecord = (status: string) => status === 'assigned' || status === 'rejected';
+  const canView = (status: string) => status === 'submitted';
+  const isInteractive = (status: string) => canRecord(status) || canView(status);
 
   return (
-    <>
-      <div className="space-y-3">
-        {sorted.map((assignment) => {
-          const statusCfg = STATUS_CONFIG[assignment.status];
+    <div className="space-y-3">
+      {sorted.map((assignment) => {
+        const statusCfg = STATUS_CONFIG[assignment.status];
 
-          return (
-            <button
-              key={assignment.id}
-              type="button"
-              onClick={() => setSelectedId(assignment.id)}
-              className="w-full rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:bg-surface-hover dark:border-border-dark dark:bg-surface-dark dark:hover:bg-surface-hover-dark"
-            >
-              {/* Top row: date + status badge */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-text dark:text-text-dark">
-                  {formatDate(assignment.post_date)}
-                </span>
-                <span
-                  className={cn(
-                    'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                    statusCfg.bg,
-                    statusCfg.text
-                  )}
+        // Recordable assignments link straight to the recording screen
+        // Submitted assignments open the detail overlay to watch / re-record
+        const Wrapper = canRecord(assignment.status)
+          ? ({ children, className }: { children: React.ReactNode; className: string }) => (
+              <Link
+                href={`/creator/record/${assignment.id}`}
+                className={className}
+              >
+                {children}
+              </Link>
+            )
+          : canView(assignment.status)
+            ? ({ children, className }: { children: React.ReactNode; className: string }) => (
+                <button
+                  type="button"
+                  onClick={() => onSelectAssignment?.(assignment.id)}
+                  className={className}
                 >
-                  {assignment.status === 'rejected' && (
-                    <AlertCircle className="mr-1 h-3 w-3" />
-                  )}
-                  {statusCfg.label}
+                  {children}
+                </button>
+              )
+            : ({ children, className }: { children: React.ReactNode; className: string }) => (
+                <div className={className}>{children}</div>
+              );
+
+        return (
+          <Wrapper
+            key={assignment.id}
+            className={cn(
+              'block w-full rounded-xl border border-border bg-surface p-4 text-left dark:border-border-dark dark:bg-surface-dark',
+              isInteractive(assignment.status) && 'transition-colors hover:bg-surface-hover dark:hover:bg-surface-hover-dark cursor-pointer'
+            )}
+          >
+            {/* Top row: date + status badge */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-text dark:text-text-dark">
+                {formatDate(assignment.post_date)}
+              </span>
+              <span
+                className={cn(
+                  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                  statusCfg.bg,
+                  statusCfg.text
+                )}
+              >
+                {assignment.status === 'rejected' && (
+                  <AlertCircle className="mr-1 h-3 w-3" />
+                )}
+                {statusCfg.label}
+              </span>
+            </div>
+
+            {/* Title / verse */}
+            <p className="mt-1.5 text-sm text-text-muted line-clamp-1 dark:text-text-muted-dark">
+              {assignment.title}
+              {assignment.verse_reference && (
+                <span className="ml-1 text-xs opacity-70">
+                  ({assignment.verse_reference})
                 </span>
-              </div>
+              )}
+            </p>
 
-              {/* Title / verse */}
-              <p className="mt-1.5 text-sm text-text-muted line-clamp-1 dark:text-text-muted-dark">
-                {assignment.title}
-                {assignment.verse_reference && (
-                  <span className="ml-1 text-xs opacity-70">
-                    ({assignment.verse_reference})
-                  </span>
+            {/* Mode badge + asset indicators */}
+            <div className="mt-2 flex items-center gap-2">
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                  assignment.mode === 'bible'
+                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                    : 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300'
                 )}
-              </p>
+              >
+                {assignment.mode === 'bible' ? (
+                  <BookOpen className="h-3 w-3" />
+                ) : (
+                  <Sparkles className="h-3 w-3" />
+                )}
+                {assignment.mode === 'bible' ? 'Bible' : 'Positivity'}
+              </span>
 
-              {/* Mode badge + asset indicators */}
-              <div className="mt-2 flex items-center gap-2">
-                {/* Mode badge */}
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
-                    assignment.mode === 'bible'
-                      ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-                      : 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300'
-                  )}
-                >
-                  {assignment.mode === 'bible' ? (
-                    <BookOpen className="h-3 w-3" />
-                  ) : (
-                    <Sparkles className="h-3 w-3" />
-                  )}
-                  {assignment.mode === 'bible' ? 'Bible' : 'Positivity'}
+              {assignment.has_camera_script && (
+                <span title="Camera script">
+                  <FileText className="h-3.5 w-3.5 text-text-muted dark:text-text-muted-dark" />
                 </span>
-
-                {/* Asset indicators */}
-                {assignment.has_camera_script && (
-                  <span title="Camera script">
-                    <FileText className="h-3.5 w-3.5 text-text-muted dark:text-text-muted-dark" />
-                  </span>
-                )}
-                {assignment.has_creator_video && (
-                  <span title="Video recorded">
-                    <Video className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                  </span>
-                )}
-                {assignment.has_audio && (
-                  <span title="Audio available">
-                    <Music className="h-3.5 w-3.5 text-text-muted dark:text-text-muted-dark" />
-                  </span>
-                )}
-                {assignment.has_srt && (
-                  <span title="Subtitles available">
-                    <Subtitles className="h-3.5 w-3.5 text-text-muted dark:text-text-muted-dark" />
-                  </span>
-                )}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Detail overlay */}
-      {selectedId !== null && (
-        <AssignmentDetail
-          assignmentId={selectedId}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
-    </>
+              )}
+              {assignment.has_lumashort_video && (
+                <span title="Video recorded">
+                  <Video className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                </span>
+              )}
+              {assignment.has_audio && (
+                <span title="Audio available">
+                  <Music className="h-3.5 w-3.5 text-text-muted dark:text-text-muted-dark" />
+                </span>
+              )}
+              {assignment.has_srt && (
+                <span title="Subtitles available">
+                  <Subtitles className="h-3.5 w-3.5 text-text-muted dark:text-text-muted-dark" />
+                </span>
+              )}
+            </div>
+          </Wrapper>
+        );
+      })}
+    </div>
   );
 }

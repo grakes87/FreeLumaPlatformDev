@@ -59,6 +59,7 @@ import { VerseCategoryComment } from './VerseCategoryComment';
 import { VerseCategoryCommentReaction } from './VerseCategoryCommentReaction';
 import { UsedBibleVerse } from './UsedBibleVerse';
 import { LumaShortCreator } from './LumaShortCreator';
+import ContentGenerationLog from './ContentGenerationLog';
 
 // ---- Associations ----
 
@@ -1094,6 +1095,16 @@ UsedBibleVerse.belongsTo(DailyContent, {
   as: 'dailyContent',
 });
 
+// DailyContent -> ContentGenerationLog (one-to-many)
+DailyContent.hasMany(ContentGenerationLog, {
+  foreignKey: 'daily_content_id',
+  as: 'generationLogs',
+});
+ContentGenerationLog.belongsTo(DailyContent, {
+  foreignKey: 'daily_content_id',
+  as: 'dailyContent',
+});
+
 export {
   sequelize,
   User,
@@ -1156,4 +1167,5 @@ export {
   VerseCategoryCommentReaction,
   UsedBibleVerse,
   LumaShortCreator,
+  ContentGenerationLog,
 };

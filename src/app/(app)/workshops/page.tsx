@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Plus, Radio, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { workshopLabel } from '@/lib/utils/workshopLabel';
 import { useWorkshops } from '@/hooks/useWorkshops';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { WorkshopCard } from '@/components/workshop/WorkshopCard';
@@ -41,6 +42,7 @@ function WorkshopCardSkeleton() {
 
 export default function WorkshopsPage() {
   const { user } = useAuth();
+  const wl = workshopLabel(user?.mode);
   const [tab, setTab] = useState<WorkshopTab>('upcoming');
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [categories, setCategories] = useState<WorkshopCategoryItem[]>([]);
@@ -121,18 +123,18 @@ export default function WorkshopsPage() {
     switch (tab) {
       case 'upcoming':
         return {
-          title: 'No upcoming workshops',
-          description: 'Check back soon for new workshops, or host your own!',
+          title: `No upcoming ${wl.plural.toLowerCase()}`,
+          description: `Check back soon for new ${wl.plural.toLowerCase()}, or host your own!`,
         };
       case 'past':
         return {
-          title: 'No past workshops',
-          description: 'Past workshops will appear here once they end.',
+          title: `No past ${wl.plural.toLowerCase()}`,
+          description: `Past ${wl.plural.toLowerCase()} will appear here once they end.`,
         };
       case 'my':
         return {
-          title: 'No workshops yet',
-          description: "Workshops you're hosting or attending will appear here.",
+          title: `No ${wl.plural.toLowerCase()} yet`,
+          description: `${wl.plural} you're hosting or attending will appear here.`,
         };
     }
   };
@@ -142,7 +144,7 @@ export default function WorkshopsPage() {
       {/* Page header */}
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-text dark:text-white">
-          Workshops
+          {wl.plural}
         </h1>
         <Link
           href="/workshops/create"
@@ -197,7 +199,7 @@ export default function WorkshopsPage() {
                 className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90"
               >
                 <Plus className="h-4 w-4" />
-                Host a Workshop
+                Host a {wl.singular}
               </Link>
             ) : undefined
           }

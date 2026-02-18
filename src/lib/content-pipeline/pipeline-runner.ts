@@ -392,26 +392,110 @@ export async function generateDayContent(
       await content.update(textUpdates);
     }
 
+    // Reload to get meditation_script if just generated
+    await content.reload();
+
+    // -----------------------------------------------------------------------
+    // Step 3b: Meditation audio TTS + background music mixing
+    // -----------------------------------------------------------------------
+    if (
+      mode === 'positivity' &&
+      content.meditation_script &&
+      !content.meditation_audio_url &&
+      isB2Configured
+    ) {
+      try {
+        const elevenLabsKey = await PlatformSetting.get('elevenlabs_api_key');
+        const medVoices: string[] = [];
+        for (let i = 1; i <= 3; i++) {
+          const vid = await PlatformSetting.get(`elevenlabs_voice_${i}`);
+          if (vid) medVoices.push(vid);
+        }
+
+        if (elevenLabsKey && medVoices.length > 0) {
+          const voice = medVoices[Math.floor(Math.random() * medVoices.length)];
+          const elResult = await generateTtsElevenLabs(
+            content.meditation_script,
+            voice,
+            elevenLabsKey
+          );
+
+          onProgress({
+            type: 'progress',
+            step: 'meditation_tts',
+            message: 'Generated meditation TTS, mixing with background music...',
+          });
+
+          // Mix with background music
+          const { mixWithBackgroundMusic } = await import('./audio-mixer');
+          const mixedAudio = await mixWithBackgroundMusic(elResult.audioBuffer);
+
+          // Upload to B2
+          const audioKey = `daily-content-audio/${date}/meditation.mp3`;
+          const audioUrl = await uploadBufferToB2(mixedAudio, audioKey, 'audio/mpeg');
+          await content.update({ meditation_audio_url: audioUrl });
+
+          onProgress({
+            type: 'progress',
+            step: 'meditation_audio',
+            message: 'Generated meditation audio with background music',
+          });
+
+          await delay(500);
+        } else {
+          onProgress({
+            type: 'progress',
+            step: 'meditation_audio_skip',
+            message: 'No ElevenLabs TTS configured — skipping meditation audio',
+          });
+        }
+      } catch (medError) {
+        const errMsg = medError instanceof Error ? medError.message : String(medError);
+        onProgress({
+          type: 'error',
+          step: 'meditation_audio_error',
+          message: `Meditation audio failed: ${errMsg}`,
+          error: errMsg,
+        });
+        // Continue — don't abort the whole day
+      }
+    }
+
     // -----------------------------------------------------------------------
     // Step 4: TTS audio + SRT subtitles
     // -----------------------------------------------------------------------
     if (isB2Configured) {
       const elevenLabsApiKey = await PlatformSetting.get('elevenlabs_api_key');
-      const elevenLabsVoiceId = await PlatformSetting.get('elevenlabs_voice_id');
       const murfApiKey = await PlatformSetting.get('murf_api_key');
-      const murfVoiceId = await PlatformSetting.get('murf_voice_id');
 
-      // Find translations that have text but no audio
+      // ElevenLabs English voices (rotate)
+      const englishVoices: string[] = [];
+      for (let i = 1; i <= 3; i++) {
+        const vid = await PlatformSetting.get(`elevenlabs_voice_${i}`);
+        if (vid) englishVoices.push(vid);
+      }
+      let englishVoiceIndex = 0;
+
+      // Murf Spanish voices (rotate)
+      const spanishVoices: { voiceId: string; style: string }[] = [];
+      for (let i = 1; i <= 3; i++) {
+        const vid = await PlatformSetting.get(`murf_voice_es_${i}`);
+        const sty = await PlatformSetting.get(`murf_style_es_${i}`);
+        if (vid) spanishVoices.push({ voiceId: vid, style: sty || '' });
+      }
+      let spanishVoiceIndex = 0;
+
+      // Find translations that have chapter text but no audio
       const translationsNeedingAudio = await DailyContentTranslation.findAll({
         where: {
           daily_content_id: content.id,
-          translated_text: { [Op.ne]: '' },
+          chapter_text: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] },
           audio_url: null,
         },
       });
 
       for (const translation of translationsNeedingAudio) {
-        const ttsText = translation.translated_text;
+        const ttsText = translation.chapter_text;
         if (!ttsText) continue;
 
         try {
@@ -429,24 +513,20 @@ export async function generateDayContent(
           let audioBuffer: Buffer;
           let srtContent: string;
 
-          if (isEnglish && elevenLabsApiKey && elevenLabsVoiceId) {
-            // ElevenLabs for English
-            const result = await generateTtsElevenLabs(
-              ttsText,
-              elevenLabsVoiceId,
-              elevenLabsApiKey
-            );
-            audioBuffer = result.audioBuffer;
-
-            // Convert character alignment to word timing then SRT
-            const wordTimings = characterAlignmentToWords(result.alignment);
+          if (isEnglish && elevenLabsApiKey && englishVoices.length > 0) {
+            // ElevenLabs for English — rotate through voice pool
+            const voice = englishVoices[englishVoiceIndex % englishVoices.length];
+            englishVoiceIndex++;
+            const elResult = await generateTtsElevenLabs(ttsText, voice, elevenLabsApiKey);
+            audioBuffer = elResult.audioBuffer;
+            const wordTimings = characterAlignmentToWords(elResult.alignment);
             srtContent = generateSrt(wordTimings);
-          } else if (murfApiKey && murfVoiceId) {
-            // Murf for Spanish/other
-            const result = await generateTtsMurf(ttsText, murfVoiceId, murfApiKey);
+          } else if (!isEnglish && murfApiKey && spanishVoices.length > 0) {
+            // Murf Spanish — rotate through voices
+            const voice = spanishVoices[spanishVoiceIndex % spanishVoices.length];
+            spanishVoiceIndex++;
+            const result = await generateTtsMurf(ttsText, voice.voiceId, murfApiKey, voice.style || undefined);
             audioBuffer = result.audioBuffer;
-
-            // Convert Murf word durations to SRT
             const wordTimings = murfDurationsToWords(result.wordDurations);
             srtContent = generateSrt(wordTimings);
           } else {

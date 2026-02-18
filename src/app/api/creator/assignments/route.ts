@@ -77,7 +77,7 @@ export const GET = withCreator(async (req: NextRequest, context: CreatorContext)
       title: raw.title,
       verse_reference: raw.verse_reference,
       has_camera_script: !!raw.camera_script,
-      has_creator_video: !!raw.creator_video_url,
+      has_lumashort_video: !!raw.lumashort_video_url,
       has_audio: raw.translations?.some((t) => !!t.audio_url) ?? false,
       has_srt: raw.translations?.some((t) => !!t.audio_srt_url) ?? false,
     };

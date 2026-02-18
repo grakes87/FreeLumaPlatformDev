@@ -2,17 +2,23 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils/cn';
-import { RotateCcw, Send, Square } from 'lucide-react';
+import { RotateCcw, Send, Square, Pause, Play } from 'lucide-react';
 
 interface RecordingControlsProps {
-  /** Whether actively recording */
+  /** Whether actively recording (includes paused state) */
   isRecording: boolean;
+  /** Whether recording is paused */
+  isPaused: boolean;
   /** Blob from completed recording */
   recordedBlob: Blob | null;
   /** Object URL for preview playback */
   recordedUrl: string | null;
   /** Start recording callback */
   onStartRecording: () => void;
+  /** Pause recording callback */
+  onPauseRecording: () => void;
+  /** Resume recording callback */
+  onResumeRecording: () => void;
   /** Stop recording callback */
   onStopRecording: () => void;
   /** Reset and re-record callback */
@@ -30,15 +36,19 @@ interface RecordingControlsProps {
  *
  * States:
  * - Pre-recording: large red Record button
- * - Recording: white Stop button with elapsed duration
+ * - Recording: Pause button + Stop button with elapsed duration
+ * - Paused: Resume button + Stop button
  * - Post-recording: video preview + Re-record + Submit buttons
  * - Submitting: progress bar + disabled buttons
  */
 export function RecordingControls({
   isRecording,
+  isPaused,
   recordedBlob,
   recordedUrl,
   onStartRecording,
+  onPauseRecording,
+  onResumeRecording,
   onStopRecording,
   onReRecord,
   onSubmit,
@@ -47,21 +57,24 @@ export function RecordingControls({
 }: RecordingControlsProps) {
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
-  const startRef = useRef(0);
+  const elapsedRef = useRef(0);
 
-  // Elapsed timer while recording
+  // Elapsed timer while recording (pauses when paused)
   useEffect(() => {
-    if (isRecording) {
-      startRef.current = Date.now();
-      setElapsed(0);
+    if (isRecording && !isPaused) {
       timerRef.current = setInterval(() => {
-        setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+        elapsedRef.current += 1;
+        setElapsed(elapsedRef.current);
       }, 1000);
+    } else if (isPaused) {
+      clearInterval(timerRef.current);
     } else {
       clearInterval(timerRef.current);
+      elapsedRef.current = 0;
+      setElapsed(0);
     }
     return () => clearInterval(timerRef.current);
-  }, [isRecording]);
+  }, [isRecording, isPaused]);
 
   const formatTime = (secs: number): string => {
     const m = Math.floor(secs / 60);
@@ -93,7 +106,9 @@ export function RecordingControls({
               />
             </div>
             <p className="mt-1 text-center text-xs text-white/70">
-              Uploading... {uploadProgress ?? 0}%
+              {(uploadProgress ?? 0) >= 70 && (uploadProgress ?? 0) < 100
+                ? 'Compressing & saving...'
+                : `Uploading... ${uploadProgress ?? 0}%`}
             </p>
           </div>
         )}
@@ -130,33 +145,66 @@ export function RecordingControls({
     );
   }
 
-  // Recording state: stop button with duration
+  // Recording / Paused state
   if (isRecording) {
     return (
-      <div className="absolute bottom-0 left-0 right-0 z-50 flex flex-col items-center bg-gradient-to-t from-black/60 to-transparent pb-10 pt-16">
-        <p className="mb-3 font-mono text-lg font-bold text-white">
+      <div className="absolute bottom-0 left-0 right-0 z-50 flex flex-col items-center bg-gradient-to-t from-black/60 to-transparent pb-10 pt-16 pointer-events-none">
+        {/* Duration */}
+        <p className={cn(
+          'mb-4 font-mono text-lg font-bold',
+          isPaused ? 'text-amber-400' : 'text-white'
+        )}>
           {formatTime(elapsed)}
+          {isPaused && <span className="ml-2 text-xs font-medium">PAUSED</span>}
         </p>
-        <button
-          type="button"
-          onClick={onStopRecording}
-          className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-transparent transition-all hover:bg-white/10 active:scale-90"
-          aria-label="Stop recording"
-        >
-          <Square className="h-6 w-6 fill-white text-white" />
-        </button>
-        <p className="mt-2 text-xs text-white/60">Tap to stop</p>
+
+        {/* Button row: Pause/Resume + Stop */}
+        <div className="flex items-center gap-8 pointer-events-auto">
+          {/* Pause / Resume button */}
+          {isPaused ? (
+            <button
+              type="button"
+              onClick={onResumeRecording}
+              className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-transparent transition-all hover:bg-white/10 active:scale-90"
+              aria-label="Resume recording"
+            >
+              <Play className="ml-1 h-7 w-7 fill-white text-white" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onPauseRecording}
+              className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-transparent transition-all hover:bg-white/10 active:scale-90"
+              aria-label="Pause recording"
+            >
+              <Pause className="h-7 w-7 fill-white text-white" />
+            </button>
+          )}
+
+          {/* Stop button */}
+          <button
+            type="button"
+            onClick={onStopRecording}
+            className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-red-400 bg-transparent transition-all hover:bg-red-500/20 active:scale-90"
+            aria-label="Stop recording"
+          >
+            <Square className="h-5 w-5 fill-red-400 text-red-400" />
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-white/50">
+          {isPaused ? 'Tap play to resume' : 'Tap pause to pause, square to stop'}
+        </p>
       </div>
     );
   }
 
   // Pre-recording: record button
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-50 flex flex-col items-center bg-gradient-to-t from-black/60 to-transparent pb-10 pt-16">
+    <div className="absolute bottom-0 left-0 right-0 z-50 flex flex-col items-center bg-gradient-to-t from-black/60 to-transparent pb-10 pt-16 pointer-events-none">
       <button
         type="button"
         onClick={onStartRecording}
-        className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white transition-all hover:scale-105 active:scale-95"
+        className="pointer-events-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-white transition-all hover:scale-105 active:scale-95"
         aria-label="Start recording"
       >
         <span className="h-14 w-14 rounded-full bg-red-500" />

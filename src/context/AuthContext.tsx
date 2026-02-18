@@ -24,6 +24,7 @@ export interface UserData {
   email_verified: boolean;
   onboarding_complete: boolean;
   is_admin: boolean;
+  is_creator: boolean;
   can_host: boolean;
   preferred_translation: string;
   verse_mode: 'daily_verse' | 'verse_by_category';

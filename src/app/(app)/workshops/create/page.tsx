@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { workshopLabel } from '@/lib/utils/workshopLabel';
 import { CreateWorkshopForm } from '@/components/workshop/CreateWorkshopForm';
 import { Card } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -10,6 +11,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 export default function CreateWorkshopPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const wl = workshopLabel(user?.mode);
 
   if (loading) {
     return (
@@ -48,7 +50,7 @@ export default function CreateWorkshopPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="text-lg font-semibold text-text dark:text-text-dark">
-            Create Workshop
+            Create {wl.singular}
           </h1>
         </div>
 
@@ -80,7 +82,7 @@ export default function CreateWorkshopPage() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <h1 className="text-lg font-semibold text-text dark:text-text-dark">
-          Create Workshop
+          Create {wl.singular}
         </h1>
       </div>
 

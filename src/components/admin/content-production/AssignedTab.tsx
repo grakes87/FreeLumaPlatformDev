@@ -4,7 +4,6 @@ import { useState, useMemo } from 'react';
 import {
   Users,
   Calendar,
-  Shuffle,
   ChevronDown,
   User as UserIcon,
   Loader2,
@@ -44,7 +43,6 @@ type ViewMode = 'by-day' | 'by-creator';
 export function AssignedTab({ days, month, mode, creators, onRefresh }: AssignedTabProps) {
   const toast = useToast();
   const [view, setView] = useState<ViewMode>('by-day');
-  const [autoAssigning, setAutoAssigning] = useState(false);
   const [reassigningId, setReassigningId] = useState<number | null>(null);
 
   // Only show days that have a creator assigned
@@ -80,26 +78,6 @@ export function AssignedTab({ days, month, mode, creators, onRefresh }: Assigned
       a.creator.name.localeCompare(b.creator.name)
     );
   }, [assignedDays, creators]);
-
-  const handleAutoAssign = async () => {
-    setAutoAssigning(true);
-    try {
-      const res = await fetch('/api/admin/content-production/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ action: 'auto_assign', month, mode }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Auto-assign failed');
-      toast.success(`Assigned ${data.assigned} days (${data.skipped} skipped)`);
-      onRefresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Auto-assign failed');
-    } finally {
-      setAutoAssigning(false);
-    }
-  };
 
   const handleReassign = async (dailyContentId: number, creatorId: number) => {
     setReassigningId(dailyContentId);
@@ -145,10 +123,6 @@ export function AssignedTab({ days, month, mode, creators, onRefresh }: Assigned
     <div className="space-y-4">
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
-        <Button size="sm" onClick={handleAutoAssign} loading={autoAssigning}>
-          <Shuffle className="h-4 w-4" /> Auto-Assign
-        </Button>
-
         <div className="ml-auto flex rounded-lg border border-border dark:border-border-dark">
           <button
             type="button"
@@ -180,7 +154,7 @@ export function AssignedTab({ days, month, mode, creators, onRefresh }: Assigned
       {assignedDays.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-12 text-text-muted dark:border-border-dark dark:text-text-muted-dark">
           <Users className="h-10 w-10" />
-          <p className="text-sm">No days assigned yet. Use Auto-Assign to distribute content to creators.</p>
+          <p className="text-sm">No days assigned yet. Use Auto-Assign in the Unassigned tab to distribute content to creators.</p>
         </div>
       ) : view === 'by-day' ? (
         /* By Day View */

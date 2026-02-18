@@ -1,6 +1,8 @@
 'use client';
 
 import { cn } from '@/lib/utils/cn';
+import { useAuth } from '@/hooks/useAuth';
+import { workshopLabel } from '@/lib/utils/workshopLabel';
 
 export type WorkshopTab = 'upcoming' | 'past' | 'my';
 
@@ -22,12 +24,6 @@ export interface WorkshopFiltersProps {
   categoriesLoading?: boolean;
 }
 
-const TABS: { key: WorkshopTab; label: string }[] = [
-  { key: 'upcoming', label: 'Upcoming' },
-  { key: 'past', label: 'Past' },
-  { key: 'my', label: 'My Workshops' },
-];
-
 /**
  * Filter bar for workshop listing with tab row and category chips.
  */
@@ -39,6 +35,15 @@ export function WorkshopFilters({
   categories,
   categoriesLoading,
 }: WorkshopFiltersProps) {
+  const { user } = useAuth();
+  const wl = workshopLabel(user?.mode);
+
+  const TABS: { key: WorkshopTab; label: string }[] = [
+    { key: 'upcoming', label: 'Upcoming' },
+    { key: 'past', label: 'Past' },
+    { key: 'my', label: `My ${wl.plural}` },
+  ];
+
   return (
     <div className="space-y-3">
       {/* Tab row */}

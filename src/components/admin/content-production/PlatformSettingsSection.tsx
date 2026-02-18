@@ -14,36 +14,108 @@ interface SettingField {
   placeholder: string;
 }
 
-const SETTINGS_FIELDS: SettingField[] = [
+interface SettingGroup {
+  title: string;
+  fields: SettingField[];
+}
+
+const SETTINGS_GROUPS: SettingGroup[] = [
   {
-    key: 'elevenlabs_api_key',
-    label: 'ElevenLabs API Key',
-    type: 'password',
-    placeholder: 'sk_...',
+    title: 'ElevenLabs',
+    fields: [
+      {
+        key: 'elevenlabs_api_key',
+        label: 'API Key',
+        type: 'password',
+        placeholder: 'sk_...',
+      },
+    ],
   },
   {
-    key: 'elevenlabs_voice_id',
-    label: 'ElevenLabs Voice ID',
-    type: 'text',
-    placeholder: 'voice_...',
+    title: 'ElevenLabs — English Voices (rotate)',
+    fields: [
+      {
+        key: 'elevenlabs_voice_1',
+        label: 'Voice 1 ID',
+        type: 'text',
+        placeholder: 'PoPHDFYHijTq7YiSCwE3',
+      },
+      {
+        key: 'elevenlabs_voice_2',
+        label: 'Voice 2 ID',
+        type: 'text',
+        placeholder: 'pjcYQlDFKMbcOUp6F5GD',
+      },
+      {
+        key: 'elevenlabs_voice_3',
+        label: 'Voice 3 ID',
+        type: 'text',
+        placeholder: '',
+      },
+    ],
   },
   {
-    key: 'murf_api_key',
-    label: 'Murf API Key',
-    type: 'password',
-    placeholder: 'murf_...',
+    title: 'Murf',
+    fields: [
+      {
+        key: 'murf_api_key',
+        label: 'API Key',
+        type: 'password',
+        placeholder: 'ap2_...',
+      },
+    ],
   },
   {
-    key: 'murf_voice_id',
-    label: 'Murf Voice ID',
-    type: 'text',
-    placeholder: 'en-US-...',
+    title: 'Murf — Spanish Voices (rotate)',
+    fields: [
+      {
+        key: 'murf_voice_es_1',
+        label: 'Voice 1 ID',
+        type: 'text',
+        placeholder: 'es-MX-carlos',
+      },
+      {
+        key: 'murf_style_es_1',
+        label: 'Voice 1 Style',
+        type: 'text',
+        placeholder: 'Conversation',
+      },
+      {
+        key: 'murf_voice_es_2',
+        label: 'Voice 2 ID',
+        type: 'text',
+        placeholder: 'es-MX-luisa',
+      },
+      {
+        key: 'murf_style_es_2',
+        label: 'Voice 2 Style',
+        type: 'text',
+        placeholder: 'Conversation',
+      },
+      {
+        key: 'murf_voice_es_3',
+        label: 'Voice 3 ID',
+        type: 'text',
+        placeholder: 'es-MX-alejandro',
+      },
+      {
+        key: 'murf_style_es_3',
+        label: 'Voice 3 Style',
+        type: 'text',
+        placeholder: 'Conversation',
+      },
+    ],
   },
   {
-    key: 'heygen_api_key',
-    label: 'HeyGen API Key',
-    type: 'password',
-    placeholder: 'hg_...',
+    title: 'HeyGen',
+    fields: [
+      {
+        key: 'heygen_api_key',
+        label: 'API Key',
+        type: 'password',
+        placeholder: 'hg_...',
+      },
+    ],
   },
 ];
 
@@ -212,14 +284,23 @@ export default function PlatformSettingsSection() {
         </p>
       </div>
 
-      <div className="space-y-4">
-        {SETTINGS_FIELDS.map((field) => (
-          <SettingRow
-            key={field.key}
-            field={field}
-            value={settings[field.key] || ''}
-            onSave={handleSave}
-          />
+      <div className="space-y-6">
+        {SETTINGS_GROUPS.map((group) => (
+          <div key={group.title} className="space-y-3">
+            <h4 className="text-sm font-semibold text-text dark:text-text-dark">
+              {group.title}
+            </h4>
+            <div className="space-y-3 rounded-xl border border-border bg-surface-hover/30 p-4 dark:border-border-dark dark:bg-surface-hover-dark/30">
+              {group.fields.map((field) => (
+                <SettingRow
+                  key={field.key}
+                  field={field}
+                  value={settings[field.key] || ''}
+                  onSave={handleSave}
+                />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>

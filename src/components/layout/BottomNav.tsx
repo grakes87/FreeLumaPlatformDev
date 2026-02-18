@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils/cn';
+import { workshopLabel } from '@/lib/utils/workshopLabel';
 import { CreatePicker } from './CreatePicker';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 
@@ -21,6 +22,8 @@ interface NavTab {
   icon: React.ElementType;
   label: string;
   bibleOnly?: boolean;
+  iconKey?: string; // e.g., 'tab-1' → resolves to /nav-icons/tab-1-{mode}.png
+  iconSize?: string; // Tailwind size override, e.g., 'h-12 w-12'
 }
 
 /**
@@ -32,15 +35,15 @@ interface NavTab {
  * Workshops tab: visible for all modes
  */
 const LEFT_TABS: NavTab[] = [
-  { href: '/', icon: Sparkles, label: 'Daily Post' },
-  { href: '/prayer-wall', icon: Heart, label: 'Prayer Wall', bibleOnly: true },
-  { href: '/feed', icon: MessageSquare, label: 'Feed' },
+  { href: '/', icon: Sparkles, label: 'Daily Post', iconKey: 'tab-1' },
+  { href: '/prayer-wall', icon: Heart, label: 'Prayer Wall', bibleOnly: true, iconKey: 'tab-2' },
+  { href: '/feed', icon: MessageSquare, label: 'Feed', iconKey: 'tab-3', iconSize: 'h-12 w-12' },
 ];
 
-const RIGHT_TABS: NavTab[] = [
-  { href: '/workshops', icon: Presentation, label: 'Workshops' },
-  { href: '/watch', icon: Play, label: 'Watch' },
-  { href: '/profile', icon: Sparkles, label: 'Profile' },  // icon unused for profile tab
+const RIGHT_TABS_BASE: Omit<NavTab, 'label'>[] = [
+  { href: '/workshops', icon: Presentation, iconKey: 'tab-4' },
+  { href: '/watch', icon: Play },
+  { href: '/profile', icon: Sparkles },  // icon unused for profile tab
 ];
 
 interface BottomNavProps {
@@ -54,6 +57,12 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const mode = user?.mode ?? 'bible';
+  const wl = workshopLabel(mode);
+
+  const RIGHT_TABS: NavTab[] = RIGHT_TABS_BASE.map((t) => ({
+    ...t,
+    label: t.href === '/workshops' ? wl.plural : t.href === '/watch' ? 'Watch' : 'Profile',
+  }));
 
   const filterTabs = (tabs: NavTab[]) =>
     tabs.filter((tab) => !tab.bibleOnly || mode === 'bible');
@@ -110,6 +119,22 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
               size={28}
             />
           </div>
+        ) : tab.iconKey ? (
+          <div
+            className={cn(tab.iconSize || 'h-10 w-10', 'transition-transform', isActive && 'scale-110')}
+            style={{
+              backgroundColor: 'currentColor',
+              maskImage: `url('/nav-icons/${tab.iconKey}-${mode}.png')`,
+              WebkitMaskImage: `url('/nav-icons/${tab.iconKey}-${mode}.png')`,
+              maskSize: 'contain',
+              WebkitMaskSize: 'contain',
+              maskRepeat: 'no-repeat',
+              WebkitMaskRepeat: 'no-repeat',
+              maskPosition: 'center',
+              WebkitMaskPosition: 'center',
+            } as React.CSSProperties}
+            aria-hidden="true"
+          />
         ) : (
           <Icon
             className={cn('h-6 w-6', isActive && 'scale-110')}

@@ -20,6 +20,7 @@ export interface DailyContentAttributes {
   camera_script: string | null;
   devotional_reflection: string | null;
   meditation_script: string | null;
+  meditation_audio_url: string | null;
   background_prompt: string | null;
   rejection_note: string | null;
   creator_video_url: string | null;
@@ -40,6 +41,7 @@ export interface DailyContentCreationAttributes extends Optional<DailyContentAtt
   | 'camera_script'
   | 'devotional_reflection'
   | 'meditation_script'
+  | 'meditation_audio_url'
   | 'background_prompt'
   | 'rejection_note'
   | 'creator_video_url'
@@ -65,6 +67,7 @@ class DailyContent extends Model<DailyContentAttributes, DailyContentCreationAtt
   declare camera_script: string | null;
   declare devotional_reflection: string | null;
   declare meditation_script: string | null;
+  declare meditation_audio_url: string | null;
   declare background_prompt: string | null;
   declare rejection_note: string | null;
   declare creator_video_url: string | null;
@@ -145,6 +148,10 @@ DailyContent.init(
     },
     meditation_script: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    meditation_audio_url: {
+      type: DataTypes.STRING(500),
       allowNull: true,
     },
     background_prompt: {

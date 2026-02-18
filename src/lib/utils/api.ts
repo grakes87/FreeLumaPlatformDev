@@ -4,8 +4,8 @@ const NO_CACHE_HEADERS = {
   'Cache-Control': 'private, no-store',
 };
 
-export function successResponse<T>(data: T, status: number = 200): NextResponse {
-  return NextResponse.json(data, { status, headers: NO_CACHE_HEADERS });
+export function successResponse<T>(data: T, status: number = 200, headers?: Record<string, string>): NextResponse {
+  return NextResponse.json(data, { status, headers: headers ?? NO_CACHE_HEADERS });
 }
 
 export function errorResponse(message: string, status: number = 400): NextResponse {

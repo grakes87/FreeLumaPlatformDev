@@ -152,8 +152,11 @@ export function usePrayerWall(): UsePrayerWallReturn {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         console.error('[usePrayerWall] fetch error:', err);
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        // Don't clear loading state if this fetch was aborted — a newer fetch owns it
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [activeTab, statusFilter, cursor]

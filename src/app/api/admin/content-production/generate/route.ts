@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifyJWT } from '@/lib/auth/jwt';
+
+export const maxDuration = 300; // 5 minutes — full month generation with TTS
+
 import {
   generateMonthContent,
   generateDayContent,

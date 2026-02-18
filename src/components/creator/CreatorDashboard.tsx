@@ -5,6 +5,7 @@ import { CheckCircle2, Clock, ThumbsUp, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { MonthSelector } from '@/components/admin/content-production/MonthSelector';
 import { AssignmentList } from './AssignmentList';
+import { AssignmentDetail } from './AssignmentDetail';
 
 interface CreatorStats {
   total: {
@@ -29,7 +30,7 @@ export interface Assignment {
   title: string;
   verse_reference: string | null;
   has_camera_script: boolean;
-  has_creator_video: boolean;
+  has_lumashort_video: boolean;
   has_audio: boolean;
   has_srt: boolean;
 }
@@ -51,6 +52,7 @@ export default function CreatorDashboard() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingAssignments, setLoadingAssignments] = useState(true);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
 
   // Fetch stats on mount
   useEffect(() => {
@@ -157,8 +159,17 @@ export default function CreatorDashboard() {
         <AssignmentList
           assignments={assignments}
           loading={loadingAssignments}
+          onSelectAssignment={setSelectedAssignmentId}
         />
       </section>
+
+      {/* Detail overlay for submitted assignments */}
+      {selectedAssignmentId !== null && (
+        <AssignmentDetail
+          assignmentId={selectedAssignmentId}
+          onClose={() => setSelectedAssignmentId(null)}
+        />
+      )}
     </div>
   );
 }

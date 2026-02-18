@@ -17,6 +17,7 @@ import {
   Play,
   Pause,
   Download,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -167,21 +168,32 @@ export function AssignmentDetail({ assignmentId, onClose }: AssignmentDetailProp
   }, [onClose]);
 
   const statusCfg = content ? STATUS_CONFIG[content.status] ?? STATUS_CONFIG.empty : STATUS_CONFIG.empty;
-  const canRecord = content && (content.status === 'assigned' || content.status === 'rejected');
 
   const overlay = (
-    <div className="fixed inset-0 z-50 flex flex-col bg-bg dark:bg-bg-dark">
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-bg dark:bg-bg-dark"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
       {/* Top bar */}
       <header className="flex items-center justify-between border-b border-border px-4 py-3 dark:border-border-dark">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {/* Close button — left side, prominent */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-text transition-colors hover:bg-slate-300 dark:bg-slate-700 dark:text-text-dark dark:hover:bg-slate-600"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
           {content && (
             <>
-              <span className="text-sm font-medium text-text dark:text-text-dark">
+              <span className="truncate text-sm font-medium text-text dark:text-text-dark">
                 {formatDate(content.post_date)}
               </span>
               <span
                 className={cn(
-                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                  'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
                   content.mode === 'bible'
                     ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
                     : 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300'
@@ -196,7 +208,7 @@ export function AssignmentDetail({ assignmentId, onClose }: AssignmentDetailProp
               </span>
               <span
                 className={cn(
-                  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                  'inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
                   statusCfg.bg,
                   statusCfg.text
                 )}
@@ -206,14 +218,6 @@ export function AssignmentDetail({ assignmentId, onClose }: AssignmentDetailProp
             </>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface-hover hover:text-text dark:text-text-muted-dark dark:hover:bg-surface-hover-dark dark:hover:text-text-dark"
-          aria-label="Close"
-        >
-          <X className="h-5 w-5" />
-        </button>
       </header>
 
       {/* Content body */}
@@ -245,6 +249,34 @@ export function AssignmentDetail({ assignmentId, onClose }: AssignmentDetailProp
                     {content.rejection_note}
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Submitted video preview + re-record */}
+            {content.lumashort_video_url && (
+              <div className="rounded-xl border border-border bg-surface p-4 dark:border-border-dark dark:bg-surface-dark">
+                <div className="mb-3 flex items-center gap-2">
+                  <Camera className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-text dark:text-text-dark">
+                    Your Recording
+                  </h3>
+                </div>
+                <video
+                  src={content.lumashort_video_url}
+                  className="mx-auto aspect-[9/16] max-h-[50vh] rounded-lg bg-black"
+                  controls
+                  playsInline
+                  preload="metadata"
+                />
+                {(content.status === 'submitted' || content.status === 'rejected') && (
+                  <Link
+                    href={`/creator/record/${content.id}`}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark active:scale-[0.98]"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Re-record Video
+                  </Link>
+                )}
               </div>
             )}
 
@@ -337,20 +369,7 @@ export function AssignmentDetail({ assignmentId, onClose }: AssignmentDetailProp
         )}
       </div>
 
-      {/* Bottom action bar */}
-      {canRecord && (
-        <div className="border-t border-border px-4 py-3 dark:border-border-dark">
-          <div className="mx-auto max-w-2xl">
-            <Link
-              href={`/creator/record/${assignmentId}`}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
-            >
-              <Camera className="h-4 w-4" />
-              Record Video
-            </Link>
-          </div>
-        </div>
-      )}
+      {/* Record Video button removed — creators navigate to record from the dashboard */}
     </div>
   );
 

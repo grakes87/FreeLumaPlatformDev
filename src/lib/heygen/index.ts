@@ -58,9 +58,9 @@ export interface VideoStatus {
 export async function createHeygenVideo(params: CreateVideoParams): Promise<string> {
   const { avatarId, scriptText, apiKey, callbackUrl, voiceId } = params;
 
-  // Build voice config - use specific voice ID if provided, otherwise text-to-speech
+  // Build voice config - always text-to-speech, optionally with a specific voice ID
   const voiceConfig = voiceId
-    ? { type: 'audio', voice_id: voiceId, input_text: scriptText }
+    ? { type: 'text', voice_id: voiceId, input_text: scriptText }
     : { type: 'text', input_text: scriptText };
 
   const body = {
@@ -82,6 +82,8 @@ export async function createHeygenVideo(params: CreateVideoParams): Promise<stri
     ...(callbackUrl ? { callback_url: callbackUrl } : {}),
   };
 
+  console.log('[HeyGen] Request body:', JSON.stringify(body, null, 2));
+
   const response = await fetch(`${HEYGEN_BASE_URL}/v2/video/generate`, {
     method: 'POST',
     headers: {
@@ -93,6 +95,7 @@ export async function createHeygenVideo(params: CreateVideoParams): Promise<stri
 
   if (!response.ok) {
     const text = await response.text().catch(() => 'Unknown error');
+    console.error('[HeyGen] Error response:', response.status, text);
     let errorMessage: string;
     try {
       const parsed = JSON.parse(text);

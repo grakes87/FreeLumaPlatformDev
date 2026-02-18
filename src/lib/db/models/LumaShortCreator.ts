@@ -15,6 +15,7 @@ export interface LumaShortCreatorAttributes {
   can_positivity: boolean;
   is_ai: boolean;
   heygen_avatar_id: string | null;
+  heygen_voice_id: string | null;
   active: boolean;
   created_at: Date;
   updated_at: Date;
@@ -32,6 +33,7 @@ export interface LumaShortCreatorCreationAttributes extends Optional<LumaShortCr
   | 'can_positivity'
   | 'is_ai'
   | 'heygen_avatar_id'
+  | 'heygen_voice_id'
   | 'active'
   | 'created_at'
   | 'updated_at'
@@ -51,6 +53,7 @@ class LumaShortCreator extends Model<LumaShortCreatorAttributes, LumaShortCreato
   declare can_positivity: boolean;
   declare is_ai: boolean;
   declare heygen_avatar_id: string | null;
+  declare heygen_voice_id: string | null;
   declare active: boolean;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
@@ -117,6 +120,10 @@ LumaShortCreator.init(
       defaultValue: false,
     },
     heygen_avatar_id: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    heygen_voice_id: {
       type: DataTypes.STRING(255),
       allowNull: true,
     },

@@ -12,7 +12,8 @@ import { notifyCreatorAssignment } from '@/lib/content-pipeline/notifications';
  */
 export async function autoAssignMonth(
   month: string,
-  mode: 'bible' | 'positivity'
+  mode: 'bible' | 'positivity',
+  language?: string
 ): Promise<{ assigned: number; skipped: number }> {
   const { LumaShortCreator, DailyContent } = await import('@/lib/db/models');
 
@@ -41,12 +42,16 @@ export async function autoAssignMonth(
   }
 
   // Count existing assignments this month per creator
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const existingWhere: any = {
+    post_date: { [Op.between]: [startDate, endDate] },
+    mode,
+    creator_id: { [Op.ne]: null },
+  };
+  if (language) existingWhere.language = language;
+
   const existingAssignments = await DailyContent.findAll({
-    where: {
-      post_date: { [Op.between]: [startDate, endDate] },
-      mode,
-      creator_id: { [Op.ne]: null },
-    },
+    where: existingWhere,
     attributes: ['creator_id'],
   });
 
@@ -57,13 +62,17 @@ export async function autoAssignMonth(
   }
 
   // Query unassigned generated content for this month + mode
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const unassignedWhere: any = {
+    post_date: { [Op.between]: [startDate, endDate] },
+    mode,
+    creator_id: null,
+    status: { [Op.in]: ['empty', 'generated'] },
+  };
+  if (language) unassignedWhere.language = language;
+
   const unassigned = await DailyContent.findAll({
-    where: {
-      post_date: { [Op.between]: [startDate, endDate] },
-      mode,
-      creator_id: null,
-      status: 'generated',
-    },
+    where: unassignedWhere,
     order: [['post_date', 'ASC']],
   });
 
@@ -151,8 +160,8 @@ export async function reassignDay(
   // Update creator assignment
   const updates: { creator_id: number; status?: DailyContentStatus } = { creator_id: newCreatorId };
 
-  // Only upgrade status from 'generated' to 'assigned'
-  if (content.status === 'generated') {
+  // Upgrade status to 'assigned' when coming from 'empty' or 'generated'
+  if (content.status === 'empty' || content.status === 'generated') {
     updates.status = 'assigned';
   }
   // For 'assigned', 'submitted', 'rejected' -- keep current status, just change creator

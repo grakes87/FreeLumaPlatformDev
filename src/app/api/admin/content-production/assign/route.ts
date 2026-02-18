@@ -9,6 +9,7 @@ const assignSchema = z.discriminatedUnion('action', [
     action: z.literal('auto_assign'),
     month: z.string().regex(/^\d{4}-\d{2}$/, 'Month must be YYYY-MM format'),
     mode: z.enum(['bible', 'positivity']),
+    language: z.string().min(2).max(5).optional(),
   }),
   z.object({
     action: z.literal('reassign'),
@@ -43,7 +44,7 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
     const data = parsed.data;
 
     if (data.action === 'auto_assign') {
-      const result = await autoAssignMonth(data.month, data.mode);
+      const result = await autoAssignMonth(data.month, data.mode, data.language);
       return successResponse({
         assigned: result.assigned,
         skipped: result.skipped,

@@ -64,16 +64,12 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
     for (const id of followedIds) fofIds.delete(id);
   }
 
-  // 4. Build WHERE for candidate pool (last 7 days)
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
+  // 4. Build WHERE for candidate pool (all public text posts)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const andConditions: any[] = [
     {
       post_type: 'text',
       visibility: 'public',
-      created_at: { [Op.gte]: sevenDaysAgo },
     },
   ];
 
@@ -100,7 +96,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
   const candidates = await Post.findAll({
     where: { [Op.and]: andConditions },
     order: [['created_at', 'DESC']],
-    limit: 200,
+    limit: 2000,
     subQuery: false,
     include: [
       {
@@ -212,7 +208,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
   const scored = candidateData.map(({ post, json, reactionCount, commentCount, repostCount, rawEngagement }) => {
     // Recency: exponential decay
     const hoursSincePost = (now - new Date(post.created_at).getTime()) / (1000 * 60 * 60);
-    const recencyScore = 1 / (1 + hoursSincePost / 24);
+    const recencyScore = 1 / (1 + hoursSincePost / 168); // 168h = 7 days half-life
 
     // Engagement: normalized
     const engagementScore = rawEngagement / maxEngagement;
@@ -391,11 +387,10 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
     ? encodeFypCursor({ score: lastItem.score, id: lastItem.post.id })
     : null;
 
-  return NextResponse.json({
-    posts: formatted,
-    next_cursor: nextCursor,
-    has_more: hasMore,
-  });
+  return NextResponse.json(
+    { posts: formatted, next_cursor: nextCursor, has_more: hasMore },
+    { headers: { 'Cache-Control': 'private, no-store' } }
+  );
 });
 
 // ---- FYP cursor helpers (score + id compound) ----

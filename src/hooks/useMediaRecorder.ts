@@ -16,6 +16,8 @@ export interface UseMediaRecorderResult {
   stream: MediaStream | null;
   /** Whether actively recording */
   isRecording: boolean;
+  /** Whether recording is paused */
+  isPaused: boolean;
   /** Recorded video blob (null until recording stopped) */
   recordedBlob: Blob | null;
   /** Object URL for previewing recorded video (null until recording stopped) */
@@ -28,6 +30,10 @@ export interface UseMediaRecorderResult {
   startCamera: () => Promise<void>;
   /** Begin recording from the active stream */
   startRecording: () => void;
+  /** Pause the active recording */
+  pauseRecording: () => void;
+  /** Resume a paused recording */
+  resumeRecording: () => void;
   /** Stop recording and produce a blob */
   stopRecording: () => void;
   /** Clear recorded blob/URL but keep camera running */
@@ -40,12 +46,14 @@ export interface UseMediaRecorderResult {
  * Hook for capturing portrait video from the front-facing camera via MediaRecorder.
  *
  * Lifecycle:
- *   startCamera() -> startRecording() -> stopRecording() -> [preview / resetRecording() / submit]
+ *   startCamera() -> startRecording() -> [pauseRecording() / resumeRecording()] -> stopRecording()
+ *   -> [preview / resetRecording() / submit]
  *   stopCamera() on unmount
  */
 export function useMediaRecorder(): UseMediaRecorderResult {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +61,10 @@ export function useMediaRecorder(): UseMediaRecorderResult {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Canvas-based portrait correction for browsers that give landscape frames
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const canvasCleanupRef = useRef<(() => void) | null>(null);
 
   // Detect supported MIME type
   const mimeType =
@@ -71,25 +83,107 @@ export function useMediaRecorder(): UseMediaRecorderResult {
       return;
     }
 
+    // getUserMedia requires HTTPS (secure context) on mobile browsers
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const isInsecure = typeof window !== 'undefined' && window.isSecureContext === false;
+      setError(
+        isInsecure
+          ? 'Camera requires HTTPS. Please access this site over a secure connection.'
+          : 'Camera API not available on this browser.'
+      );
+      return;
+    }
+
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'user',
           width: { ideal: 1080 },
           height: { ideal: 1920 },
+          aspectRatio: { ideal: 9 / 16 },
         },
         audio: true,
       });
+
+      // Check if camera gave landscape frames (common on Android Chrome).
+      // If so, set up a canvas pipeline that center-crops to 9:16 portrait
+      // so the MediaRecorder captures portrait video natively.
+      const videoTrack = mediaStream.getVideoTracks()[0];
+      const settings = videoTrack.getSettings();
+      const sw = settings.width ?? 0;
+      const sh = settings.height ?? 0;
+
+      if (sw > sh && sw > 0 && sh > 0) {
+        try {
+          // Calculate center-crop region: keep full height, crop width to 9:16
+          const cropW = Math.round(sh * (9 / 16));
+          const cropX = Math.round((sw - cropW) / 2);
+
+          // Output canvas at 9:16 portrait dimensions
+          const canvasW = Math.min(1080, cropW * 2);
+          const canvasH = Math.round(canvasW * (16 / 9));
+
+          const canvas = document.createElement('canvas');
+          canvas.width = canvasW;
+          canvas.height = canvasH;
+          const ctx = canvas.getContext('2d')!;
+
+          // Hidden video element to feed the canvas
+          const sourceVideo = document.createElement('video');
+          sourceVideo.srcObject = mediaStream;
+          sourceVideo.muted = true;
+          sourceVideo.playsInline = true;
+          sourceVideo.setAttribute('playsinline', '');
+          await sourceVideo.play();
+
+          let active = true;
+          const draw = () => {
+            if (!active) return;
+            // Center-crop from landscape source to portrait canvas
+            ctx.drawImage(
+              sourceVideo,
+              cropX, 0, cropW, sh,     // source: center-cropped region
+              0, 0, canvasW, canvasH   // dest: fill portrait canvas
+            );
+            // Use requestVideoFrameCallback for perfect sync if available
+            if ('requestVideoFrameCallback' in sourceVideo) {
+              (sourceVideo as any).requestVideoFrameCallback(draw);
+            } else {
+              requestAnimationFrame(draw);
+            }
+          };
+          draw();
+
+          // Portrait stream = canvas video + original audio
+          const portraitStream = canvas.captureStream(30);
+          mediaStream.getAudioTracks().forEach((t) => portraitStream.addTrack(t.clone()));
+          recordingStreamRef.current = portraitStream;
+
+          canvasCleanupRef.current = () => {
+            active = false;
+            sourceVideo.pause();
+            sourceVideo.srcObject = null;
+          };
+
+          console.log(
+            `[useMediaRecorder] Landscape detected (${sw}×${sh}), portrait crop pipeline active (${canvasW}×${canvasH})`
+          );
+        } catch (canvasErr) {
+          console.warn('[useMediaRecorder] Portrait pipeline failed, using raw stream:', canvasErr);
+        }
+      }
 
       streamRef.current = mediaStream;
       setStream(mediaStream);
     } catch (err) {
       const message =
         err instanceof DOMException && err.name === 'NotAllowedError'
-          ? 'Camera access denied. Please allow camera and microphone permissions.'
+          ? 'Camera access denied. Please allow camera and microphone permissions in your browser settings.'
           : err instanceof DOMException && err.name === 'NotFoundError'
             ? 'No camera found. Please connect a camera and try again.'
-            : 'Failed to access camera. Please check permissions.';
+            : err instanceof DOMException && err.name === 'NotReadableError'
+              ? 'Camera is in use by another app. Please close other apps using the camera.'
+              : `Failed to access camera: ${err instanceof Error ? err.message : 'Unknown error'}`;
       setError(message);
     }
   }, []);
@@ -98,7 +192,9 @@ export function useMediaRecorder(): UseMediaRecorderResult {
    * Begin recording from the active stream.
    */
   const startRecording = useCallback(() => {
-    if (!streamRef.current || !mimeType) {
+    // Use portrait-corrected stream if available, otherwise raw camera stream
+    const recordStream = recordingStreamRef.current || streamRef.current;
+    if (!recordStream || !mimeType) {
       setError('Camera not started or recording not supported');
       return;
     }
@@ -111,10 +207,11 @@ export function useMediaRecorder(): UseMediaRecorderResult {
     }
 
     setError(null);
+    setIsPaused(false);
     chunksRef.current = [];
 
     try {
-      const recorder = new MediaRecorder(streamRef.current, { mimeType });
+      const recorder = new MediaRecorder(recordStream, { mimeType });
 
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
@@ -125,6 +222,7 @@ export function useMediaRecorder(): UseMediaRecorderResult {
       recorder.onerror = () => {
         setError('Recording error occurred');
         setIsRecording(false);
+        setIsPaused(false);
       };
 
       recorder.onstop = () => {
@@ -133,6 +231,7 @@ export function useMediaRecorder(): UseMediaRecorderResult {
         setRecordedBlob(blob);
         setRecordedUrl(url);
         setIsRecording(false);
+        setIsPaused(false);
       };
 
       mediaRecorderRef.current = recorder;
@@ -143,6 +242,28 @@ export function useMediaRecorder(): UseMediaRecorderResult {
       console.error('[useMediaRecorder] start error:', err);
     }
   }, [mimeType, recordedUrl]);
+
+  /**
+   * Pause the active recording.
+   */
+  const pauseRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state === 'recording') {
+      recorder.pause();
+      setIsPaused(true);
+    }
+  }, []);
+
+  /**
+   * Resume a paused recording.
+   */
+  const resumeRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state === 'paused') {
+      recorder.resume();
+      setIsPaused(false);
+    }
+  }, []);
 
   /**
    * Stop the active recording. Triggers onstop which sets blob/url.
@@ -164,6 +285,7 @@ export function useMediaRecorder(): UseMediaRecorderResult {
     setRecordedBlob(null);
     setRecordedUrl(null);
     setError(null);
+    setIsPaused(false);
     chunksRef.current = [];
     mediaRecorderRef.current = null;
   }, [recordedUrl]);
@@ -178,6 +300,11 @@ export function useMediaRecorder(): UseMediaRecorderResult {
       recorder.stop();
     }
 
+    // Clean up canvas portrait pipeline
+    canvasCleanupRef.current?.();
+    canvasCleanupRef.current = null;
+    recordingStreamRef.current = null;
+
     // Stop all media tracks
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
@@ -191,6 +318,7 @@ export function useMediaRecorder(): UseMediaRecorderResult {
     }
 
     setIsRecording(false);
+    setIsPaused(false);
     setRecordedBlob(null);
     setRecordedUrl(null);
     chunksRef.current = [];
@@ -204,6 +332,7 @@ export function useMediaRecorder(): UseMediaRecorderResult {
       if (recorder && recorder.state !== 'inactive') {
         recorder.stop();
       }
+      canvasCleanupRef.current?.();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
@@ -213,12 +342,15 @@ export function useMediaRecorder(): UseMediaRecorderResult {
   return {
     stream,
     isRecording,
+    isPaused,
     recordedBlob,
     recordedUrl,
     error,
     mimeType,
     startCamera,
     startRecording,
+    pauseRecording,
+    resumeRecording,
     stopRecording,
     resetRecording,
     stopCamera,

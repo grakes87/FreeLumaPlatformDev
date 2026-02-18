@@ -6,7 +6,6 @@ import type { DailyContentData } from '@/hooks/useDailyContent';
 import { useReactions } from '@/hooks/useReactions';
 import { REACTION_EMOJI_MAP, DAILY_REACTION_TYPES } from '@/lib/utils/constants';
 import type { ReactionType } from '@/lib/utils/constants';
-import { UserAvatar } from '@/components/ui/UserAvatar';
 import { DateNavigator } from './DateNavigator';
 import { ShareButton } from './ShareButton';
 import { ReactionBar } from './ReactionBar';
@@ -194,20 +193,6 @@ export function DailyPostSlide({
             </p>
           )}
 
-          {/* Creator attribution */}
-          {content.creator && (
-            <div className="flex items-center gap-2">
-              <UserAvatar
-                src={content.creator.avatar_url}
-                name={content.creator.name}
-                color={content.creator.avatar_color}
-                size={24}
-              />
-              <span className="text-xs font-medium text-white/60 drop-shadow-md">
-                Recorded by {content.creator.name}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Bottom section: Reaction, Comment, Share in one row */}

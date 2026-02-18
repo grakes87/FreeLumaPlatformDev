@@ -76,6 +76,7 @@ interface CreatorFormData {
   can_positivity: boolean;
   is_ai: boolean;
   heygen_avatar_id: string;
+  heygen_voice_id: string;
 }
 
 const EMPTY_FORM: CreatorFormData = {
@@ -91,6 +92,7 @@ const EMPTY_FORM: CreatorFormData = {
   can_positivity: true,
   is_ai: false,
   heygen_avatar_id: '',
+  heygen_voice_id: '',
 };
 
 const AVAILABLE_LANGUAGES = [
@@ -117,6 +119,12 @@ export function CreatorManager({ onCreatorChange }: CreatorManagerProps) {
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [searchDone, setSearchDone] = useState(false);
+
+  // Inline user creation state
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({ email: '', username: '', display_name: '', password: '' });
+  const [creatingUser, setCreatingUser] = useState(false);
 
   const fetchCreators = useCallback(async () => {
     try {
@@ -125,7 +133,10 @@ export function CreatorManager({ onCreatorChange }: CreatorManagerProps) {
       });
       if (res.ok) {
         const data = await res.json();
-        setCreators(data.creators || []);
+        setCreators((data.creators || []).map((c: Creator) => ({
+          ...c,
+          languages: Array.isArray(c.languages) ? c.languages : JSON.parse(c.languages as unknown as string),
+        })));
       }
     } catch {
       toast.error('Failed to load creators');
@@ -143,6 +154,7 @@ export function CreatorManager({ onCreatorChange }: CreatorManagerProps) {
     async (query: string) => {
       if (query.trim().length < 2) {
         setUserResults([]);
+        setSearchDone(false);
         return;
       }
 
@@ -155,6 +167,7 @@ export function CreatorManager({ onCreatorChange }: CreatorManagerProps) {
         if (res.ok) {
           const data = await res.json();
           setUserResults(data.users || []);
+          setSearchDone(true);
         }
       } catch {
         // Silently fail for search
@@ -179,6 +192,9 @@ export function CreatorManager({ onCreatorChange }: CreatorManagerProps) {
     setSelectedUser(null);
     setUserQuery('');
     setUserResults([]);
+    setSearchDone(false);
+    setShowCreateUser(false);
+    setNewUserForm({ email: '', username: '', display_name: '', password: '' });
     setShowForm(true);
   };
 
@@ -196,6 +212,7 @@ export function CreatorManager({ onCreatorChange }: CreatorManagerProps) {
       can_positivity: creator.can_positivity,
       is_ai: creator.is_ai,
       heygen_avatar_id: creator.heygen_avatar_id || '',
+      heygen_voice_id: (creator as unknown as Record<string, string>).heygen_voice_id || '',
     });
     setEditingId(creator.id);
     setSelectedUser(creator.user ? {
@@ -222,6 +239,44 @@ export function CreatorManager({ onCreatorChange }: CreatorManagerProps) {
     setForm((prev) => ({ ...prev, user_id: user.id }));
     setUserQuery('');
     setUserResults([]);
+  };
+
+  const handleCreateUser = async () => {
+    const { email, username, display_name, password } = newUserForm;
+    if (!email.trim() || !username.trim() || !display_name.trim() || !password.trim()) {
+      toast.error('All fields are required');
+      return;
+    }
+    setCreatingUser(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: email.trim(), username: username.trim(), display_name: display_name.trim(), password: password.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create user');
+
+      const user = data.user;
+      selectUser({
+        id: user.id,
+        username: user.username,
+        display_name: user.display_name,
+        avatar_url: user.avatar_url,
+        avatar_color: user.avatar_color,
+      });
+      if (!form.name) {
+        setForm((prev) => ({ ...prev, name: user.display_name }));
+      }
+      setShowCreateUser(false);
+      setNewUserForm({ email: '', username: '', display_name: '', password: '' });
+      toast.success('User account created');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create user');
+    } finally {
+      setCreatingUser(false);
+    }
   };
 
   const toggleLanguage = (code: string) => {
@@ -259,6 +314,9 @@ export function CreatorManager({ onCreatorChange }: CreatorManagerProps) {
         is_ai: form.is_ai,
         heygen_avatar_id: form.is_ai && form.heygen_avatar_id.trim()
           ? form.heygen_avatar_id.trim()
+          : undefined,
+        heygen_voice_id: form.is_ai && form.heygen_voice_id.trim()
+          ? form.heygen_voice_id.trim()
           : undefined,
       };
 
@@ -566,6 +624,68 @@ export function CreatorManager({ onCreatorChange }: CreatorManagerProps) {
                       ))}
                     </div>
                   )}
+
+                  {/* No results + create user option */}
+                  {searchDone && userResults.length === 0 && userQuery.trim().length >= 2 && !searchingUsers && (
+                    <p className="mt-2 text-xs text-text-muted dark:text-text-muted-dark">
+                      No users found for &quot;{userQuery}&quot;
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Create new user button / form */}
+              {!selectedUser && (
+                <div className="mt-2">
+                  {!showCreateUser ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateUser(true)}
+                      className="text-xs font-medium text-primary hover:underline"
+                    >
+                      + Create new user account
+                    </button>
+                  ) : (
+                    <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 dark:bg-primary/10 space-y-3">
+                      <p className="text-xs font-semibold text-text dark:text-text-dark">New User Account</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <Input
+                          label="Email"
+                          value={newUserForm.email}
+                          onChange={(e) => setNewUserForm((prev) => ({ ...prev, email: e.target.value }))}
+                          placeholder="user@example.com"
+                          type="email"
+                        />
+                        <Input
+                          label="Username"
+                          value={newUserForm.username}
+                          onChange={(e) => setNewUserForm((prev) => ({ ...prev, username: e.target.value }))}
+                          placeholder="username"
+                        />
+                        <Input
+                          label="Display Name"
+                          value={newUserForm.display_name}
+                          onChange={(e) => setNewUserForm((prev) => ({ ...prev, display_name: e.target.value }))}
+                          placeholder="Full Name"
+                        />
+                        <Input
+                          label="Password"
+                          value={newUserForm.password}
+                          onChange={(e) => setNewUserForm((prev) => ({ ...prev, password: e.target.value }))}
+                          placeholder="Temporary password"
+                          type="password"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleCreateUser} loading={creatingUser}>
+                          <Plus className="h-3.5 w-3.5" /> Create User
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => setShowCreateUser(false)} disabled={creatingUser}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -711,7 +831,7 @@ export function CreatorManager({ onCreatorChange }: CreatorManagerProps) {
             </label>
 
             {form.is_ai && (
-              <div className="mt-2 ml-6">
+              <div className="mt-2 ml-6 space-y-3">
                 <Input
                   label="HeyGen Avatar ID"
                   value={form.heygen_avatar_id}
@@ -722,6 +842,17 @@ export function CreatorManager({ onCreatorChange }: CreatorManagerProps) {
                     }))
                   }
                   placeholder="avatar_xxxx"
+                />
+                <Input
+                  label="HeyGen Voice ID"
+                  value={form.heygen_voice_id}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      heygen_voice_id: e.target.value,
+                    }))
+                  }
+                  placeholder="voice_xxxx"
                 />
               </div>
             )}

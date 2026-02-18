@@ -42,3 +42,16 @@ next-env.d.ts
 
 # reference code (not part of new platform)
 Old Code/
+Old Database/
+OldVideos/
+
+# large assets / data exports
+CategoryPhotos.zip
+cache research/
+*.xlsx
+missing-daily-content-export.*
+failed-post-media.*
+test-thumbnail-*
+scripts/bible-data-output.txt
+public/Ico Images/
+public/backgroundmusic/

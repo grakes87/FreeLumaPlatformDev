@@ -47,7 +47,7 @@ export function LoginForm() {
 
       login(result.user, result.token);
       toast.success('Welcome back!');
-      router.push('/');
+      router.push(result.user.is_creator && !result.user.is_admin ? '/creator' : '/');
     } catch {
       setServerError('Something went wrong. Please try again.');
     }

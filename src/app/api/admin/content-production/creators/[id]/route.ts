@@ -16,6 +16,7 @@ const updateCreatorSchema = z.object({
   can_positivity: z.boolean().optional(),
   is_ai: z.boolean().optional(),
   heygen_avatar_id: z.string().max(255).nullable().optional(),
+  heygen_voice_id: z.string().max(255).nullable().optional(),
 });
 
 /**

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react';
 import Link from 'next/link';
-import { Heart, MessageCircle, Bookmark, Repeat2, Volume2, VolumeX, Play, Pencil } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark, Repeat2, Volume2, VolumeX, Play, Pencil, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { REACTION_EMOJI_MAP } from '@/lib/utils/constants';
 import type { ReactionType } from '@/lib/utils/constants';
@@ -67,6 +67,93 @@ function formatCount(n: number): string {
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
   return String(n);
+}
+
+// ---- Media sub-components with loading states ----
+
+function TikTokVideoItem({
+  media,
+  autoPlay,
+  onVideoRef,
+  onClick,
+}: {
+  media: FeedPost['media'][number];
+  autoPlay: boolean;
+  onVideoRef: (id: number, el: HTMLVideoElement | null) => void;
+  onClick: () => void;
+}) {
+  const [videoLoading, setVideoLoading] = useState(true);
+  const [contain, setContain] = useState(false);
+
+  return (
+    <div className="relative h-full w-full bg-black">
+      <video
+        ref={(el) => onVideoRef(media.id, el)}
+        src={media.url}
+        poster={media.thumbnail_url ?? undefined}
+        autoPlay={autoPlay}
+        muted
+        loop
+        playsInline
+        onClick={onClick}
+        className={cn(
+          'h-full w-full',
+          contain ? 'object-contain' : 'object-cover'
+        )}
+        onPlaying={() => setVideoLoading(false)}
+        onCanPlayThrough={() => setVideoLoading(false)}
+        onLoadedMetadata={(e) => {
+          if (!media.width || !media.height) {
+            const v = e.currentTarget;
+            if (v.videoWidth && v.videoHeight) {
+              const ratio = v.videoWidth / v.videoHeight;
+              if (ratio > 0.8 && ratio < 1.2) setContain(true);
+            }
+          }
+        }}
+      />
+      {/* Loading spinner overlay */}
+      {videoLoading && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TikTokImageItem({ media }: { media: FeedPost['media'][number] }) {
+  const [loaded, setLoaded] = useState(false);
+  const [contain, setContain] = useState(false);
+
+  return (
+    <div className="relative h-full w-full bg-black">
+      <img
+        src={media.url}
+        alt="Post media"
+        className={cn(
+          'h-full w-full transition-opacity duration-300',
+          contain ? 'object-contain' : 'object-cover',
+          loaded ? 'opacity-100' : 'opacity-0'
+        )}
+        onLoad={(e) => {
+          setLoaded(true);
+          if (!media.width || !media.height) {
+            const img = e.currentTarget;
+            if (img.naturalWidth && img.naturalHeight) {
+              const ratio = img.naturalWidth / img.naturalHeight;
+              if (ratio > 0.8 && ratio < 1.2) setContain(true);
+            }
+          }
+        }}
+      />
+      {!loaded && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ---- Types ----
@@ -255,23 +342,14 @@ export function PostCardTikTok({
                 )}
               >
                 {media.media_type === 'video' ? (
-                  <video
-                    ref={(el) => handleVideoRef(media.id, el)}
-                    src={media.url}
-                    poster={media.thumbnail_url ?? undefined}
+                  <TikTokVideoItem
+                    media={media}
                     autoPlay={media.id === sortedMedia[0]?.id}
-                    muted
-                    loop
-                    playsInline
+                    onVideoRef={handleVideoRef}
                     onClick={togglePlayPause}
-                    className="h-full w-full object-cover"
                   />
                 ) : (
-                  <img
-                    src={media.url}
-                    alt="Post media"
-                    className="h-full w-full object-cover"
-                  />
+                  <TikTokImageItem media={media} />
                 )}
               </div>
             ))}

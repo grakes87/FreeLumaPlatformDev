@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, AlertCircle, Camera } from 'lucide-react';
+import { AlertCircle, Camera, ArrowLeft } from 'lucide-react';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { useMediaRecorder } from '@/hooks/useMediaRecorder';
 import type { DailyContentAttributes } from '@/lib/db/models/DailyContent';
@@ -40,12 +40,15 @@ export default function RecordPage() {
   const {
     stream,
     isRecording,
+    isPaused,
     recordedBlob,
     recordedUrl,
     error: recorderError,
     mimeType,
     startCamera,
     startRecording,
+    pauseRecording,
+    resumeRecording,
     stopRecording,
     resetRecording,
     stopCamera,
@@ -71,8 +74,8 @@ export default function RecordPage() {
         const data = await res.json();
         if (!cancelled) {
           const c = data.content as DailyContentAttributes;
-          // Verify status allows recording
-          if (c.status !== 'assigned' && c.status !== 'rejected') {
+          // Verify status allows recording (assigned, rejected, or submitted for re-record)
+          if (c.status !== 'assigned' && c.status !== 'rejected' && c.status !== 'submitted') {
             setFetchError(`Cannot record: content status is "${c.status}"`);
             setLoading(false);
             return;
@@ -108,12 +111,8 @@ export default function RecordPage() {
     }
   }, [content, stream, startCamera]);
 
-  // Attach stream to video element for preview
-  useEffect(() => {
-    if (stream && videoRef.current) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream]);
+  // Stream attachment is now handled inside the Teleprompter component itself
+  // to avoid the race condition with dynamic imports on mobile.
 
   // Stop camera on unmount
   useEffect(() => {
@@ -125,9 +124,7 @@ export default function RecordPage() {
 
   /**
    * Submit recorded video:
-   * 1. Get presigned URL from /api/upload/presigned
-   * 2. PUT video blob to B2
-   * 3. POST /api/creator/upload to update content record
+   * Upload to server → server compresses with FFmpeg → uploads to B2.
    */
   const handleSubmit = useCallback(async () => {
     if (!recordedBlob || !content) return;
@@ -137,67 +134,54 @@ export default function RecordPage() {
     setSubmitError(null);
 
     try {
-      // Determine content type from blob or mimeType
-      const videoContentType = recordedBlob.type || mimeType || 'video/webm';
+      // Build FormData with video file + content ID
+      const formData = new FormData();
+      const ext = (recordedBlob.type || mimeType || '').includes('mp4') ? 'mp4' : 'webm';
+      formData.append('video', recordedBlob, `recording.${ext}`);
+      formData.append('daily_content_id', String(content.id));
 
-      // Step 1: Get presigned upload URL
-      const presignRes = await fetch(
-        `/api/upload/presigned?type=creator-video&contentType=${encodeURIComponent(videoContentType)}`
-      );
-      if (!presignRes.ok) {
-        const data = await presignRes.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to get upload URL');
-      }
-      const { uploadUrl, publicUrl } = await presignRes.json();
-
-      setUploadProgress(10);
-
-      // Step 2: Upload video to B2 via presigned PUT
-      // Use XMLHttpRequest for progress tracking
-      await new Promise<void>((resolve, reject) => {
+      // Upload to server with progress tracking via XHR.
+      // Server handles compression + B2 upload before responding.
+      const result = await new Promise<{ content: Record<string, unknown> }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('PUT', uploadUrl, true);
-        xhr.setRequestHeader('Content-Type', videoContentType);
+        xhr.open('POST', '/api/creator/upload', true);
 
+        // Upload progress (0–70%)
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
-            // Scale progress from 10-90% for upload phase
-            const pct = Math.round(10 + (e.loaded / e.total) * 80);
+            const pct = Math.round((e.loaded / e.total) * 70);
             setUploadProgress(pct);
           }
         };
 
+        // Once upload completes, server is compressing + uploading to B2
+        xhr.upload.onload = () => {
+          setUploadProgress(75);
+        };
+
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch {
+              reject(new Error('Invalid server response'));
+            }
           } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
+            try {
+              const data = JSON.parse(xhr.responseText);
+              reject(new Error(data.error || `Upload failed (${xhr.status})`));
+            } catch {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
           }
         };
 
         xhr.onerror = () => reject(new Error('Upload network error'));
         xhr.ontimeout = () => reject(new Error('Upload timed out'));
-        xhr.timeout = 120000; // 2 minute timeout
+        xhr.timeout = 300000; // 5 min timeout (includes server-side compression)
 
-        xhr.send(recordedBlob);
+        xhr.send(formData);
       });
-
-      setUploadProgress(90);
-
-      // Step 3: Notify backend that video was uploaded
-      const submitRes = await fetch('/api/creator/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          daily_content_id: content.id,
-          video_url: publicUrl,
-        }),
-      });
-
-      if (!submitRes.ok) {
-        const data = await submitRes.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to submit video');
-      }
 
       setUploadProgress(100);
 
@@ -252,37 +236,40 @@ export default function RecordPage() {
 
   return (
     <div className="fixed inset-0 z-50 bg-black">
-      {/* Back button - always visible above everything */}
-      <button
-        type="button"
-        onClick={handleBack}
-        className="absolute left-3 top-3 z-[60] flex items-center gap-1 rounded-full bg-black/50 px-3 py-1.5 text-sm text-white/80 backdrop-blur-sm transition-colors hover:bg-black/70"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </button>
-
       {/* Camera error state */}
       {recorderError && !stream && (
         <div className="flex h-full flex-col items-center justify-center px-6">
           <Camera className="h-16 w-16 text-white/40" />
           <p className="mt-4 text-center text-sm text-white/70">{recorderError}</p>
-          <button
-            type="button"
-            onClick={startCamera}
-            className="mt-4 rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white"
-          >
-            Try Again
-          </button>
+          <div className="mt-4 flex items-center gap-4">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="flex items-center gap-1 rounded-full bg-white/20 px-5 py-2 text-sm text-white/80 backdrop-blur-sm"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={startCamera}
+              className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-white"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Teleprompter (camera preview + script overlay) */}
+      {/* Teleprompter (camera preview + fullscreen script overlay) */}
       {stream && (
         <Teleprompter
           script={script}
           videoRef={videoRef}
+          stream={stream}
           isRecording={isRecording}
+          isPaused={isPaused}
+          onBack={handleBack}
         />
       )}
 
@@ -290,9 +277,12 @@ export default function RecordPage() {
       {stream && (
         <RecordingControls
           isRecording={isRecording}
+          isPaused={isPaused}
           recordedBlob={recordedBlob}
           recordedUrl={recordedUrl}
           onStartRecording={startRecording}
+          onPauseRecording={pauseRecording}
+          onResumeRecording={resumeRecording}
           onStopRecording={stopRecording}
           onReRecord={handleReRecord}
           onSubmit={handleSubmit}

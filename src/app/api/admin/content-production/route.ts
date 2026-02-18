@@ -6,6 +6,7 @@ import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 const monthQuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/, 'Month must be YYYY-MM format'),
   mode: z.enum(['bible', 'positivity']),
+  language: z.string().min(2).max(5).default('en'),
 });
 
 /**
@@ -19,7 +20,7 @@ const monthQuerySchema = z.object({
  */
 export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => {
   try {
-    const { DailyContent, DailyContentTranslation, LumaShortCreator, User } =
+    const { DailyContent, DailyContentTranslation, LumaShortCreator, User, BibleTranslation } =
       await import('@/lib/db/models');
     const { Op } = await import('sequelize');
 
@@ -27,6 +28,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
     const parsed = monthQuerySchema.safeParse({
       month: searchParams.get('month'),
       mode: searchParams.get('mode'),
+      language: searchParams.get('language') || 'en',
     });
 
     if (!parsed.success) {
@@ -36,7 +38,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       );
     }
 
-    const { month, mode } = parsed.data;
+    const { month, mode, language } = parsed.data;
 
     // Parse month to get date range
     const [yearStr, monthStr] = month.split('-');
@@ -51,13 +53,13 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       where: {
         post_date: { [Op.between]: [startDate, endDate] },
         mode,
-        language: 'en',
+        language,
       },
       include: [
         {
           model: LumaShortCreator,
           as: 'creator',
-          attributes: ['id', 'name', 'user_id'],
+          attributes: ['id', 'name', 'user_id', 'is_ai', 'heygen_avatar_id'],
           include: [
             {
               model: User,
@@ -72,6 +74,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
           attributes: [
             'id',
             'translation_code',
+            'translated_text',
             'audio_url',
             'audio_srt_url',
             'chapter_text',
@@ -121,13 +124,21 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
         has_camera_script: Boolean(row.camera_script),
         has_devotional: Boolean(row.devotional_reflection),
         has_meditation: Boolean(row.meditation_script),
+        meditation_script: row.meditation_script || null,
+        has_meditation_audio: Boolean(row.meditation_audio_url),
+        meditation_audio_url: row.meditation_audio_url || null,
         has_background_prompt: Boolean(row.background_prompt),
-        has_creator_video: Boolean(row.creator_video_url),
+        has_background_video: Boolean(row.video_background_url),
+        has_lumashort_video: Boolean(row.lumashort_video_url),
+        lumashort_video_url: row.lumashort_video_url || null,
+        background_prompt: row.background_prompt || null,
         translations: translations.map((t) => ({
           translation_code: t.translation_code,
+          has_translated_text: Boolean(t.translated_text),
           has_audio: Boolean(t.audio_url),
           has_srt: Boolean(t.audio_srt_url),
           has_chapter_text: Boolean(t.chapter_text),
+          audio_url: (t.audio_url as string) || null,
         })),
       };
     });
@@ -155,11 +166,23 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
         monthly_capacity: c.monthly_capacity,
         can_bible: c.can_bible,
         can_positivity: c.can_positivity,
+        is_ai: c.is_ai,
         active: c.active,
       };
     });
 
-    return successResponse({ stats, days, creators: creatorsData });
+    // Fetch expected bible translations for this language (bible mode only)
+    let expectedTranslations: string[] = [];
+    if (mode === 'bible') {
+      const bts = await BibleTranslation.findAll({
+        where: { language },
+        attributes: ['code'],
+        order: [['code', 'ASC']],
+      });
+      expectedTranslations = bts.map((bt) => bt.code);
+    }
+
+    return successResponse({ stats, days, creators: creatorsData, expectedTranslations });
   } catch (error) {
     return serverError(error, 'Failed to fetch month overview');
   }
