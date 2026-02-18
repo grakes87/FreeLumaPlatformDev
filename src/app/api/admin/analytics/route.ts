@@ -134,6 +134,51 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       { type: QueryTypes.SELECT }
     ) as Array<{ count: number }>;
 
+    // ---- SMS delivery stats ----
+
+    // SMS summary: total sent, delivered, failed
+    const [smsSummary] = await sequelize.query(
+      `SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) AS sent,
+        SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS delivered,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed
+       FROM sms_logs
+       WHERE created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)`,
+      { replacements: { days }, type: QueryTypes.SELECT }
+    ) as Array<{ total: number; sent: number; delivered: number; failed: number }>;
+
+    // SMS daily volume
+    const smsDailyVolume = await sequelize.query(
+      `SELECT DATE(created_at) AS date, COUNT(*) AS count
+       FROM sms_logs
+       WHERE created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
+       GROUP BY DATE(created_at)
+       ORDER BY date ASC`,
+      { replacements: { days }, type: QueryTypes.SELECT }
+    );
+
+    // SMS by type breakdown
+    const smsByType = await sequelize.query(
+      `SELECT sms_type, COUNT(*) AS count
+       FROM sms_logs
+       WHERE created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
+       GROUP BY sms_type
+       ORDER BY count DESC`,
+      { replacements: { days }, type: QueryTypes.SELECT }
+    );
+
+    // SMS opt-in stats: users with verified phones and SMS enabled
+    const [smsOptIn] = await sequelize.query(
+      `SELECT
+        COUNT(*) AS total_verified_phones,
+        SUM(CASE WHEN us.sms_notifications_enabled = TRUE THEN 1 ELSE 0 END) AS sms_opted_in
+       FROM users u
+       JOIN user_settings us ON us.user_id = u.id
+       WHERE u.phone IS NOT NULL AND u.phone_verified = TRUE AND u.status = 'active'`,
+      { type: QueryTypes.SELECT }
+    ) as Array<{ total_verified_phones: number; sms_opted_in: number }>;
+
     return successResponse({
       user_growth: userGrowth,
       post_volume: postVolume,
@@ -146,6 +191,12 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
         posts: totalPosts?.count || 0,
         prayers: totalPrayers?.count || 0,
         reactions: totalReactions?.count || 0,
+      },
+      sms: {
+        summary: smsSummary || { total: 0, sent: 0, delivered: 0, failed: 0 },
+        dailyVolume: smsDailyVolume,
+        byType: smsByType,
+        optInStats: smsOptIn || { total_verified_phones: 0, sms_opted_in: 0 },
       },
     });
   } catch (error) {
