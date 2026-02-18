@@ -200,18 +200,16 @@ export function SubtitleDisplay({ srtUrl, chapterText, currentTime, isPlaying }:
         (sub) => currentTime >= sub.startSeconds && currentTime <= sub.endSeconds
       );
 
-  // Auto-scroll to keep active entry centered
-  const scrollToActive = useCallback(() => {
-    if (activeRef.current) {
-      activeRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    }
-  }, []);
-
+  // Auto-scroll to keep active entry centered (within subtitle container only)
   useEffect(() => {
-    if (activeIndex >= 0) {
-      scrollToActive();
-    }
-  }, [activeIndex, scrollToActive]);
+    const container = containerRef.current;
+    const element = activeRef.current;
+    if (activeIndex < 0 || !container || !element) return;
+
+    const scrollTarget =
+      element.offsetTop - container.clientHeight / 2 + element.clientHeight / 2;
+    container.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+  }, [activeIndex]);
 
   if (!srtUrl) {
     return (
