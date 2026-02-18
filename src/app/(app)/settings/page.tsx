@@ -27,6 +27,7 @@ import {
   Presentation,
   Play,
   Layers,
+  Smartphone,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { workshopLabel } from '@/lib/utils/workshopLabel';
@@ -38,6 +39,7 @@ import { StatsPage } from '@/components/settings/StatsPage';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { ConnectedAccountsSection } from '@/components/settings/ConnectedAccountsSection';
 import { DangerZone } from '@/components/settings/DangerZone';
+import { PhoneNumberSection } from '@/components/settings/PhoneNumberSection';
 
 // ---- Types ----
 
@@ -78,6 +80,15 @@ interface Settings {
   email_workshop_notifications: boolean;
   email_new_video_notifications: boolean;
   email_daily_reminder: boolean;
+  // Phone & SMS
+  phone: string | null;
+  phone_verified: boolean;
+  sms_notifications_enabled: boolean;
+  sms_dm_notifications: boolean;
+  sms_follow_notifications: boolean;
+  sms_prayer_notifications: boolean;
+  sms_daily_reminder: boolean;
+  sms_workshop_notifications: boolean;
 }
 
 const MESSAGING_ACCESS_OPTIONS = [
@@ -133,28 +144,31 @@ export default function SettingsPage() {
     setMounted(true);
   }, []);
 
+  // Extracted fetchSettings as reusable callback (PhoneNumberSection triggers refresh)
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/settings', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setSettings(data.settings);
+        if (data.translations) {
+          setTranslations(data.translations);
+        }
+        // Sync saved theme preference to next-themes
+        if (data.settings.dark_mode) {
+          setTheme(data.settings.dark_mode);
+        }
+      }
+    } catch {
+      toast.error('Failed to load settings.');
+    } finally {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Fetch settings on mount and sync theme
   useEffect(() => {
-    async function fetchSettings() {
-      try {
-        const res = await fetch('/api/settings', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          setSettings(data.settings);
-          if (data.translations) {
-            setTranslations(data.translations);
-          }
-          // Sync saved theme preference to next-themes
-          if (data.settings.dark_mode) {
-            setTheme(data.settings.dark_mode);
-          }
-        }
-      } catch {
-        toast.error('Failed to load settings.');
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchSettings();
 
     // Fetch verse categories for bible-mode users
@@ -640,6 +654,18 @@ export default function SettingsPage() {
         <BlockedUsersList />
       </Card>
 
+      {/* ---- Phone Number Section ---- */}
+      <SectionHeader title="Phone Number" />
+      <Card padding="sm" className="mb-6 !p-0 overflow-hidden">
+        <PhoneNumberSection
+          currentPhone={settings?.phone ?? null}
+          phoneVerified={settings?.phone_verified ?? false}
+          onPhoneVerified={() => {
+            fetchSettings();
+          }}
+        />
+      </Card>
+
       {/* ---- Notifications Section ---- */}
       <SectionHeader title="Notifications" />
       <Card padding="sm" className="mb-6 !p-0 overflow-hidden">
@@ -800,6 +826,68 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+
+        {/* SMS Notifications (per-category) — only when phone verified */}
+        {settings?.phone_verified && (
+          <>
+            <Divider />
+            <div className="px-4 py-3.5">
+              <p className="text-sm font-medium text-text dark:text-text-dark mb-1">
+                SMS Notifications
+              </p>
+              <p className="text-[10px] text-text-muted dark:text-text-muted-dark mb-3">
+                Text message alerts (standard rates may apply)
+              </p>
+            </div>
+
+            <ToggleRow
+              icon={Smartphone}
+              label="Enable SMS"
+              checked={settings?.sms_notifications_enabled ?? false}
+              onChange={(val) => saveSettings({ sms_notifications_enabled: val })}
+            />
+
+            {settings?.sms_notifications_enabled && (
+              <>
+                <Divider />
+                <ToggleRow
+                  icon={MessageCircle}
+                  label="Direct Messages"
+                  checked={settings?.sms_dm_notifications ?? true}
+                  onChange={(val) => saveSettings({ sms_dm_notifications: val })}
+                />
+                <Divider />
+                <ToggleRow
+                  icon={UserPlus}
+                  label="Follow Requests"
+                  checked={settings?.sms_follow_notifications ?? true}
+                  onChange={(val) => saveSettings({ sms_follow_notifications: val })}
+                />
+                <Divider />
+                <ToggleRow
+                  icon={Heart}
+                  label="Prayer Notifications"
+                  checked={settings?.sms_prayer_notifications ?? true}
+                  onChange={(val) => saveSettings({ sms_prayer_notifications: val })}
+                />
+                <Divider />
+                <ToggleRow
+                  icon={Send}
+                  label="Daily Content Reminder"
+                  checked={settings?.sms_daily_reminder ?? true}
+                  onChange={(val) => saveSettings({ sms_daily_reminder: val })}
+                />
+                <Divider />
+                <ToggleRow
+                  icon={Presentation}
+                  label={`${wl.singular} Events`}
+                  checked={settings?.sms_workshop_notifications ?? true}
+                  onChange={(val) => saveSettings({ sms_workshop_notifications: val })}
+                />
+              </>
+            )}
+          </>
+        )}
       </Card>
 
       {/* ---- Danger Zone ---- */}
