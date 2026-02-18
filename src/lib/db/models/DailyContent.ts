@@ -112,7 +112,7 @@ DailyContent.init(
       allowNull: false,
     },
     lumashort_video_url: {
-      type: DataTypes.STRING(500),
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     language: {
@@ -167,7 +167,7 @@ DailyContent.init(
       allowNull: true,
     },
     creator_video_thumbnail: {
-      type: DataTypes.STRING(500),
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     created_at: DataTypes.DATE,
