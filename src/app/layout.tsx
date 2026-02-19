@@ -13,6 +13,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Free Luma",
   description: "Daily inspiration and faith-based community",
+  icons: {
+    icon: "/LumaLogo.png",
+    apple: "/LumaLogo.png",
+  },
 };
 
 export default function RootLayout({
