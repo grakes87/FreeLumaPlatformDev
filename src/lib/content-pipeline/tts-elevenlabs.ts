@@ -96,7 +96,7 @@ async function generateViaSdk(
 
   const response = await client.textToSpeech.convertWithTimestamps(voiceId, {
     text,
-    modelId: 'eleven_multilingual_v2',
+    modelId: 'eleven_turbo_v2_5',
     outputFormat: 'mp3_44100_128',
   });
 
@@ -140,7 +140,7 @@ async function generateViaRest(
     },
     body: JSON.stringify({
       text,
-      model_id: 'eleven_multilingual_v2',
+      model_id: 'eleven_turbo_v2_5',
       output_format: 'mp3_44100_128',
     }),
   });
