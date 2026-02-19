@@ -84,6 +84,17 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       order: [['post_date', 'ASC']],
     });
 
+    // Fetch expected bible translations early (needed for pending stat computation)
+    let expectedTranslations: string[] = [];
+    if (mode === 'bible') {
+      const bts = await BibleTranslation.findAll({
+        where: { language },
+        attributes: ['code'],
+        order: [['code', 'ASC']],
+      });
+      expectedTranslations = bts.map((bt) => bt.code);
+    }
+
     // Compute stats
     let generated = 0;
     let assigned = 0;
@@ -99,13 +110,30 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       if (row.status === 'approved') approved++;
       if (row.status === 'rejected') rejected++;
 
-      // Pending = generated but missing required fields
+      // Pending = generated but missing any required field (must match PendingTab's getMissingFields logic)
       if (row.status !== 'empty') {
         let hasMissing = false;
         if (!row.camera_script) hasMissing = true;
         if (!row.background_prompt) hasMissing = true;
+        if (!row.video_background_url) hasMissing = true;
+        if (!row.lumashort_video_url) hasMissing = true;
         if (mode === 'positivity' && !row.meditation_script) hasMissing = true;
         if (mode === 'positivity' && row.meditation_script && !row.meditation_audio_url) hasMissing = true;
+
+        // Bible mode: check translation completeness
+        if (mode === 'bible' && !hasMissing) {
+          const rowJson = row.toJSON() as unknown as Record<string, unknown>;
+          const trans = (rowJson.translations as Array<Record<string, unknown>>) || [];
+          const existingMap = new Map(trans.map((t) => [t.translation_code as string, t]));
+          for (const code of expectedTranslations) {
+            const t = existingMap.get(code);
+            if (!t || !t.translated_text || !t.audio_url || !t.audio_srt_url || !t.chapter_text) {
+              hasMissing = true;
+              break;
+            }
+          }
+        }
+
         if (hasMissing) pending++;
       }
     }
@@ -183,17 +211,6 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
         active: c.active,
       };
     });
-
-    // Fetch expected bible translations for this language (bible mode only)
-    let expectedTranslations: string[] = [];
-    if (mode === 'bible') {
-      const bts = await BibleTranslation.findAll({
-        where: { language },
-        attributes: ['code'],
-        order: [['code', 'ASC']],
-      });
-      expectedTranslations = bts.map((bt) => bt.code);
-    }
 
     return successResponse({ stats, days, creators: creatorsData, expectedTranslations });
   } catch (error) {

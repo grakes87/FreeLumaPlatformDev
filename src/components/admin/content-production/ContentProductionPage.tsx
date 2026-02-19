@@ -781,8 +781,10 @@ export default function ContentProductionPage() {
               days={data?.days ?? []}
               mode={selectedMode}
               expectedTranslations={data?.expectedTranslations ?? []}
+              creators={creators}
               onRegenerate={handleRegenerate}
               onBulkGenerate={handleBulkRegenerate}
+              onRefresh={fetchData}
               onVideoUpload={handleVideoUpload}
               onGenerateHeygenVideo={handleGenerateHeygenVideo}
               onContentTextSave={handleContentTextSave}
