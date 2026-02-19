@@ -21,6 +21,8 @@ interface DailyPostCarouselProps {
   isActive?: boolean;
   /** Whether we're in vertical feed mode (controls date label vs DateNavigator) */
   feedMode?: boolean;
+  /** Admin preview mode: always show full dates, skip Today/Yesterday */
+  previewMode?: boolean;
 }
 
 export function DailyPostCarousel({
@@ -28,6 +30,7 @@ export function DailyPostCarousel({
   prefetchedContent,
   isActive = true,
   feedMode = false,
+  previewMode = false,
 }: DailyPostCarouselProps) {
   // --- Feed mode: use prefetched data ---
   if (prefetchedContent) {
@@ -36,6 +39,7 @@ export function DailyPostCarousel({
         content={prefetchedContent}
         isActive={isActive}
         feedMode={feedMode}
+        previewMode={previewMode}
       />
     );
   }
@@ -104,10 +108,12 @@ function FeedModeCarousel({
   content,
   isActive,
   feedMode,
+  previewMode = false,
 }: {
   content: DailyContentData;
   isActive: boolean;
   feedMode: boolean;
+  previewMode?: boolean;
 }) {
   const dailyTranslation = useDailyTranslation();
   const activeTranslation = dailyTranslation?.activeTranslation ?? null;
@@ -168,6 +174,7 @@ function FeedModeCarousel({
       resolvedChapterText={resolvedChapterText}
       isActive={isActive}
       feedMode={feedMode}
+      previewMode={previewMode}
     />
   );
 }
@@ -181,6 +188,7 @@ function CarouselSwiper({
   resolvedChapterText,
   isActive,
   feedMode,
+  previewMode = false,
 }: {
   content: DailyContentData;
   activeTranslation: string | null;
@@ -189,6 +197,7 @@ function CarouselSwiper({
   resolvedChapterText: string | null;
   isActive: boolean;
   feedMode: boolean;
+  previewMode?: boolean;
 }) {
   const [activeSlide, setActiveSlide] = useState(0);
 
@@ -230,6 +239,7 @@ function CarouselSwiper({
           activeTranslation={activeTranslation}
           isActive={isActive && activeSlide === 0}
           feedMode={feedMode}
+          previewMode={previewMode}
         />
       </SwiperSlide>
 

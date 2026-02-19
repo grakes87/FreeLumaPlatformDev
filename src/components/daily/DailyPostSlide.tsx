@@ -19,6 +19,8 @@ interface DailyPostSlideProps {
   activeTranslation: string | null;
   isActive?: boolean;
   feedMode?: boolean;
+  /** When true, always show full date (skip "Today"/"Yesterday" labels) */
+  previewMode?: boolean;
 }
 
 export function DailyPostSlide({
@@ -26,6 +28,7 @@ export function DailyPostSlide({
   activeTranslation,
   isActive = true,
   feedMode = false,
+  previewMode = false,
 }: DailyPostSlideProps) {
   const bgVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -168,7 +171,7 @@ export function DailyPostSlide({
           {/* Date / type label directly above verse */}
           <div className="flex w-full flex-col items-center gap-3">
             {feedMode ? (
-              <FeedDateLabel date={content.post_date} mode={content.mode} />
+              <FeedDateLabel date={content.post_date} mode={content.mode} forceFullDate={previewMode} />
             ) : (
               <DateNavigator currentDate={content.post_date} />
             )}
@@ -280,30 +283,32 @@ export function DailyPostSlide({
 }
 
 /** Header label + date for feed mode (matches LumaShort header style) */
-function FeedDateLabel({ date, mode }: { date: string; mode: string }) {
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const isToday = date === todayStr;
+function FeedDateLabel({ date, mode, forceFullDate = false }: { date: string; mode: string; forceFullDate?: boolean }) {
+  const formatFullDate = (d: string) => {
+    const [y, m, day] = d.split('-').map(Number);
+    return new Date(y, m - 1, day).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
 
-  const yest = new Date(now);
-  yest.setDate(yest.getDate() - 1);
-  const yesterdayStr = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
-  const isYesterday = date === yesterdayStr;
+  let dateLabel: string;
+  if (forceFullDate) {
+    dateLabel = formatFullDate(date);
+  } else {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const isToday = date === todayStr;
 
-  const dateLabel = isToday
-    ? 'Today'
-    : isYesterday
-      ? 'Yesterday'
-      : (() => {
-          const [year, month, day] = date.split('-').map(Number);
-          const d = new Date(year, month - 1, day);
-          return d.toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-          });
-        })();
+    const yest = new Date(now);
+    yest.setDate(yest.getDate() - 1);
+    const yesterdayStr = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
+    const isYesterday = date === yesterdayStr;
+
+    dateLabel = isToday ? 'Today' : isYesterday ? 'Yesterday' : formatFullDate(date);
+  }
 
   const typeLabel = mode === 'bible' ? 'Bible Verse' : 'Daily Quote';
 

@@ -15,13 +15,14 @@ import { CompletedTab } from './CompletedTab';
 import { CreatorManager } from './CreatorManager';
 import PlatformSettingsSection from './PlatformSettingsSection';
 import { GenerationQueue, type GenerationQueueAPI } from './GenerationQueue';
+import { ReviewMonthTab } from './ReviewMonthTab';
 import type { DayData, DayTranslation } from './DayCard';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type TabKey = 'unassigned' | 'assigned' | 'pending' | 'completed';
+type TabKey = 'unassigned' | 'assigned' | 'pending' | 'completed' | 'review';
 
 interface Creator {
   id: number;
@@ -55,6 +56,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'assigned', label: 'Assigned' },
   { key: 'pending', label: 'Pending' },
   { key: 'completed', label: 'Completed' },
+  { key: 'review', label: 'Review Month' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -720,6 +722,13 @@ export default function ContentProductionPage() {
               mode={selectedMode}
               expectedTranslations={data?.expectedTranslations ?? []}
               onRefresh={fetchData}
+            />
+          )}
+          {activeTab === 'review' && (
+            <ReviewMonthTab
+              month={selectedMonth}
+              mode={selectedMode}
+              language={selectedLanguage}
             />
           )}
         </>
