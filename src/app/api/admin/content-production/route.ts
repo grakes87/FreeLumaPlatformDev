@@ -90,6 +90,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
     let submitted = 0;
     let approved = 0;
     let rejected = 0;
+    let pending = 0;
 
     for (const row of rows) {
       if (row.status !== 'empty') generated++;
@@ -97,6 +98,16 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       if (row.status === 'submitted') submitted++;
       if (row.status === 'approved') approved++;
       if (row.status === 'rejected') rejected++;
+
+      // Pending = generated but missing required fields
+      if (row.status !== 'empty') {
+        let hasMissing = false;
+        if (!row.camera_script) hasMissing = true;
+        if (!row.background_prompt) hasMissing = true;
+        if (mode === 'positivity' && !row.meditation_script) hasMissing = true;
+        if (mode === 'positivity' && row.meditation_script && !row.meditation_audio_url) hasMissing = true;
+        if (hasMissing) pending++;
+      }
     }
 
     const stats = {
@@ -105,6 +116,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       assigned,
       submitted,
       approved,
+      pending,
       rejected,
       missing: daysInMonth - generated,
     };

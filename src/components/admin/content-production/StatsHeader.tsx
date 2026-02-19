@@ -8,6 +8,7 @@ export interface ContentStats {
   assigned: number;
   submitted: number;
   approved: number;
+  pending: number;
   missing: number;
 }
 
@@ -26,12 +27,13 @@ const STAT_CONFIG: {
   { key: 'assigned', label: 'Assigned', color: 'text-purple-600 dark:text-purple-400' },
   { key: 'submitted', label: 'Submitted', color: 'text-amber-600 dark:text-amber-400' },
   { key: 'approved', label: 'Approved', color: 'text-green-600 dark:text-green-400' },
+  { key: 'pending', label: 'Pending', color: 'text-orange-600 dark:text-orange-400' },
   { key: 'missing', label: 'Missing', color: 'text-red-600 dark:text-red-400' },
 ];
 
 export function StatsHeader({ stats, loading }: StatsHeaderProps) {
   return (
-    <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+    <div className="grid grid-cols-3 gap-3 sm:grid-cols-7">
       {STAT_CONFIG.map(({ key, label, color }) => (
         <div
           key={key}
