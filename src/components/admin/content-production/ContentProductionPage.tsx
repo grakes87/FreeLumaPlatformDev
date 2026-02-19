@@ -153,8 +153,9 @@ function applyTargetedUpdate(
 /**
  * Build the ordered list of all missing generatable items, grouped by phase.
  * Phase 1: content fields (camera_script, meditation, bg_prompt)
- * Phase 2: translation text (chapter_text for each translation)
+ * Phase 2: translation text (chapter_text for each translation) + meditation audio
  * Phase 3: TTS audio (requires chapter_text to exist)
+ * Phase 4: HeyGen video (AI creators with missing lumashort_video_url)
  */
 interface BulkItem {
   dayId: number;
@@ -205,6 +206,15 @@ function buildMissingItems(
           items.push({ dayId: day.id, postDate: day.post_date, field: 'tts', translationCode: code, phase: 3 });
         }
       }
+    }
+
+    // Phase 4: HeyGen video for AI creators missing lumashort_video_url
+    if (
+      !day.has_lumashort_video &&
+      day.creator?.is_ai &&
+      day.creator?.heygen_avatar_id
+    ) {
+      items.push({ dayId: day.id, postDate: day.post_date, field: 'heygen_video', phase: 4 });
     }
   }
 
@@ -494,7 +504,7 @@ export default function ContentProductionPage() {
     const resultMap = new Map<string, 'success' | 'failed'>();
 
     // Process by phase, concurrent within each phase
-    for (const phase of [1, 2, 3]) {
+    for (const phase of [1, 2, 3, 4]) {
       if (bulkCancelledRef.current) break;
 
       const phaseItems = items
@@ -528,35 +538,69 @@ export default function ContentProductionPage() {
             queueApi.setItemRunning(queueId);
 
             try {
-              const body: Record<string, unknown> = {
-                daily_content_id: item.dayId,
-                field: item.field,
-              };
-              if (item.translationCode) body.translation_code = item.translationCode;
+              // HeyGen videos use a different API endpoint
+              if (item.field === 'heygen_video') {
+                const res = await fetch('/api/admin/content-production/heygen', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    month: item.postDate.slice(0, 7),
+                    mode: selectedMode,
+                    daily_content_id: item.dayId,
+                  }),
+                });
 
-              const res = await fetch('/api/admin/content-production/regenerate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(body),
-              });
-
-              if (res.ok) {
-                const json = await res.json();
-                queueApi.resolveItem(queueId, 'success', undefined, json.log_id);
-                if (json.content) updateDayInPlace(item.dayId, item.field, item.translationCode, json.content);
-                const key = item.translationCode
-                  ? `${item.dayId}_${item.field}_${item.translationCode}`
-                  : `${item.dayId}_${item.field}`;
-                resultMap.set(key, 'success');
+                if (res.ok) {
+                  const json = await res.json();
+                  const respData = json.data ?? json;
+                  if (respData.triggered > 0) {
+                    // HeyGen is async — keep as running; webhook will complete it
+                    queueApi.resolveItem(queueId, 'success', undefined, respData.log_id);
+                    resultMap.set(`${item.dayId}_heygen_video`, 'success');
+                  } else {
+                    const errMsg = respData.errors?.[0]?.error || 'No video triggered';
+                    queueApi.resolveItem(queueId, 'failed', errMsg);
+                    resultMap.set(`${item.dayId}_heygen_video`, 'failed');
+                  }
+                } else {
+                  const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+                  const errMsg = err.error || `Failed (${res.status})`;
+                  queueApi.resolveItem(queueId, 'failed', errMsg);
+                  resultMap.set(`${item.dayId}_heygen_video`, 'failed');
+                }
               } else {
-                const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-                const errMsg = err.error || `Failed (${res.status})`;
-                queueApi.resolveItem(queueId, 'failed', errMsg);
-                const key = item.translationCode
-                  ? `${item.dayId}_${item.field}_${item.translationCode}`
-                  : `${item.dayId}_${item.field}`;
-                resultMap.set(key, 'failed');
+                // Standard regenerate endpoint for all other fields
+                const body: Record<string, unknown> = {
+                  daily_content_id: item.dayId,
+                  field: item.field,
+                };
+                if (item.translationCode) body.translation_code = item.translationCode;
+
+                const res = await fetch('/api/admin/content-production/regenerate', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify(body),
+                });
+
+                if (res.ok) {
+                  const json = await res.json();
+                  queueApi.resolveItem(queueId, 'success', undefined, json.log_id);
+                  if (json.content) updateDayInPlace(item.dayId, item.field, item.translationCode, json.content);
+                  const key = item.translationCode
+                    ? `${item.dayId}_${item.field}_${item.translationCode}`
+                    : `${item.dayId}_${item.field}`;
+                  resultMap.set(key, 'success');
+                } else {
+                  const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+                  const errMsg = err.error || `Failed (${res.status})`;
+                  queueApi.resolveItem(queueId, 'failed', errMsg);
+                  const key = item.translationCode
+                    ? `${item.dayId}_${item.field}_${item.translationCode}`
+                    : `${item.dayId}_${item.field}`;
+                  resultMap.set(key, 'failed');
+                }
               }
             } catch (e) {
               const errMsg = e instanceof Error ? e.message : 'Network error';
