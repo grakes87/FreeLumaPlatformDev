@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
     const requestedMode = body.mode === 'positivity' ? 'positivity' : body.mode === 'bible' ? 'bible' : null;
     const requestedTranslation = typeof body.preferred_translation === 'string' ? body.preferred_translation.trim() : null;
     const requestedLanguage = body.language === 'es' ? 'es' : 'en';
+    const requestedTimezone = typeof body.timezone === 'string' ? body.timezone.trim() : null;
     const normalizedEmail = email.toLowerCase().trim();
     const normalizedUsername = username.toLowerCase().trim();
 
@@ -101,6 +102,7 @@ export async function POST(req: NextRequest) {
           mode: userMode,
           preferred_translation: requestedTranslation || 'KJV',
           language: requestedLanguage,
+          timezone: requestedTimezone || 'America/New_York',
           onboarding_complete: false,
         },
         { transaction: t }
@@ -122,9 +124,12 @@ export async function POST(req: NextRequest) {
         throw new Error('ACTIVATION_CODE_RACE');
       }
 
-      // Create user settings with defaults
+      // Create user settings with defaults (sync timezone for reminder scheduling)
       await UserSetting.create(
-        { user_id: user.id },
+        {
+          user_id: user.id,
+          reminder_timezone: requestedTimezone || 'America/New_York',
+        },
         { transaction: t }
       );
 

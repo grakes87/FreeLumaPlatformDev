@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AuthProvider } from '@/context/AuthContext';
@@ -53,6 +53,53 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
       router.replace('/reactivate');
     }
   }, [loading, isAuthenticated, user, pathname, router]);
+
+  // One-time silent defaults: auto-set timezone and quiet hours if missing
+  const defaultsApplied = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated || !user || loading || defaultsApplied.current) return;
+    defaultsApplied.current = true;
+
+    (async () => {
+      try {
+        const res = await fetch('/api/settings', { credentials: 'include' });
+        if (!res.ok) return;
+        const json = await res.json();
+        const s = json.data?.settings ?? json.settings;
+        if (!s) return;
+
+        const updates: Record<string, string> = {};
+
+        // Auto-set timezone from browser if not set
+        if (!s.timezone || s.timezone === 'UTC') {
+          try {
+            const { matchBrowserTimezone } = await import('@/lib/utils/constants');
+            const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            updates.timezone = matchBrowserTimezone(browserTz);
+          } catch {
+            updates.timezone = 'America/New_York';
+          }
+        }
+
+        // Auto-set quiet hours if not set
+        if (!s.quiet_hours_start && !s.quiet_hours_end) {
+          updates.quiet_hours_start = '22:00';
+          updates.quiet_hours_end = '07:00';
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await fetch('/api/settings', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(updates),
+          });
+        }
+      } catch {
+        // Silent — never interrupt the user
+      }
+    })();
+  }, [isAuthenticated, user, loading]);
 
   if (loading) {
     return (

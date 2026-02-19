@@ -446,7 +446,7 @@ export async function processDailyReminders(): Promise<void> {
 
   // Get all users with daily reminder enabled
   const users = await User.findAll({
-    attributes: ['id', 'email', 'display_name', 'mode'],
+    attributes: ['id', 'email', 'display_name', 'mode', 'timezone'],
     include: [{
       model: UserSetting,
       as: 'settings',
@@ -483,6 +483,7 @@ export async function processDailyReminders(): Promise<void> {
     email: string;
     display_name: string;
     mode: 'bible' | 'positivity';
+    timezone: string | null;
     settings: {
       email_daily_reminder: boolean;
       daily_reminder_time: string;
@@ -496,7 +497,8 @@ export async function processDailyReminders(): Promise<void> {
       if (!settings?.email_daily_reminder) continue;
 
       // Check if current hour matches user's reminder time in their timezone
-      const tz = settings.reminder_timezone || 'UTC';
+      // Fallback chain: user_settings.reminder_timezone → users.timezone → UTC
+      const tz = settings.reminder_timezone || user.timezone || 'UTC';
       const [reminderH] = settings.daily_reminder_time.split(':').map(Number);
 
       let userHour: number;

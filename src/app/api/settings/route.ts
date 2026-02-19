@@ -147,6 +147,7 @@ export const PUT = withAuth(
         sms_prayer_notifications: boolean;
         sms_daily_reminder: boolean;
         sms_workshop_notifications: boolean;
+        reminder_timezone: string;
       }> = {};
 
       const userFields: Partial<{
@@ -208,6 +209,9 @@ export const PUT = withAuth(
           { where: { user_id: context.user.id } },
         );
       }
+
+      // Sync timezone to user_settings.reminder_timezone for daily reminder scheduling
+      if (data.timezone !== undefined) settingFields.reminder_timezone = data.timezone;
 
       if (data.mode !== undefined) userFields.mode = data.mode;
       if (data.verse_mode !== undefined) {

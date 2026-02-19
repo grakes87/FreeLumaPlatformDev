@@ -34,7 +34,7 @@ import { workshopLabel } from '@/lib/utils/workshopLabel';
 import { cn } from '@/lib/utils/cn';
 import { Card } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
-import { LANGUAGES, MODES } from '@/lib/utils/constants';
+import { LANGUAGES, MODES, TIMEZONE_OPTIONS } from '@/lib/utils/constants';
 import { StatsPage } from '@/components/settings/StatsPage';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { ConnectedAccountsSection } from '@/components/settings/ConnectedAccountsSection';
@@ -758,6 +758,29 @@ export default function SettingsPage() {
             onChange={(e) => saveSettings({ daily_reminder_time: e.target.value })}
             className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-text dark:border-border-dark dark:bg-background-dark dark:text-text-dark focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
+        </div>
+
+        <Divider />
+
+        {/* Time Zone */}
+        <div className="flex items-center justify-between px-4 py-3.5">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-text-muted dark:text-text-muted-dark" />
+            <p className="text-sm font-medium text-text dark:text-text-dark">
+              Time Zone
+            </p>
+          </div>
+          <select
+            value={settings?.timezone || 'America/New_York'}
+            onChange={(e) => saveSettings({ timezone: e.target.value })}
+            className="max-w-[200px] rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-text dark:border-border-dark dark:bg-background-dark dark:text-text-dark focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            {TIMEZONE_OPTIONS.map((tz) => (
+              <option key={tz.value} value={tz.value}>
+                {tz.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <Divider />

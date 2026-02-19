@@ -24,6 +24,75 @@ export const PASSWORD_MIN_LENGTH = 8;
 
 export const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12');
 
+// ---- Timezones (US, Canada, UK) ----
+
+export const TIMEZONE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'America/New_York', label: 'Eastern Time (ET)' },
+  { value: 'America/Chicago', label: 'Central Time (CT)' },
+  { value: 'America/Denver', label: 'Mountain Time (MT)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+  { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HT)' },
+  { value: 'America/Phoenix', label: 'Arizona (no DST)' },
+  { value: 'America/Halifax', label: 'Atlantic Time (AT)' },
+  { value: 'America/St_Johns', label: 'Newfoundland Time (NT)' },
+  { value: 'America/Edmonton', label: 'Mountain Time - Canada' },
+  { value: 'America/Winnipeg', label: 'Central Time - Canada' },
+  { value: 'America/Vancouver', label: 'Pacific Time - Canada' },
+  { value: 'Europe/London', label: 'United Kingdom (GMT/BST)' },
+];
+
+/** Valid timezone IANA identifiers for validation */
+export const VALID_TIMEZONES = TIMEZONE_OPTIONS.map((tz) => tz.value);
+
+/**
+ * Map a browser-detected IANA timezone to the closest match in our list.
+ * Falls back to America/New_York if no match found.
+ */
+export function matchBrowserTimezone(browserTz: string): string {
+  // Direct match
+  if (VALID_TIMEZONES.includes(browserTz)) return browserTz;
+
+  // Common aliases / region mappings
+  const aliases: Record<string, string> = {
+    'US/Eastern': 'America/New_York',
+    'US/Central': 'America/Chicago',
+    'US/Mountain': 'America/Denver',
+    'US/Pacific': 'America/Los_Angeles',
+    'US/Alaska': 'America/Anchorage',
+    'US/Hawaii': 'Pacific/Honolulu',
+    'US/Arizona': 'America/Phoenix',
+    'Canada/Atlantic': 'America/Halifax',
+    'Canada/Newfoundland': 'America/St_Johns',
+    'Canada/Eastern': 'America/New_York',
+    'Canada/Central': 'America/Winnipeg',
+    'Canada/Mountain': 'America/Edmonton',
+    'Canada/Pacific': 'America/Vancouver',
+    'GB': 'Europe/London',
+    'Europe/Belfast': 'Europe/London',
+    // US cities that map to our options
+    'America/Detroit': 'America/New_York',
+    'America/Indiana/Indianapolis': 'America/New_York',
+    'America/Kentucky/Louisville': 'America/New_York',
+    'America/Boise': 'America/Denver',
+    'America/Juneau': 'America/Anchorage',
+    'America/Sitka': 'America/Anchorage',
+    'America/Nome': 'America/Anchorage',
+    'America/Adak': 'Pacific/Honolulu',
+    // Canadian cities
+    'America/Toronto': 'America/New_York',
+    'America/Montreal': 'America/New_York',
+    'America/Regina': 'America/Chicago',
+    'America/Whitehorse': 'America/Vancouver',
+    'America/Yellowknife': 'America/Edmonton',
+  };
+
+  if (aliases[browserTz]) return aliases[browserTz];
+
+  // Fallback
+  return 'America/New_York';
+}
+
 // ---- Reactions ----
 
 export const REACTION_TYPES = ['like', 'love', 'haha', 'wow', 'sad', 'pray'] as const;

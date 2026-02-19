@@ -132,6 +132,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
         has_lumashort_video: Boolean(row.lumashort_video_url),
         lumashort_video_url: row.lumashort_video_url || null,
         background_prompt: row.background_prompt || null,
+        content_text: row.content_text || null,
         translations: translations.map((t) => ({
           translation_code: t.translation_code,
           has_translated_text: Boolean(t.translated_text),

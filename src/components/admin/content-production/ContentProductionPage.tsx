@@ -459,6 +459,34 @@ export default function ContentProductionPage() {
     [selectedMonth, selectedMode, toast]
   );
 
+  // Handle content_text save
+  const handleContentTextSave = useCallback(
+    async (dayId: number, text: string) => {
+      const res = await fetch('/api/admin/content-production/update-text', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ daily_content_id: dayId, content_text: text }),
+      });
+      if (res.ok) {
+        toast.success('Quote text saved');
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            days: prev.days.map((d) =>
+              d.id === dayId ? { ...d, content_text: text } : d
+            ),
+          };
+        });
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Save failed' }));
+        toast.error(err.error || 'Failed to save quote text');
+      }
+    },
+    [toast]
+  );
+
   /**
    * Bulk regenerate all missing items. Adds everything to the generation queue
    * in dependency order (content fields → translation text → TTS) and processes
@@ -555,8 +583,7 @@ export default function ContentProductionPage() {
                   const json = await res.json();
                   const respData = json.data ?? json;
                   if (respData.triggered > 0) {
-                    // HeyGen is async — keep as running; webhook will complete it
-                    queueApi.resolveItem(queueId, 'success', undefined, respData.log_id);
+                    // HeyGen is async — leave as 'running'; webhook will complete it
                     resultMap.set(`${item.dayId}_heygen_video`, 'success');
                   } else {
                     const errMsg = respData.errors?.[0]?.error || 'No video triggered';
@@ -758,6 +785,7 @@ export default function ContentProductionPage() {
               onBulkGenerate={handleBulkRegenerate}
               onVideoUpload={handleVideoUpload}
               onGenerateHeygenVideo={handleGenerateHeygenVideo}
+              onContentTextSave={handleContentTextSave}
             />
           )}
           {activeTab === 'completed' && (

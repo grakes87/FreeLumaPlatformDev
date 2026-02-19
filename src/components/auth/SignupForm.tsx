@@ -17,7 +17,7 @@ import { Card } from '@/components/ui/Card';
 import { ActivationCodeStep } from './ActivationCodeStep';
 import { BookOpen, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import { LANGUAGE_OPTIONS } from '@/lib/utils/constants';
+import { LANGUAGE_OPTIONS, TIMEZONE_OPTIONS, matchBrowserTimezone } from '@/lib/utils/constants';
 import type { Language } from '@/lib/utils/constants';
 
 type Step = 'activation' | 'credentials';
@@ -102,6 +102,13 @@ export function SignupForm() {
   const [selectedLanguage, setSelectedLanguage] = useState<Language>('en');
   const [preferredTranslation, setPreferredTranslation] = useState('KJV');
   const [allTranslations, setAllTranslations] = useState<{ code: string; name: string; language: string }[]>([]);
+  const [selectedTimezone, setSelectedTimezone] = useState(() => {
+    try {
+      return matchBrowserTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    } catch {
+      return 'America/New_York';
+    }
+  });
   const [serverError, setServerError] = useState('');
 
   const t = i18n[selectedLanguage];
@@ -200,6 +207,7 @@ export function SignupForm() {
           mode: selectedMode,
           preferred_translation: selectedMode === 'bible' ? preferredTranslation : undefined,
           language: selectedLanguage,
+          timezone: selectedTimezone,
         }),
       });
 
@@ -427,6 +435,24 @@ export function SignupForm() {
           type="date"
           error={errors.date_of_birth?.message}
         />
+
+        {/* Timezone selector */}
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-text dark:text-text-dark">
+            {selectedLanguage === 'es' ? 'Zona horaria' : 'Time Zone'}
+          </label>
+          <select
+            value={selectedTimezone}
+            onChange={(e) => setSelectedTimezone(e.target.value)}
+            className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text transition-colors focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-none dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+          >
+            {TIMEZONE_OPTIONS.map((tz) => (
+              <option key={tz.value} value={tz.value}>
+                {tz.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="flex items-start gap-3">
           <input

@@ -57,6 +57,7 @@ export interface DayData {
   has_lumashort_video: boolean;
   lumashort_video_url: string | null;
   background_prompt: string | null;
+  content_text: string | null;
   translations: DayTranslation[];
 }
 
@@ -67,6 +68,7 @@ interface DayCardProps {
   onRegenerate?: (dayId: number, field: string, translationCode?: string) => void | Promise<void>;
   onVideoUpload?: (dayId: number, postDate: string, file: File) => void | Promise<void>;
   onGenerateHeygenVideo?: (dayId: number, postDate: string) => void | Promise<void>;
+  onContentTextSave?: (dayId: number, text: string) => void | Promise<void>;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -94,7 +96,7 @@ function FieldBadge({ has, label }: { has: boolean; label: string }) {
   );
 }
 
-export function DayCard({ day, mode, expectedTranslations, onRegenerate, onVideoUpload, onGenerateHeygenVideo }: DayCardProps) {
+export function DayCard({ day, mode, expectedTranslations, onRegenerate, onVideoUpload, onGenerateHeygenVideo, onContentTextSave }: DayCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [regenerating, setRegenerating] = useState<Set<string>>(new Set());
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -102,6 +104,9 @@ export function DayCard({ day, mode, expectedTranslations, onRegenerate, onVideo
   const [copiedMeditation, setCopiedMeditation] = useState(false);
   const [showMeditationScript, setShowMeditationScript] = useState(true);
   const [showLogs, setShowLogs] = useState(false);
+  const [contentText, setContentText] = useState(day.content_text || '');
+  const [savingContentText, setSavingContentText] = useState(false);
+  const [contentTextDirty, setContentTextDirty] = useState(false);
   const [logs, setLogs] = useState<Array<{
     id: number;
     field: string;
@@ -217,6 +222,54 @@ export function DayCard({ day, mode, expectedTranslations, onRegenerate, onVideo
                   </div>
                 )}
               </div>
+
+              {/* Verse / Quote text (positivity mode, editable) */}
+              {mode === 'positivity' && (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs font-medium uppercase text-text-muted dark:text-text-muted-dark">
+                      Quote Text
+                    </p>
+                    {onContentTextSave && contentTextDirty && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        loading={savingContentText}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          setSavingContentText(true);
+                          try {
+                            await onContentTextSave(day.id, contentText);
+                            setContentTextDirty(false);
+                          } finally {
+                            setSavingContentText(false);
+                          }
+                        }}
+                        className="h-6 px-2 text-xs"
+                      >
+                        Save
+                      </Button>
+                    )}
+                  </div>
+                  <textarea
+                    value={contentText}
+                    onChange={(e) => {
+                      setContentText(e.target.value);
+                      setContentTextDirty(true);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    rows={3}
+                    disabled={!onContentTextSave}
+                    className={cn(
+                      'w-full rounded-lg border border-border bg-surface-hover/30 px-3 py-2 text-sm text-text',
+                      'focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/50',
+                      'dark:border-border-dark dark:bg-surface-hover-dark/30 dark:text-text-dark',
+                      !onContentTextSave && 'cursor-default opacity-70'
+                    )}
+                    placeholder="No quote text set"
+                  />
+                </div>
+              )}
 
               {/* Field completeness */}
               <div>

@@ -316,6 +316,11 @@ function ContentPreview({ day }: { day: DayData }) {
         {day.verse_reference && (
           <p className="mt-1 text-sm text-primary">{day.verse_reference}</p>
         )}
+        {day.content_text && (
+          <p className="mt-2 text-sm italic text-text-muted dark:text-text-muted-dark">
+            {day.content_text}
+          </p>
+        )}
       </div>
 
       {/* Devotional / Meditation Slide */}
