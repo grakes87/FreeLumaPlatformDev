@@ -28,6 +28,7 @@ import {
   Play,
   Layers,
   Smartphone,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { workshopLabel } from '@/lib/utils/workshopLabel';
@@ -913,6 +914,45 @@ export default function SettingsPage() {
             )}
           </>
         )}
+      </Card>
+
+      {/* ---- Replay Tutorial ---- */}
+      <SectionHeader title="Help" />
+      <Card padding="sm" className="mb-6 !p-0 overflow-hidden">
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const res = await fetch('/api/tutorial', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ reset: true }),
+              });
+              if (!res.ok) {
+                toast.error('Failed to reset tutorial.');
+                return;
+              }
+              await refreshUser();
+              toast.success('Tutorial will start on the home screen');
+              router.push('/');
+            } catch {
+              toast.error('Failed to reset tutorial.');
+            }
+          }}
+          className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+        >
+          <RotateCcw className="h-4 w-4 shrink-0 text-text-muted dark:text-text-muted-dark" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-text dark:text-text-dark">
+              Replay Tutorial
+            </p>
+            <p className="text-[10px] text-text-muted dark:text-text-muted-dark">
+              Watch the app introduction again
+            </p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-text-muted dark:text-text-muted-dark" />
+        </button>
       </Card>
 
       {/* ---- Danger Zone ---- */}
