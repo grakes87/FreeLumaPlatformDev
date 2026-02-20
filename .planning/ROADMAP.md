@@ -495,14 +495,14 @@ Plans:
   6. Tutorial completion tracked via user flag (has_seen_tutorial) — only shows once per account
   7. Tutorial does not re-appear on subsequent logins or app visits
   8. Tutorial works correctly on mobile viewport sizes
-  9. Existing users (imported from old platform) are not shown the tutorial
+  9. Existing users (imported from old platform) see the tutorial on first login (app is entirely new)
 
 **Plans**: 3 plans in 3 waves
 
 Plans:
-- [ ] 14-01-PLAN.md — Database migration (has_seen_tutorial column), User model update, AuthContext field, tutorial API route (GET/PUT)
-- [ ] 14-02-PLAN.md — Tutorial UI components: TutorialProvider context, TutorialSlideshow (4-card Swiper), TutorialCoachMarks (spotlight overlay), tutorialSteps config
-- [ ] 14-03-PLAN.md — Integration: data-tutorial attributes on target components, TutorialProvider in layout, Settings replay button, build verification
+- [x] 14-01-PLAN.md — Database migration (has_seen_tutorial column), User model update, AuthContext field, tutorial API route (GET/PUT)
+- [x] 14-02-PLAN.md — Tutorial UI components: TutorialProvider context, TutorialSlideshow (4-card Swiper), TutorialCoachMarks (spotlight overlay), tutorialSteps config
+- [x] 14-03-PLAN.md — Integration: data-tutorial attributes on target components, TutorialProvider in layout, Settings replay button, build verification
 
 ## Progress
 
@@ -527,7 +527,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 11. Verse by Category System | 7/7 | Complete | 2026-02-17 |
 | 12. Content Production Platform | 14/14 | Complete | 2026-02-17 |
 | 13. SMS Notifications & Phone Number | 7/7 | Complete | 2026-02-18 |
-| 14. First-Time User Tutorial & Walkthrough | 0/3 | Planned | - |
+| 14. First-Time User Tutorial & Walkthrough | 3/3 | Complete | 2026-02-20 |
 
 ---
 *Roadmap created: 2026-02-11*
@@ -555,4 +555,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 *Phase 13 executed: 2026-02-18 (7 plans in 4 waves, 17 min)*
 *Phase 14 added: 2026-02-20 (First-Time User Tutorial & Walkthrough)*
 *Phase 14 planned: 2026-02-20 (3 plans in 3 waves)*
+*Phase 14 executed: 2026-02-20 (3 plans in 3 waves, 8 min)*
 *Depth: Comprehensive (14 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category + content production + SMS notifications + user tutorial)*
