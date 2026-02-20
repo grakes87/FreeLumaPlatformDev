@@ -6,23 +6,23 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Daily inspirational content delivery and faith-based community connection — users come back every day for their daily post and stay to engage with their community.
 
-**Current focus:** All phases complete
+**Current focus:** Phase 14 — First-Time User Tutorial & Walkthrough
 
 ## Current Position
 
-Phase: 13 of 13 (SMS Notifications & Phone Number)
-Plan: 7 of 7 complete (all done)
-Status: Complete
-Last activity: 2026-02-18 — Completed Phase 13 (SMS Notifications & Phone Number)
+Phase: 14 of 14 (First-Time User Tutorial & Walkthrough)
+Plan: 1 of 3 complete
+Status: In progress (Wave 1)
+Last activity: 2026-02-20 — Completed 14-01-PLAN.md (Tutorial Backend Foundation)
 
-Progress: [████████████████████████████████████████████████████████████████████████████████████████████████████████████████████] 113/113 plans (100%)
+Progress: [████████████████████████████████████████████████████████████████████████████████████████████████████████████████████░░░] 114/116 plans (98%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 113
+- Total plans completed: 114
 - Average duration: 4 min
-- Total execution time: 481 min
+- Total execution time: 483 min
 
 **By Phase:**
 
@@ -40,9 +40,10 @@ Progress: [███████████████████████
 | 11-verse-by-category-system | 7/7 | 42 min | 6 min |
 | 12-content-production-platform | 14/14 | 52 min | 4 min |
 | 13-sms-notifications | 7/7 | 17 min | 2 min |
+| 14-first-time-user-tutorial | 1/3 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 13-03 (3 min), 13-04 (2 min), 13-05 (3 min), 13-06 (2 min), 13-07 (5 min)
+- Last 5 plans: 13-05 (3 min), 13-06 (2 min), 13-07 (5 min), 14-01 (2 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -377,6 +378,8 @@ Recent decisions affecting current work:
 - Phase 11 added: Verse by Category System (verse-by-category mode for daily tab, new DB tables, category media upload, old DB migration, profile settings, dedicated reactions/comments)
 - Phase 12 added: Content Production Platform (creator management, daily content generation pipeline with TTS/SRT, auto-assignment, admin management UI, HeyGen AI video integration, approval workflow)
 - Phase 13 added: SMS Notifications & Phone Number (phone number field on profiles, SMS OTP verification, per-category SMS notification preferences, Twilio/SendGrid SMS integration, quiet hours, STOP unsubscribe)
+- Phase 14 added: First-Time User Tutorial & Walkthrough (welcome slideshow + contextual coach marks for new users after onboarding)
+- 14-01: Tutorial state stored as boolean on users table; PUT /api/tutorial with reset=true for replay support
 - 09-01: QuickReactionPicker made configurable via reactionTypes prop (shared component serves daily/prayer/post contexts with different reaction sets)
 
 ### Pending Todos
@@ -442,6 +445,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-18
-Stopped at: Phase 13 complete — all 13 phases done
+Last session: 2026-02-20
+Stopped at: Completed 14-01-PLAN.md (Tutorial Backend Foundation)
 Resume file: None
