@@ -25,6 +25,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 11: Verse by Category System** - Add verse-by-category mode to daily content tab with category selector, new DB tables (verse_category_content/translations/media), media upload from CategoryPhotos.zip to B2, profile settings integration (daily verse vs verse-by-category), random verse display per category on refresh, dedicated reactions/comments, and old DB versebycategory data migration
 - [ ] **Phase 12: Content Production Platform** - Creator management (LumaShortCreator), daily content generation pipeline (bible verse selection, positivity quotes, multi-translation fetch, TTS via ElevenLabs/Murf, SRT generation, background video prompts, 45s camera scripts), auto-assignment to creators, admin content management UI (unassigned/assigned/pending/completed/background tabs), HeyGen AI video integration for Spanish content, and content approval workflow
 - [ ] **Phase 13: SMS Notifications & Phone Number** - Add phone number field to user profiles (onboarding + settings), integrate SMS provider (Twilio/SendGrid), enable text message notifications as user-configurable option alongside email/in-app, SMS preferences per notification category
+- [ ] **Phase 14: First-Time User Tutorial & Walkthrough** - Guided tutorial for first-time logged-in users covering daily feed, mode switching, verse-by-category, bottom navigation, and social features with coach marks and welcome slideshow
 
 ## Phase Details
 
@@ -478,10 +479,35 @@ Plans:
 - [ ] 13-06-PLAN.md — Daily reminder SMS dispatch + admin SMS analytics
 - [ ] 13-07-PLAN.md — Build verification + human UX verification checkpoint
 
+### Phase 14: First-Time User Tutorial & Walkthrough
+**Goal**: Guided onboarding tutorial for first-time logged-in users — after completing the existing onboarding flow (profile, interests, mode, follows), new users see a short welcome slideshow covering key app concepts followed by contextual coach marks on the main feed highlighting the daily feed swipe gesture, mode toggle, verse-by-category circle, bottom navigation, and social interaction patterns. Tutorial tracked via user flag so it only shows once.
+
+**Depends on**: Phase 13 (all prior phases complete)
+
+**Requirements**: None (UX enhancement phase)
+
+**Success Criteria** (what must be TRUE):
+  1. First-time users see welcome slideshow (3-4 screens) after completing onboarding
+  2. Slideshow covers: daily feed concept, bible/positivity modes, social features overview, how to navigate
+  3. After slideshow dismissal, contextual coach marks highlight key UI elements on the main feed
+  4. Coach marks cover: swipe gesture for daily feed, mode toggle, verse-by-category circle (bible mode), bottom nav tabs
+  5. User can skip/dismiss tutorial at any point
+  6. Tutorial completion tracked via user flag (has_seen_tutorial) — only shows once per account
+  7. Tutorial does not re-appear on subsequent logins or app visits
+  8. Tutorial works correctly on mobile viewport sizes
+  9. Existing users (imported from old platform) are not shown the tutorial
+
+**Plans**: 3 plans in 3 waves
+
+Plans:
+- [ ] 14-01-PLAN.md — Database migration (has_seen_tutorial column), User model update, AuthContext field, tutorial API route (GET/PUT)
+- [ ] 14-02-PLAN.md — Tutorial UI components: TutorialProvider context, TutorialSlideshow (4-card Swiper), TutorialCoachMarks (spotlight overlay), tutorialSteps config
+- [ ] 14-03-PLAN.md — Integration: data-tutorial attributes on target components, TutorialProvider in layout, Settings replay button, build verification
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14
 
 **Parallel Opportunities:**
 - Phase 3 (Real-Time) and Phase 4 (Enhanced Content) are mostly independent and can be partially parallelized after Phase 2 completes
@@ -501,6 +527,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 11. Verse by Category System | 7/7 | Complete | 2026-02-17 |
 | 12. Content Production Platform | 14/14 | Complete | 2026-02-17 |
 | 13. SMS Notifications & Phone Number | 7/7 | Complete | 2026-02-18 |
+| 14. First-Time User Tutorial & Walkthrough | 0/3 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-11*
@@ -526,4 +553,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 *Phase 13 added: 2026-02-18 (SMS Notifications & Phone Number)*
 *Phase 13 planned: 2026-02-18 (7 plans in 4 waves)*
 *Phase 13 executed: 2026-02-18 (7 plans in 4 waves, 17 min)*
-*Depth: Comprehensive (13 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category + content production + SMS notifications)*
+*Phase 14 added: 2026-02-20 (First-Time User Tutorial & Walkthrough)*
+*Phase 14 planned: 2026-02-20 (3 plans in 3 waves)*
+*Depth: Comprehensive (14 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category + content production + SMS notifications + user tutorial)*
