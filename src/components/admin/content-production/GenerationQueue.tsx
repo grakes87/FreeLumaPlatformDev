@@ -26,6 +26,8 @@ export interface QueueItem {
   post_date: string;
   field: string;
   translation_code?: string;
+  mode?: 'bible' | 'positivity';
+  language?: string;
   status: 'queued' | 'running' | 'success' | 'failed';
   error?: string;
   started_at: number;
@@ -364,6 +366,12 @@ export function GenerationQueue({ onRef }: GenerationQueueProps) {
                   </p>
                   <p className="text-[10px] text-text-muted dark:text-text-muted-dark">
                     {dateLabel(item.post_date)}
+                    {item.language && (
+                      <span className="ml-1 uppercase">{item.language}</span>
+                    )}
+                    {item.mode && (
+                      <span className="ml-1 capitalize">{item.mode}</span>
+                    )}
                     {item.status === 'queued' && (
                       <span className="ml-1 text-slate-400">queued</span>
                     )}

@@ -17,7 +17,7 @@ import {
   newVideoEmail,
 } from './templates';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://freeluma.com';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://freeluma.app';
 
 /** Max emails per user per hour */
 const MAX_EMAILS_PER_HOUR = 5;

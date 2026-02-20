@@ -157,11 +157,10 @@ function GuestDailyWrapper({ children }: { children: ReactNode }) {
       <div className="fixed inset-0 overflow-hidden bg-black">
         <TopBar transparent />
 
-        {/* Daily post content (full screen, scroll snap matches authenticated AppShell) */}
+        {/* Daily post content — guests locked to first card (no scroll) */}
         <main
           id="immersive-scroll"
-          className="h-full overflow-y-auto"
-          style={{ scrollSnapType: 'y mandatory', overscrollBehaviorY: 'contain' }}
+          className="h-full overflow-y-hidden"
         >
           {children}
         </main>

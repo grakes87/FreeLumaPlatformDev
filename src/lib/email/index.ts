@@ -1,7 +1,7 @@
 import sgMail from '@sendgrid/mail';
 import { passwordResetTemplate, verificationTemplate, emailChangeVerificationTemplate, passwordChangeAlertTemplate, accountDeletionTemplate } from './templates';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://freeluma.com';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://freeluma.app';
 
 // Set API key at module level (guarded so it does not throw if key missing)
 if (process.env.SENDGRID_API_KEY) {

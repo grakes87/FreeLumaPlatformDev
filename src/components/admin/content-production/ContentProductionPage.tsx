@@ -328,6 +328,8 @@ export default function ContentProductionPage() {
         post_date: postDate,
         field,
         translation_code: translationCode,
+        mode: selectedMode,
+        language: selectedLanguage,
       });
 
       try {
@@ -420,6 +422,8 @@ export default function ContentProductionPage() {
         daily_content_id: dayId,
         post_date: postDate,
         field: 'heygen_video',
+        mode: selectedMode,
+        language: selectedLanguage,
       });
 
       try {
@@ -520,6 +524,8 @@ export default function ContentProductionPage() {
         post_date: item.postDate,
         field: item.field,
         translation_code: item.translationCode,
+        mode: selectedMode,
+        language: selectedLanguage,
       }))
     );
 

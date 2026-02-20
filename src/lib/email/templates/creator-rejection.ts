@@ -2,7 +2,7 @@ import { sendEmail } from '@/lib/email';
 
 const BRAND_COLOR = '#62BEBA';
 const BRAND_NAME = 'Free Luma';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://freeluma.com';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://freeluma.app';
 
 function baseTemplate(content: string): string {
   return `<!DOCTYPE html>
