@@ -26,6 +26,7 @@ export interface UserData {
   is_admin: boolean;
   is_creator: boolean;
   can_host: boolean;
+  has_seen_tutorial: boolean;
   preferred_translation: string;
   verse_mode: 'daily_verse' | 'verse_by_category';
   verse_category_id: number | null;
