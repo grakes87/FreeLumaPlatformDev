@@ -28,19 +28,21 @@ interface Creator {
   can_bible: boolean;
   can_positivity: boolean;
   active: boolean;
+  languages: string[] | string;
 }
 
 interface AssignedTabProps {
   days: DayData[];
   month: string;
   mode: 'bible' | 'positivity';
+  language: string;
   creators: Creator[];
   onRefresh: () => void;
 }
 
 type ViewMode = 'by-day' | 'by-creator';
 
-export function AssignedTab({ days, month, mode, creators, onRefresh }: AssignedTabProps) {
+export function AssignedTab({ days, month, mode, language, creators, onRefresh }: AssignedTabProps) {
   const toast = useToast();
   const [view, setView] = useState<ViewMode>('by-day');
   const [reassigningId, setReassigningId] = useState<number | null>(null);
@@ -51,13 +53,16 @@ export function AssignedTab({ days, month, mode, creators, onRefresh }: Assigned
     [days]
   );
 
-  // Eligible creators for this mode
+  // Eligible creators for this mode and language
   const eligibleCreators = useMemo(
     () =>
-      creators.filter(
-        (c) => c.active && (mode === 'bible' ? c.can_bible : c.can_positivity)
-      ),
-    [creators, mode]
+      creators.filter((c) => {
+        if (!c.active) return false;
+        if (mode === 'bible' ? !c.can_bible : !c.can_positivity) return false;
+        const langs = Array.isArray(c.languages) ? c.languages : JSON.parse(c.languages as string || '[]');
+        return langs.includes(language);
+      }),
+    [creators, mode, language]
   );
 
   // Group by creator for the by-creator view

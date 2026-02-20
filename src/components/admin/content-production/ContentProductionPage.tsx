@@ -38,6 +38,7 @@ interface Creator {
   can_bible: boolean;
   can_positivity: boolean;
   active: boolean;
+  languages: string[] | string;
 }
 
 interface MonthData {
@@ -778,6 +779,7 @@ export default function ContentProductionPage() {
               days={data?.days ?? []}
               month={selectedMonth}
               mode={selectedMode}
+              language={selectedLanguage}
               creators={creators}
               onRefresh={fetchData}
             />
@@ -786,6 +788,7 @@ export default function ContentProductionPage() {
             <PendingTab
               days={data?.days ?? []}
               mode={selectedMode}
+              language={selectedLanguage}
               expectedTranslations={data?.expectedTranslations ?? []}
               creators={creators}
               onRegenerate={handleRegenerate}

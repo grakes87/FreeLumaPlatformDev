@@ -14,11 +14,13 @@ interface Creator {
   can_bible: boolean;
   can_positivity: boolean;
   active: boolean;
+  languages: string[] | string;
 }
 
 interface PendingTabProps {
   days: DayData[];
   mode: 'bible' | 'positivity';
+  language: string;
   expectedTranslations: string[];
   creators: Creator[];
   onRegenerate: (dayId: number, field: string, translationCode?: string) => void;
@@ -73,13 +75,18 @@ function getMissingFields(
   return missing;
 }
 
-export function PendingTab({ days, mode, expectedTranslations, creators, onRegenerate, onBulkGenerate, onRefresh, onVideoUpload, onGenerateHeygenVideo, onContentTextSave }: PendingTabProps) {
+export function PendingTab({ days, mode, language, expectedTranslations, creators, onRegenerate, onBulkGenerate, onRefresh, onVideoUpload, onGenerateHeygenVideo, onContentTextSave }: PendingTabProps) {
   const toast = useToast();
   const [reassigningId, setReassigningId] = useState<number | null>(null);
 
   const eligibleCreators = useMemo(
-    () => creators.filter((c) => c.active && (mode === 'bible' ? c.can_bible : c.can_positivity)),
-    [creators, mode]
+    () => creators.filter((c) => {
+      if (!c.active) return false;
+      if (mode === 'bible' ? !c.can_bible : !c.can_positivity) return false;
+      const langs = Array.isArray(c.languages) ? c.languages : JSON.parse(c.languages as string || '[]');
+      return langs.includes(language);
+    }),
+    [creators, mode, language]
   );
 
   const handleReassign = async (dailyContentId: number, creatorId: number) => {

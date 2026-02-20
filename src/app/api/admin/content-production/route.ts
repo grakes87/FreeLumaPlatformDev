@@ -209,6 +209,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
         can_positivity: c.can_positivity,
         is_ai: c.is_ai,
         active: c.active,
+        languages: c.languages,
       };
     });
 

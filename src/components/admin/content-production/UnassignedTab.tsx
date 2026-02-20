@@ -20,6 +20,7 @@ interface Creator {
   active: boolean;
   can_bible: boolean;
   can_positivity: boolean;
+  languages: string[] | string;
 }
 
 interface UnassignedTabProps {
@@ -39,10 +40,15 @@ export function UnassignedTab({ days, month, mode, language, creators, onRefresh
   const [autoAssigning, setAutoAssigning] = useState(false);
   const [assigningId, setAssigningId] = useState<number | null>(null);
 
-  // Eligible creators for this mode
+  // Eligible creators for this mode and language
   const eligibleCreators = useMemo(
-    () => creators.filter((c) => c.active && (mode === 'bible' ? c.can_bible : c.can_positivity)),
-    [creators, mode]
+    () => creators.filter((c) => {
+      if (!c.active) return false;
+      if (mode === 'bible' ? !c.can_bible : !c.can_positivity) return false;
+      const langs = Array.isArray(c.languages) ? c.languages : JSON.parse(c.languages as string || '[]');
+      return langs.includes(language);
+    }),
+    [creators, mode, language]
   );
 
   const handleAutoAssign = async () => {
