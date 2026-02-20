@@ -71,9 +71,8 @@ function extractBookName(reference: string): string {
 function cleanVerseText(text: string): string {
   return text
     .replace(/\u00b6/g, '')
-    .replace(/\u00b6/g, '')
     .replace(/<[^>]*>/g, '')
-    .replace(/^\s*\[\d+\]\s*/, '')
+    .replace(/\[\d+\]/g, '')
     .replace(/^\s*\d+\s+/, '')
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')

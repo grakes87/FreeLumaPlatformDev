@@ -15,6 +15,7 @@ import {
   Image as ImageIcon,
   BookOpen,
   Search,
+  ShieldAlert,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -613,6 +614,21 @@ function VersesTab({
   const [deleteVerse, setDeleteVerse] = useState<Verse | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // AI Review state
+  const [showReview, setShowReview] = useState(false);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewResults, setReviewResults] = useState<{
+    verse_id: number;
+    verse_reference: string;
+    content_text: string;
+    flagged: boolean;
+    reason: string;
+    flag_type: 'age' | 'relevance' | 'both' | 'none';
+  }[]>([]);
+  const [reviewSelected, setReviewSelected] = useState<Set<number>>(new Set());
+  const [reviewDeleting, setReviewDeleting] = useState(false);
+  const [reviewSummary, setReviewSummary] = useState<{ total: number; flagged: number }>({ total: 0, flagged: 0 });
+
   const catId = selectedCategoryId;
 
   const fetchVerses = useCallback(async (categoryId: number, off: number, append = false) => {
@@ -815,6 +831,91 @@ function VersesTab({
     });
   };
 
+  // ----- AI Review handlers -----
+  const handleAIReview = async () => {
+    if (!catId) return;
+    setShowReview(true);
+    setReviewLoading(true);
+    setReviewResults([]);
+    setReviewSelected(new Set());
+    setReviewSummary({ total: 0, flagged: 0 });
+
+    try {
+      const res = await fetch(`/api/admin/verse-categories/${catId}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const results = data.data?.results ?? data.results ?? [];
+        const summary = data.data?.summary ?? data.summary ?? { total: 0, flagged: 0 };
+
+        // Sort: flagged first, then by reference
+        const sorted = [...results].sort((a: typeof results[0], b: typeof results[0]) => {
+          if (a.flagged && !b.flagged) return -1;
+          if (!a.flagged && b.flagged) return 1;
+          return a.verse_reference.localeCompare(b.verse_reference);
+        });
+
+        setReviewResults(sorted);
+        setReviewSummary(summary);
+        // Pre-select flagged verses
+        setReviewSelected(new Set(sorted.filter((r: typeof results[0]) => r.flagged).map((r: typeof results[0]) => r.verse_id)));
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'AI review failed');
+        setShowReview(false);
+      }
+    } catch {
+      toast.error('AI review failed');
+      setShowReview(false);
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!catId || reviewSelected.size === 0) return;
+    setReviewDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/verse-categories/${catId}/bulk-delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ verse_ids: Array.from(reviewSelected) }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const count = data.data?.deleted_count ?? data.deleted_count ?? reviewSelected.size;
+        toast.success(`Removed ${count} verse${count !== 1 ? 's' : ''}`);
+        setShowReview(false);
+        setReviewResults([]);
+        setReviewSelected(new Set());
+        fetchVerses(catId, 0);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to remove verses');
+      }
+    } catch {
+      toast.error('Failed to remove verses');
+    } finally {
+      setReviewDeleting(false);
+    }
+  };
+
+  const toggleReviewSelection = (verseId: number) => {
+    setReviewSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(verseId)) {
+        next.delete(verseId);
+      } else {
+        next.add(verseId);
+      }
+      return next;
+    });
+  };
+
   const TRANSLATION_CODES = ['KJV', 'ESV', 'NIV', 'NKJV', 'NLT', 'CSB', 'AMP', 'NIRV', 'NVI', 'RVR', 'NAB', 'NRSV'];
 
   const handleExpandVerse = useCallback(async (verse: Verse) => {
@@ -956,6 +1057,13 @@ function VersesTab({
                 onClick={() => setShowAI(!showAI)}
               >
                 <Sparkles className="h-4 w-4" /> AI Generate
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleAIReview}
+                disabled={reviewLoading || total === 0}
+              >
+                <ShieldAlert className="h-4 w-4" /> AI Review
               </Button>
             </div>
 
@@ -1295,6 +1403,152 @@ function VersesTab({
               Delete Verse
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* AI Review Modal */}
+      <Modal
+        isOpen={showReview}
+        onClose={() => { if (!reviewLoading && !reviewDeleting) { setShowReview(false); setReviewResults([]); setReviewSelected(new Set()); } }}
+        title="AI Verse Review"
+        size="xl"
+      >
+        <div className="space-y-4">
+          {reviewLoading ? (
+            <div className="flex flex-col items-center gap-3 py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-text-muted dark:text-text-muted-dark">
+                Reviewing {total} verse{total !== 1 ? 's' : ''} for age appropriateness and category relevance...
+              </p>
+              <p className="text-xs text-text-muted/60 dark:text-text-muted-dark/60">
+                This may take a moment for large categories
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Summary banner */}
+              <div className={cn(
+                'rounded-xl px-4 py-3',
+                reviewSummary.flagged > 0
+                  ? 'bg-amber-50 dark:bg-amber-900/20'
+                  : 'bg-green-50 dark:bg-green-900/20'
+              )}>
+                <p className={cn(
+                  'text-sm font-medium',
+                  reviewSummary.flagged > 0
+                    ? 'text-amber-700 dark:text-amber-300'
+                    : 'text-green-700 dark:text-green-300'
+                )}>
+                  {reviewSummary.flagged > 0
+                    ? `${reviewSummary.flagged} of ${reviewSummary.total} verse${reviewSummary.total !== 1 ? 's' : ''} flagged for review`
+                    : `All ${reviewSummary.total} verses passed review`
+                  }
+                </p>
+              </div>
+
+              {/* Selection controls */}
+              {reviewResults.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-text-muted dark:text-text-muted-dark">
+                    {reviewSelected.size} selected
+                  </p>
+                  <div className="flex gap-2">
+                    {reviewSummary.flagged > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setReviewSelected(new Set(reviewResults.filter((r) => r.flagged).map((r) => r.verse_id)))}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Select Flagged
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setReviewSelected(new Set(reviewResults.map((r) => r.verse_id)))}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReviewSelected(new Set())}
+                      className="text-xs text-text-muted hover:underline dark:text-text-muted-dark"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Verse list */}
+              {reviewResults.length > 0 && (
+                <div className="max-h-96 overflow-y-auto rounded-lg border border-border dark:border-border-dark">
+                  {reviewResults.map((r) => (
+                    <label
+                      key={r.verse_id}
+                      className={cn(
+                        'flex cursor-pointer items-start gap-3 border-b border-border/50 px-4 py-3 transition-colors last:border-b-0',
+                        'hover:bg-surface-hover dark:border-border-dark/50 dark:hover:bg-surface-hover-dark',
+                        r.flagged && 'bg-amber-50/50 dark:bg-amber-900/10'
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={reviewSelected.has(r.verse_id)}
+                        onChange={() => toggleReviewSelection(r.verse_id)}
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-primary focus:ring-primary"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-text dark:text-text-dark">
+                            {r.verse_reference}
+                          </span>
+                          {r.flagged && (
+                            <span className={cn(
+                              'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase',
+                              r.flag_type === 'age' && 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+                              r.flag_type === 'relevance' && 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+                              r.flag_type === 'both' && 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+                            )}>
+                              {r.flag_type === 'age' ? 'Age' : r.flag_type === 'relevance' ? 'Relevance' : 'Both'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 text-xs leading-relaxed text-text-muted dark:text-text-muted-dark line-clamp-2">
+                          {r.content_text}
+                        </p>
+                        {r.flagged && r.reason && (
+                          <p className="mt-1 text-xs italic text-amber-600 dark:text-amber-400">
+                            {r.reason}
+                          </p>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex gap-3">
+                {reviewSelected.size > 0 && (
+                  <Button
+                    variant="danger"
+                    onClick={handleBulkDelete}
+                    loading={reviewDeleting}
+                  >
+                    Remove Selected ({reviewSelected.size})
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  onClick={() => { setShowReview(false); setReviewResults([]); setReviewSelected(new Set()); }}
+                  disabled={reviewDeleting}
+                >
+                  Close
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

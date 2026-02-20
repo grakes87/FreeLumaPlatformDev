@@ -8,6 +8,7 @@ export interface ContentGenerationLogAttributes {
   daily_content_id: number;
   field: string;
   translation_code: string | null;
+  heygen_video_id: string | null;
   status: GenerationLogStatus;
   error_message: string | null;
   duration_ms: number | null;
@@ -18,6 +19,7 @@ export interface ContentGenerationLogAttributes {
 export interface ContentGenerationLogCreationAttributes extends Optional<ContentGenerationLogAttributes,
   | 'id'
   | 'translation_code'
+  | 'heygen_video_id'
   | 'status'
   | 'error_message'
   | 'duration_ms'
@@ -30,6 +32,7 @@ class ContentGenerationLog extends Model<ContentGenerationLogAttributes, Content
   declare daily_content_id: number;
   declare field: string;
   declare translation_code: string | null;
+  declare heygen_video_id: string | null;
   declare status: GenerationLogStatus;
   declare error_message: string | null;
   declare duration_ms: number | null;
@@ -54,6 +57,10 @@ ContentGenerationLog.init(
     },
     translation_code: {
       type: DataTypes.STRING(10),
+      allowNull: true,
+    },
+    heygen_video_id: {
+      type: DataTypes.STRING(64),
       allowNull: true,
     },
     status: {

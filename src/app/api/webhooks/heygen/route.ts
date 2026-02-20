@@ -32,16 +32,14 @@ interface HeygenWebhookPayload {
   error?: string;
 }
 
-interface PendingVideoEntry {
-  dailyContentId: number;
-  creatorId: number;
-  creatorName: string;
-  logId?: number;
-  triggeredAt: string;
-}
-
 interface PendingVideoMap {
-  [videoId: string]: PendingVideoEntry;
+  [videoId: string]: {
+    dailyContentId: number;
+    creatorId: number;
+    creatorName: string;
+    logId?: number;
+    triggeredAt: string;
+  };
 }
 
 /**
@@ -70,8 +68,8 @@ function deriveStatus(body: HeygenWebhookPayload): 'completed' | 'failed' | 'pro
  * NO auth middleware - this is called by HeyGen's servers.
  * Always returns 200 to acknowledge receipt.
  *
- * Updates the ContentGenerationLog entry (if logId tracked) so the
- * admin Generation Queue UI reflects the final status.
+ * Primary lookup: ContentGenerationLog.heygen_video_id (race-condition-free)
+ * Fallback: PlatformSetting heygen_pending_videos map (legacy)
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
@@ -106,23 +104,79 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Lazy-import models
     const { DailyContent, PlatformSetting, ContentGenerationLog } = await import('@/lib/db/models');
 
-    // Load pending videos map
+    // --- Primary lookup: find log entry by heygen_video_id column ---
+    const logEntry = await ContentGenerationLog.findOne({
+      where: { heygen_video_id: videoId, status: 'started' },
+      order: [['id', 'DESC']],
+    });
+
+    if (logEntry) {
+      const dailyContentId = logEntry.daily_content_id;
+      const durationMs = Date.now() - new Date(logEntry.created_at).getTime();
+
+      if (status === 'completed') {
+        if (videoUrl) {
+          await DailyContent.update(
+            {
+              lumashort_video_url: videoUrl,
+              ...(thumbnailUrl ? { creator_video_thumbnail: thumbnailUrl } : {}),
+              status: 'submitted',
+            },
+            { where: { id: dailyContentId } },
+          );
+          console.log(`[HeyGen Webhook] Updated content ${dailyContentId} with video URL, status -> submitted`);
+        } else {
+          console.warn(`[HeyGen Webhook] Completed but no video_url for video_id=${videoId}, content ${dailyContentId}`);
+        }
+
+        await logEntry.update({ status: 'success', duration_ms: durationMs });
+      } else if (status === 'failed') {
+        console.error(`[HeyGen Webhook] Video failed: video_id=${videoId}, content=${dailyContentId}, error=${errorMsg || 'unknown'}`);
+        await logEntry.update({
+          status: 'failed',
+          error_message: errorMsg || 'HeyGen video generation failed',
+          duration_ms: durationMs,
+        });
+      } else {
+        console.log(`[HeyGen Webhook] In-progress status="${status}" for video_id=${videoId}, content=${dailyContentId}`);
+        // Don't update log yet — wait for final status
+        return NextResponse.json({ ok: true }, { status: 200 });
+      }
+
+      // Clean up pending map (best-effort, non-blocking)
+      try {
+        const pendingJson = await PlatformSetting.get('heygen_pending_videos');
+        if (pendingJson) {
+          const pendingMap: PendingVideoMap = JSON.parse(pendingJson);
+          if (pendingMap[videoId]) {
+            delete pendingMap[videoId];
+            await PlatformSetting.set('heygen_pending_videos', JSON.stringify(pendingMap));
+          }
+        }
+      } catch (e) {
+        console.warn('[HeyGen Webhook] Failed to clean pending map (non-critical):', e);
+      }
+
+      return NextResponse.json({ ok: true }, { status: 200 });
+    }
+
+    // --- Fallback: legacy pending map lookup (for entries without heygen_video_id) ---
     const pendingJson = await PlatformSetting.get('heygen_pending_videos');
     if (!pendingJson) {
-      console.warn(`[HeyGen Webhook] No pending videos map found for video_id=${videoId}`);
-      return NextResponse.json({ ok: true, message: 'No pending videos tracked' }, { status: 200 });
+      console.warn(`[HeyGen Webhook] No log entry or pending map for video_id=${videoId}`);
+      return NextResponse.json({ ok: true, message: 'Video not tracked' }, { status: 200 });
     }
 
     const pendingMap: PendingVideoMap = JSON.parse(pendingJson);
     const entry = pendingMap[videoId];
 
     if (!entry) {
-      console.warn(`[HeyGen Webhook] Unknown video_id=${videoId}, not in pending map`);
+      console.warn(`[HeyGen Webhook] Unknown video_id=${videoId}, not in log table or pending map`);
       return NextResponse.json({ ok: true, message: 'Video not tracked' }, { status: 200 });
     }
 
+    // Legacy path: use pending map entry
     if (status === 'completed') {
-      // Video completed -- update DailyContent with video URL
       if (videoUrl) {
         await DailyContent.update(
           {
@@ -132,42 +186,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           },
           { where: { id: entry.dailyContentId } },
         );
-        console.log(
-          `[HeyGen Webhook] Updated content ${entry.dailyContentId} with video URL, status -> submitted`,
-        );
-      } else {
-        console.warn(
-          `[HeyGen Webhook] Completed but no video_url for video_id=${videoId}, content ${entry.dailyContentId}`,
-        );
+        console.log(`[HeyGen Webhook] (legacy) Updated content ${entry.dailyContentId} with video URL`);
       }
 
-      // Update generation log
       if (entry.logId) {
-        const logEntry = await ContentGenerationLog.findByPk(entry.logId);
-        if (logEntry) {
+        const legacyLog = await ContentGenerationLog.findByPk(entry.logId);
+        if (legacyLog) {
           const durationMs = Date.now() - new Date(entry.triggeredAt).getTime();
-          await logEntry.update({
-            status: 'success',
-            duration_ms: durationMs,
-          });
+          await legacyLog.update({ status: 'success', duration_ms: durationMs });
         }
       }
 
-      // Remove from pending map
       delete pendingMap[videoId];
       await PlatformSetting.set('heygen_pending_videos', JSON.stringify(pendingMap));
     } else if (status === 'failed') {
       console.error(
-        `[HeyGen Webhook] Video failed: video_id=${videoId}, content=${entry.dailyContentId}, ` +
-        `creator=${entry.creatorName}, error=${errorMsg || 'unknown'}`,
+        `[HeyGen Webhook] (legacy) Video failed: video_id=${videoId}, content=${entry.dailyContentId}, error=${errorMsg || 'unknown'}`,
       );
 
-      // Update generation log
       if (entry.logId) {
-        const logEntry = await ContentGenerationLog.findByPk(entry.logId);
-        if (logEntry) {
+        const legacyLog = await ContentGenerationLog.findByPk(entry.logId);
+        if (legacyLog) {
           const durationMs = Date.now() - new Date(entry.triggeredAt).getTime();
-          await logEntry.update({
+          await legacyLog.update({
             status: 'failed',
             error_message: errorMsg || 'HeyGen video generation failed',
             duration_ms: durationMs,
@@ -175,14 +216,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
       }
 
-      // Remove from pending map
       delete pendingMap[videoId];
       await PlatformSetting.set('heygen_pending_videos', JSON.stringify(pendingMap));
     } else {
-      // Processing/pending/unknown -- just log, keep in pending map
-      console.log(
-        `[HeyGen Webhook] In-progress status="${status}" for video_id=${videoId}, content=${entry.dailyContentId}`,
-      );
+      console.log(`[HeyGen Webhook] (legacy) In-progress status="${status}" for video_id=${videoId}`);
     }
 
     return NextResponse.json({ ok: true }, { status: 200 });

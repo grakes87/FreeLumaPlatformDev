@@ -140,7 +140,10 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
           voiceId,
         });
 
-        // Track pending video (include logId for webhook to update)
+        // Store video_id directly on log entry for reliable webhook lookup
+        await logEntry.update({ heygen_video_id: videoId });
+
+        // Also track in pending map for UI display
         pendingMap[videoId] = {
           dailyContentId: content.id,
           creatorId: creator.id,
@@ -253,7 +256,10 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
             voiceId,
           });
 
-          // Track pending video
+          // Store video_id directly on log entry for reliable webhook lookup
+          await logEntry.update({ heygen_video_id: videoId });
+
+          // Also track in pending map for UI display
           pendingMap[videoId] = {
             dailyContentId: content.id,
             creatorId: creator.id,
