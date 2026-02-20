@@ -176,12 +176,17 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
   const showVerseModeToggle = isBibleMode;
   const showVerseByCategory = isBibleMode && verseMode === 'verse_by_category';
 
-  // Toggle scroll snap on the container based on mode
+  // Toggle scroll snap on the container based on mode and auth state
+  // Guests (not logged in) are locked to the first card — no scrolling
+  const isGuest = !user;
   const prevShowVerseByCategoryRef = useRef(showVerseByCategory);
   useEffect(() => {
     const container = getScrollContainer();
     if (!container) return;
-    if (showVerseByCategory) {
+    if (isGuest) {
+      container.style.scrollSnapType = 'none';
+      container.style.overflowY = 'hidden';
+    } else if (showVerseByCategory) {
       container.style.scrollSnapType = 'none';
       container.style.overflowY = 'hidden';
     } else {
@@ -199,10 +204,11 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
     }
     prevShowVerseByCategoryRef.current = showVerseByCategory;
     return () => {
+      if (isGuest) return;
       container.style.scrollSnapType = 'y mandatory';
       container.style.overflowY = 'auto';
     };
-  }, [showVerseByCategory]);
+  }, [showVerseByCategory, isGuest]);
 
   // Initial loading state
   if (loading && days.length === 0 && !showVerseByCategory) {
