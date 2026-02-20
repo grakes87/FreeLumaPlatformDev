@@ -148,6 +148,7 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
   return (
     <>
       <nav
+        data-tutorial="bottom-nav"
         className={cn(
           'fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around',
           transparent

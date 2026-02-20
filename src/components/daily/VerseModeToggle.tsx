@@ -21,7 +21,7 @@ const MODE_OPTIONS: { value: VerseMode; short: string; label: string }[] = [
 
 export function VerseModeToggle({ mode, onChange }: VerseModeToggleProps) {
   return (
-    <div className="relative">
+    <div data-tutorial="verse-toggle" className="relative">
       <button
         type="button"
         onClick={() => {

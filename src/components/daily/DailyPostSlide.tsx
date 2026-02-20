@@ -120,7 +120,7 @@ export function DailyPostSlide({
   }, [refetch]);
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+    <div data-tutorial="daily-card" className="relative flex h-full w-full items-center justify-center overflow-hidden">
       {/* Background layer — dark base while video loads */}
       <div className="absolute inset-0 bg-[#0a0a0f]" />
       {hasVideo && (
