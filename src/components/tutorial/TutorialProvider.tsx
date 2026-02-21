@@ -59,6 +59,14 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     [userMode]
   );
 
+  // --- Refs for latest state (eliminates stale closure issues) ---
+  const phaseRef = useRef(phase);
+  const currentStepRef = useRef(currentStep);
+  const filteredCoachStepsRef = useRef(filteredCoachSteps);
+  phaseRef.current = phase;
+  currentStepRef.current = currentStep;
+  filteredCoachStepsRef.current = filteredCoachSteps;
+
   // Total steps for current phase
   const totalSteps =
     phase === 'slideshow'
@@ -117,23 +125,34 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     completingRef.current = false;
   }, [refreshUser]);
 
+  // advance reads from refs — always has latest phase/step, no stale closures
   const advance = useCallback(() => {
-    if (phase === 'slideshow') {
-      if (currentStep >= slideshowSteps.length - 1) {
-        // Transition to coach marks
+    const p = phaseRef.current;
+    const cs = currentStepRef.current;
+
+    if (p === 'slideshow') {
+      if (cs >= slideshowSteps.length - 1) {
+        // Persist to DB immediately — prevents re-show on refresh
+        // even if coach marks fail to render for any reason
+        fetch('/api/tutorial', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({}),
+        }).catch(() => {});
         setPhase('coach-marks');
         setCurrentStep(0);
       } else {
-        setCurrentStep((s) => s + 1);
+        setCurrentStep(cs + 1);
       }
-    } else if (phase === 'coach-marks') {
-      if (currentStep >= filteredCoachSteps.length - 1) {
+    } else if (p === 'coach-marks') {
+      if (cs >= filteredCoachStepsRef.current.length - 1) {
         completeTutorial();
       } else {
-        setCurrentStep((s) => s + 1);
+        setCurrentStep(cs + 1);
       }
     }
-  }, [phase, currentStep, filteredCoachSteps.length, completeTutorial]);
+  }, [completeTutorial]);
 
   const skip = useCallback(() => {
     completeTutorial();

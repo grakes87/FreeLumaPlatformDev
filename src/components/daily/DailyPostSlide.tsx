@@ -66,6 +66,15 @@ export function DailyPostSlide({
     setVideoReady(true);
   }, []);
 
+  // Signal to DailyFeed that this card's video is ready for scrolling
+  useEffect(() => {
+    if (videoReady && isActive) {
+      window.dispatchEvent(
+        new CustomEvent('daily-video-ready', { detail: { id: content.id } })
+      );
+    }
+  }, [videoReady, isActive, content.id]);
+
   // Get the displayed text for the active translation
   const displayText = useMemo(() => {
     if (!activeTranslation) return content.content_text;
@@ -199,7 +208,7 @@ export function DailyPostSlide({
         </div>
 
         {/* Bottom section: Reaction, Comment, Share in one row */}
-        <div ref={reactionBarRef} className="flex items-start justify-center gap-12">
+        <div ref={reactionBarRef} data-tutorial="reactions-area" className="flex items-start justify-center gap-12">
           {/* Reaction column: icon then counts below */}
           <div className="flex flex-col items-center gap-1">
             <button

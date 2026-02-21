@@ -26,7 +26,6 @@ export function ReactionBar({
   return (
     <button
       type="button"
-      data-tutorial="reactions-area"
       onClick={onOpenPicker}
       className="flex items-center gap-1.5 transition-all active:scale-95"
     >

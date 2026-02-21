@@ -15,6 +15,14 @@ function getScrollContainer() {
   return document.getElementById('immersive-scroll');
 }
 
+function hasVideoBackground(day: { video_background_url?: string | null }): boolean {
+  return !!(
+    day.video_background_url &&
+    day.video_background_url !== '' &&
+    !day.video_background_url.includes('placeholder')
+  );
+}
+
 export function DailyFeed({ mode }: { mode?: string } = {}) {
   const dailyTranslation = useDailyTranslation();
   const { user, refreshUser } = useAuth();
@@ -101,6 +109,12 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
   const [isPulling, setIsPulling] = useState(false);
   const touchStartY = useRef<number | null>(null);
 
+  // Scroll lock: prevent scrolling while active card's background video loads
+  const [scrollLocked, setScrollLocked] = useState(false);
+  const activeDayIdRef = useRef<number | null>(null);
+  activeDayIdRef.current = days[activeIndex]?.id ?? null;
+  const loadedVideoIdsRef = useRef(new Set<number>());
+
   // Track active card via container scroll position
   useEffect(() => {
     const container = getScrollContainer();
@@ -128,6 +142,45 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
   useEffect(() => {
     preloadTriggeredRef.current = false;
   }, [days.length]);
+
+  // Listen for video-ready events from DailyPostSlide cards
+  // useLayoutEffect ensures listener is registered before child useEffects dispatch
+  useLayoutEffect(() => {
+    const handler = (e: Event) => {
+      const { id } = (e as CustomEvent).detail;
+      loadedVideoIdsRef.current.add(id);
+      if (id === activeDayIdRef.current) {
+        setScrollLocked(false);
+      }
+    };
+    window.addEventListener('daily-video-ready', handler);
+    return () => window.removeEventListener('daily-video-ready', handler);
+  }, []);
+
+  // Lock scroll when active card has an unloaded background video
+  useEffect(() => {
+    const activeDay = days[activeIndex];
+    if (activeDay && hasVideoBackground(activeDay) && !loadedVideoIdsRef.current.has(activeDay.id)) {
+      setScrollLocked(true);
+    } else {
+      setScrollLocked(false);
+    }
+  }, [activeIndex, days]);
+
+  // Block touch/wheel scroll gestures while video is loading
+  useEffect(() => {
+    if (!scrollLocked) return;
+    const container = getScrollContainer();
+    if (!container) return;
+
+    const prevent = (e: Event) => e.preventDefault();
+    container.addEventListener('touchmove', prevent, { passive: false });
+    container.addEventListener('wheel', prevent, { passive: false });
+    return () => {
+      container.removeEventListener('touchmove', prevent);
+      container.removeEventListener('wheel', prevent);
+    };
+  }, [scrollLocked]);
 
   // Adjust scroll position when sliding window trims items from front
   useLayoutEffect(() => {

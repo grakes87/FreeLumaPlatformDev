@@ -159,6 +159,7 @@ export function TopBar({ transparent = false }: TopBarProps) {
           <div ref={translationRef} className="relative">
             <button
               type="button"
+              data-tutorial="bible-translation"
               onClick={() => {
                 setShowTranslationMenu((prev) => !prev);
                 setShowLangMenu(false);

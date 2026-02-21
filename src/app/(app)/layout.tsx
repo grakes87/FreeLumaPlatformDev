@@ -90,7 +90,7 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
 
         if (Object.keys(updates).length > 0) {
           await fetch('/api/settings', {
-            method: 'PATCH',
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify(updates),

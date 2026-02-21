@@ -12,6 +12,8 @@ export interface CoachMarkStep {
   target: string;
   title: string;
   description: string;
+  bibleTitle?: string;
+  bibleDescription?: string;
   bibleOnly?: boolean;
   position: 'top' | 'bottom' | 'left' | 'right';
 }
@@ -54,7 +56,9 @@ export const slideshowSteps: SlideshowStep[] = [
     id: 'navigation',
     title: 'Explore FreeLuma',
     description:
-      'Use the tabs at the bottom to navigate: Home for your feed, Search to discover posts, Create to share your own, Notifications for updates, and Profile for your settings.',
+      'Use the tabs at the bottom to navigate between your daily content, community feed, workshops, video library, and profile. Tap the + button to create new posts.',
+    bibleDescription:
+      'Use the tabs at the bottom to navigate between your daily verse, prayer wall, community feed, workshops, video library, and profile. Tap the + button to create new posts or prayer requests.',
     icon: 'Navigation2',
   },
 ];
@@ -82,19 +86,82 @@ export const coachMarkSteps: CoachMarkStep[] = [
     position: 'bottom',
   },
   {
-    id: 'bottom-nav',
-    target: '[data-tutorial="bottom-nav"]',
-    title: 'Navigation',
+    id: 'bible-translation',
+    target: '[data-tutorial="bible-translation"]',
+    title: 'Bible Translations',
     description:
-      'These five tabs are your guide: Home, Search, Create, Notifications, and Profile.',
-    position: 'top',
+      'Tap to switch between Bible translations like KJV, NIV, AMP, and more. Read the daily verse in your preferred translation.',
+    bibleOnly: true,
+    position: 'bottom',
   },
   {
     id: 'reactions-area',
     target: '[data-tutorial="reactions-area"]',
-    title: 'React & Comment',
+    title: 'React, Comment & Share',
     description:
-      'Tap to react or leave a comment on any daily content. Your voice matters here.',
+      'Tap the heart to react, the bubble to comment, and the share icon to send the daily content to friends. Your voice matters here.',
+    position: 'top',
+  },
+  {
+    id: 'tab-daily',
+    target: '[data-tutorial="tab-daily"]',
+    title: 'Daily Post',
+    description:
+      'Your home screen — come back every day for a fresh verse or quote with audio and video.',
+    position: 'top',
+  },
+  {
+    id: 'tab-prayer',
+    target: '[data-tutorial="tab-prayer"]',
+    title: 'Prayer Wall',
+    description:
+      'Share prayer requests, pray for others, and celebrate answered prayers together.',
+    bibleOnly: true,
+    position: 'top',
+  },
+  {
+    id: 'tab-feed',
+    target: '[data-tutorial="tab-feed"]',
+    title: 'Community Feed',
+    description:
+      'See posts from people you follow, discover new content, and engage with the community.',
+    position: 'top',
+  },
+  {
+    id: 'tab-create',
+    target: '[data-tutorial="tab-create"]',
+    title: 'Create Content',
+    description:
+      'Tap the + button to share a post or schedule a workshop.',
+    bibleDescription:
+      'Tap the + button to share a post, create a prayer request, or schedule a Bible study.',
+    position: 'top',
+  },
+  {
+    id: 'tab-workshops',
+    target: '[data-tutorial="tab-workshops"]',
+    title: 'Workshops',
+    description:
+      'Join live video workshops hosted by the community, or start your own.',
+    bibleTitle: 'Bible Studies',
+    bibleDescription:
+      'Join live Bible study sessions hosted by the community, or start your own.',
+    position: 'top',
+  },
+  {
+    id: 'tab-watch',
+    target: '[data-tutorial="tab-watch"]',
+    title: 'Watch',
+    description:
+      'Browse the video library with devotionals, teachings, and inspirational content.',
+    position: 'top',
+  },
+  {
+    id: 'tab-profile',
+    target: '[data-tutorial="tab-profile"]',
+    title: 'Your Profile',
+    description:
+      'View your posts, followers, saved content, and account settings.',
     position: 'top',
   },
 ];

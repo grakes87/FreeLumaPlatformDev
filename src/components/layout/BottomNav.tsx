@@ -84,6 +84,15 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
     [router]
   );
 
+  const tabTutorialMap: Record<string, string> = {
+    '/': 'tab-daily',
+    '/prayer-wall': 'tab-prayer',
+    '/feed': 'tab-feed',
+    '/workshops': 'tab-workshops',
+    '/watch': 'tab-watch',
+    '/profile': 'tab-profile',
+  };
+
   const renderTab = (tab: NavTab) => {
     const isActive =
       tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href);
@@ -94,6 +103,7 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
       <Link
         key={tab.href}
         href={tab.href}
+        data-tutorial={tabTutorialMap[tab.href]}
         className={cn(
           'flex flex-col items-center justify-center p-2 transition-colors',
           !isProfile && (transparent
@@ -167,6 +177,7 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
         {/* Center '+' create button */}
         <button
           type="button"
+          data-tutorial="tab-create"
           onClick={() => {
             if (pathname === '/prayer-wall' || pathname.startsWith('/prayer-wall/')) {
               router.push('/prayer-wall?compose=prayer_request');
