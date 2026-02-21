@@ -31,7 +31,7 @@ export function AnnouncementPopup() {
     // useTutorial throws if outside provider — treat as done
   }
 
-  const tutorialDone = tutorialPhase === 'done';
+  const tutorialDone = tutorialPhase === 'done' || tutorialPhase === 'idle';
 
   const fetchAnnouncements = useCallback(async () => {
     if (fetchedRef.current) return;
