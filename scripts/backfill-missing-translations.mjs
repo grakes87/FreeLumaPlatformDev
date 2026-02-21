@@ -86,7 +86,14 @@ function stripHtml(html) {
 
 function cleanVerseText(text) {
   text = text.replace(/\u00b6/g, '').replace(/¶/g, '');
-  text = text.replace(/^\s*\[\d+\]\s*/, '');
+  // Strip section heading + [verse_number] from start
+  text = text.replace(/^.*?\[\d+\]\s*/, '');
+  // Remove remaining [number] markers
+  text = text.replace(/\s*\[\d+\]\s*/g, ' ');
+  // Remove cross-reference brackets (e.g., [Ex 3:14], [Heb 11:13])
+  text = text.replace(/\s*\[[^\]]*\d+:\d+[^\]]*\]\s*/g, ' ');
+  // AMP-style: keep content, remove brackets
+  text = text.replace(/\[([^\]]+)\]/g, '$1');
   text = text.replace(/^\s*\d+\s+/, '');
   return text.replace(/\s+/g, ' ').trim();
 }
@@ -100,13 +107,19 @@ function cleanChapterText(text) {
   }
   text = text.replace(/\s*\|\s*/g, '|');
   text = text.replace(/\|+/g, '|');
+  // Strip leading chapter number + section heading before first pipe
+  text = text.replace(/^\|?\d+\s+[^|]+\|/, '|');
+  // Remove cross-reference brackets
+  text = text.replace(/\s*\[[^\]]*\d+:\d+[^\]]*\]\s*/g, ' ');
+  // AMP-style: keep content, remove brackets
+  text = text.replace(/\[([^\]]+)\]/g, '$1');
   text = text.replace(/\s+/g, ' ').trim();
   if (text && !text.startsWith('|')) text = '|' + text;
   return text;
 }
 
 async function fetchVerse(bibleId, verseId) {
-  const url = `${API_BASE}/${bibleId}/verses/${verseId}?content-type=text`;
+  const url = `${API_BASE}/${bibleId}/verses/${verseId}?content-type=text&include-titles=false`;
   try {
     const res = await fetch(url, { headers: { 'api-key': API_KEY } });
     if (!res.ok) {
@@ -123,7 +136,7 @@ async function fetchVerse(bibleId, verseId) {
 }
 
 async function fetchChapter(bibleId, chapterId) {
-  const url = `${API_BASE}/${bibleId}/chapters/${chapterId}?content-type=text`;
+  const url = `${API_BASE}/${bibleId}/chapters/${chapterId}?content-type=text&include-titles=false`;
   try {
     const res = await fetch(url, { headers: { 'api-key': API_KEY } });
     if (!res.ok) {

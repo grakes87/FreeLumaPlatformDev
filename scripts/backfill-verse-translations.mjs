@@ -73,8 +73,14 @@ function cleanVerseText(text) {
   return text
     .replace(/<[^>]*>/g, '')
     .replace(/\u00b6/g, '')
-    .replace(/\u00b6/g, '')
-    .replace(/^\s*\[\d+\]\s*/, '')
+    // Strip section heading + [verse_number] from start
+    .replace(/^.*?\[\d+\]\s*/, '')
+    // Remove remaining [number] markers
+    .replace(/\s*\[\d+\]\s*/g, ' ')
+    // Remove cross-reference brackets (e.g., [Ex 3:14], [Heb 11:13])
+    .replace(/\s*\[[^\]]*\d+:\d+[^\]]*\]\s*/g, ' ')
+    // AMP-style: keep content, remove brackets
+    .replace(/\[([^\]]+)\]/g, '$1')
     .replace(/^\s*\d+\s+/, '')
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
@@ -83,7 +89,7 @@ function cleanVerseText(text) {
 }
 
 async function fetchFromBibleApi(bibleId, verseId) {
-  const url = `https://rest.api.bible/v1/bibles/${bibleId}/verses/${verseId}?content-type=text`;
+  const url = `https://rest.api.bible/v1/bibles/${bibleId}/verses/${verseId}?content-type=text&include-titles=false`;
   const res = await fetch(url, { headers: { 'api-key': BIBLE_API_KEY } });
   if (!res.ok) return null;
   const data = await res.json();
