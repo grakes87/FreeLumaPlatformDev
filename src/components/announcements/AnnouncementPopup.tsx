@@ -135,7 +135,7 @@ export function AnnouncementPopup() {
           {/* CTA Link */}
           {currentAnnouncement.link_url && (
             <a
-              href={currentAnnouncement.link_url}
+              href={/^https?:\/\//i.test(currentAnnouncement.link_url) ? currentAnnouncement.link_url : `https://${currentAnnouncement.link_url}`}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"

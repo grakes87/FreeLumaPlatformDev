@@ -169,7 +169,7 @@ export default function AdminAnnouncementsPage() {
         ...(editId ? { id: editId } : {}),
         title: form.title.trim(),
         body: form.body.trim(),
-        link_url: form.link_url.trim() || null,
+        link_url: form.link_url.trim() ? (/^https?:\/\//i.test(form.link_url.trim()) ? form.link_url.trim() : `https://${form.link_url.trim()}`) : null,
         link_label: form.link_label.trim() || null,
         media_url: form.media_url.trim() || null,
         media_type: form.media_type || null,
