@@ -87,16 +87,45 @@ function stripHtml(html: string): string {
 }
 
 /**
- * Clean verse text from API.Bible: remove pilcrows and verse number markers.
+ * Clean verse text from API.Bible: remove pilcrows, section headings,
+ * verse number markers, cross-references, and AMP brackets.
  */
 function cleanVerseText(text: string): string {
   return text
     .replace(/\u00b6/g, '')
     .replace(/¶/g, '')
-    .replace(/^\s*\[\d+\]\s*/, '')
+    // Strip section heading + [verse_number] from start (e.g., "Faith in Action [1] Now faith...")
+    .replace(/^.*?\[\d+\]\s*/, '')
+    // Remove any remaining standalone [number] markers mid-text
+    .replace(/\s*\[\d+\]\s*/g, ' ')
+    // Remove cross-reference brackets entirely — any [text containing chapter:verse]
+    // Catches [Ex 3:14], [Heb 11:13], [Rom 8:28], [1 Cor 13:4-7], [Num 18:20]
+    .replace(/\s*\[[^\]]*\d+:\d+[^\]]*\]\s*/g, ' ')
+    // AMP-style amplification: keep content, remove brackets (e.g., [greatly] → greatly)
+    .replace(/\[([^\]]+)\]/g, '$1')
     .replace(/^\s*\d+\s+/, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * Clean chapter text from API.Bible: strip section headings that appear
+ * before the first pipe delimiter, and clean brackets.
+ */
+function cleanChapterText(text: string): string {
+  let cleaned = text;
+  // Strip leading chapter number + section heading before first pipe
+  // e.g., "17 Jehoshaphat Reigns in Judah|Then Jehoshaphat..." → "Then Jehoshaphat..."
+  cleaned = cleaned.replace(/^\d+\s+[^|]+\|/, '');
+  // Remove cross-reference brackets entirely
+  cleaned = cleaned.replace(/\s*\[[^\]]*\d+:\d+[^\]]*\]\s*/g, ' ');
+  // Remove standalone [number] markers
+  cleaned = cleaned.replace(/\s*\[\d+\]\s*/g, ' ');
+  // AMP-style amplification: keep content, remove brackets
+  cleaned = cleaned.replace(/\[([^\]]+)\]/g, '$1');
+  // Clean up whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  return cleaned;
 }
 
 /**
@@ -135,7 +164,7 @@ export async function fetchVerseFromBibleApi(
   }
 
   try {
-    const url = `https://rest.api.bible/v1/bibles/${bibleId}/verses/${verseId}?content-type=text`;
+    const url = `https://rest.api.bible/v1/bibles/${bibleId}/verses/${verseId}?content-type=text&include-titles=false`;
     const response = await fetch(url, {
       headers: {
         'api-key': apiKey,
@@ -243,7 +272,7 @@ async function fetchChapterFromBibleApi(
   if (!chapterId) return null;
 
   try {
-    const url = `https://rest.api.bible/v1/bibles/${bibleId}/chapters/${chapterId}?content-type=text`;
+    const url = `https://rest.api.bible/v1/bibles/${bibleId}/chapters/${chapterId}?content-type=text&include-titles=false`;
     const response = await fetch(url, {
       headers: { 'api-key': apiKey },
     });
@@ -254,7 +283,7 @@ async function fetchChapterFromBibleApi(
     const content = data?.data?.content;
     if (!content) return null;
 
-    return cleanVerseText(stripHtml(content));
+    return cleanChapterText(stripHtml(content));
   } catch {
     return null;
   }
@@ -279,7 +308,7 @@ async function fetchVerseTextFromBibleApi(
   if (!verseId) return null;
 
   try {
-    const url = `https://rest.api.bible/v1/bibles/${bibleId}/verses/${verseId}?content-type=text`;
+    const url = `https://rest.api.bible/v1/bibles/${bibleId}/verses/${verseId}?content-type=text&include-titles=false`;
     const response = await fetch(url, {
       headers: { 'api-key': apiKey },
     });

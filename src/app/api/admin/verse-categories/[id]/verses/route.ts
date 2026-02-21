@@ -66,13 +66,22 @@ function extractBookName(reference: string): string {
 }
 
 /**
- * Clean verse text: remove pilcrows, HTML tags, verse number markers, curly/smart quotes.
+ * Clean verse text: remove pilcrows, HTML tags, section headings, verse number
+ * markers, cross-references, AMP brackets, and smart quotes.
  */
 function cleanVerseText(text: string): string {
   return text
     .replace(/\u00b6/g, '')
     .replace(/<[^>]*>/g, '')
-    .replace(/\[\d+\]/g, '')
+    // Strip section heading + [verse_number] from start (e.g., "Faith in Action [1] Now faith...")
+    .replace(/^.*?\[\d+\]\s*/, '')
+    // Remove any remaining standalone [number] markers mid-text
+    .replace(/\s*\[\d+\]\s*/g, ' ')
+    // Remove cross-reference brackets entirely — any [text containing chapter:verse]
+    // Catches [Ex 3:14], [Heb 11:13], [Rom 8:28], [1 Cor 13:4-7], [Num 18:20]
+    .replace(/\s*\[[^\]]*\d+:\d+[^\]]*\]\s*/g, ' ')
+    // AMP-style amplification: keep content, remove brackets (e.g., [greatly] → greatly)
+    .replace(/\[([^\]]+)\]/g, '$1')
     .replace(/^\s*\d+\s+/, '')
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
@@ -97,7 +106,7 @@ async function fetchVerseText(
   if (!verseId) return null;
 
   try {
-    const url = `https://rest.api.bible/v1/bibles/${bibleId}/verses/${verseId}?content-type=text`;
+    const url = `https://rest.api.bible/v1/bibles/${bibleId}/verses/${verseId}?content-type=text&include-titles=false`;
     const response = await fetch(url, {
       headers: { 'api-key': apiKey },
     });
