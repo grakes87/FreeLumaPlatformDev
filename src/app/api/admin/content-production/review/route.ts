@@ -55,13 +55,14 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
     // Process review action (approve/reject allowed from any status)
     switch (action) {
       case 'approve': {
-        await content.update({ status: 'approved', rejection_note: null });
+        await content.update({ status: 'approved', published: true, rejection_note: null });
         break;
       }
 
       case 'reject': {
         await content.update({
           status: 'rejected',
+          published: false,
           rejection_note: rejection_note!,
         });
 
@@ -78,7 +79,7 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
           );
         }
 
-        await content.update({ status: 'submitted', rejection_note: null });
+        await content.update({ status: 'submitted', published: false, rejection_note: null });
         break;
       }
 
