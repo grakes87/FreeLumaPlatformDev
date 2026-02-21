@@ -20,6 +20,7 @@ export function AnnouncementPopup() {
   const [announcements, setAnnouncements] = useState<AnnouncementData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dismissing, setDismissing] = useState(false);
+  const [mediaReady, setMediaReady] = useState(false);
   const fetchedRef = useRef(false);
 
   // Defer if tutorial is active
@@ -33,6 +34,28 @@ export function AnnouncementPopup() {
 
   const tutorialDone = tutorialPhase === 'done' || tutorialPhase === 'idle';
 
+  const preloadMedia = useCallback((items: AnnouncementData[]) => {
+    const first = items[0];
+    if (!first?.media_url) {
+      setMediaReady(true);
+      return;
+    }
+    if (first.media_type === 'video') {
+      const video = document.createElement('video');
+      video.preload = 'auto';
+      video.oncanplay = () => setMediaReady(true);
+      video.onerror = () => setMediaReady(true);
+      // Fallback if canplay never fires
+      setTimeout(() => setMediaReady(true), 5000);
+      video.src = first.media_url;
+    } else {
+      const img = new Image();
+      img.onload = () => setMediaReady(true);
+      img.onerror = () => setMediaReady(true);
+      img.src = first.media_url;
+    }
+  }, []);
+
   const fetchAnnouncements = useCallback(async () => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
@@ -40,12 +63,16 @@ export function AnnouncementPopup() {
       const res = await fetch('/api/announcements/active', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        setAnnouncements(data.announcements || []);
+        const items = data.announcements || [];
+        setAnnouncements(items);
+        if (items.length > 0) {
+          preloadMedia(items);
+        }
       }
     } catch {
       // Silent — don't interrupt user
     }
-  }, []);
+  }, [preloadMedia]);
 
   useEffect(() => {
     if (tutorialDone) {
@@ -72,14 +99,33 @@ export function AnnouncementPopup() {
 
     // Move to next or close
     if (currentIndex < announcements.length - 1) {
-      setCurrentIndex((i) => i + 1);
+      const nextIdx = currentIndex + 1;
+      const next = announcements[nextIdx];
+      // Preload next announcement's media before showing
+      if (next?.media_url) {
+        setMediaReady(false);
+        if (next.media_type === 'video') {
+          const video = document.createElement('video');
+          video.preload = 'auto';
+          video.oncanplay = () => setMediaReady(true);
+          video.onerror = () => setMediaReady(true);
+          setTimeout(() => setMediaReady(true), 5000);
+          video.src = next.media_url;
+        } else {
+          const img = new Image();
+          img.onload = () => setMediaReady(true);
+          img.onerror = () => setMediaReady(true);
+          img.src = next.media_url;
+        }
+      }
+      setCurrentIndex(nextIdx);
     } else {
       setAnnouncements([]);
     }
   };
 
-  // Nothing to show
-  if (!currentAnnouncement) return null;
+  // Nothing to show, or media still loading
+  if (!currentAnnouncement || !mediaReady) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-[55] flex items-center justify-center p-4">
