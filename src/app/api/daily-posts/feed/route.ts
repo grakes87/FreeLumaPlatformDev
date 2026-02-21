@@ -129,12 +129,16 @@ export async function GET(req: NextRequest) {
       ? items[items.length - 1].post_date
       : null;
 
+    // Only edge-cache responses that contain data; empty results should not be
+    // cached so that newly-published content is picked up immediately.
+    const cacheHeader = days.length > 0
+      ? 'public, s-maxage=1209600, stale-while-revalidate=86400'
+      : 'no-store';
+
     return NextResponse.json(
       { days, next_cursor: nextCursor, has_more: hasMore },
       {
-        headers: {
-          'Cache-Control': 'public, s-maxage=1209600, stale-while-revalidate=86400',
-        },
+        headers: { 'Cache-Control': cacheHeader },
       }
     );
   } catch (error) {
