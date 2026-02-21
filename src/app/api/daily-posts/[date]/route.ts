@@ -149,7 +149,9 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
       creator,
     };
 
-    return successResponse(response);
+    return successResponse(response, 200, {
+      'Cache-Control': 'private, max-age=300, stale-while-revalidate=60',
+    });
   } catch (error) {
     return serverError(error, 'Failed to fetch daily content');
   }

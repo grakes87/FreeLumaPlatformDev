@@ -74,6 +74,8 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
         audio_srt_url: existingTranslation.audio_srt_url ?? null,
         chapter_text: existingTranslation.chapter_text ?? null,
         source: existingTranslation.source,
+      }, 200, {
+        'Cache-Control': 'public, s-maxage=1209600, stale-while-revalidate=86400',
       });
     }
 
@@ -98,6 +100,8 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
         translation_code: code,
         text: apiText,
         source: 'api',
+      }, 200, {
+        'Cache-Control': 'public, s-maxage=1209600, stale-while-revalidate=86400',
       });
     }
 
