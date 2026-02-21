@@ -14,6 +14,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { TopBar } from '@/components/layout/TopBar';
 import { FontLoader } from '@/components/layout/FontLoader';
 import { TutorialProvider } from '@/components/tutorial/TutorialProvider';
+import { AnnouncementPopup } from '@/components/announcements/AnnouncementPopup';
 
 // Suppress React 19 pointer capture error on unmounting elements during navigation
 if (typeof window !== 'undefined') {
@@ -133,6 +134,7 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
       <NotificationProvider>
         <FontLoader />
         <TutorialProvider>
+          <AnnouncementPopup />
           <AppShell>{children}</AppShell>
         </TutorialProvider>
       </NotificationProvider>

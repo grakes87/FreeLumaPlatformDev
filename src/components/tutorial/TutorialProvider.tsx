@@ -81,17 +81,36 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Auto-start tutorial if user hasn't seen it (1s delay for feed to load)
+  // Respects platform setting `tutorial_enabled` (defaults to 'true')
   useEffect(() => {
     if (!user) return;
     if (user.has_seen_tutorial) return;
     if (phase !== 'idle') return;
 
-    const timer = setTimeout(() => {
-      setPhase('slideshow');
-      setCurrentStep(0);
-    }, 1000);
+    let cancelled = false;
 
-    return () => clearTimeout(timer);
+    (async () => {
+      try {
+        const res = await fetch('/api/platform-settings', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.tutorial_enabled === 'false') return;
+      } catch {
+        // On error, still show tutorial (fail-open)
+      }
+      if (cancelled) return;
+
+      // 1s delay for feed to load
+      setTimeout(() => {
+        if (!cancelled) {
+          setPhase('slideshow');
+          setCurrentStep(0);
+        }
+      }, 1000);
+    })();
+
+    return () => { cancelled = true; };
   }, [user, phase]);
 
   // Lock body scroll when tutorial overlay is active

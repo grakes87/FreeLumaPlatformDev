@@ -12,6 +12,7 @@ import {
   Type,
   ChevronDown,
   ChevronUp,
+  Sparkles,
 } from 'lucide-react';
 import { FontFamilySection } from './FontFamilySection';
 
@@ -274,6 +275,17 @@ export function AdminSettings() {
           value={settings.mode_isolation_prayer || 'false'}
           onChange={handleChange}
           disabled={saving === 'mode_isolation_prayer'}
+        />
+      </SettingsGroup>
+
+      <SettingsGroup title="Features" icon={Sparkles}>
+        <SettingToggle
+          label="First-Time Tutorial"
+          description="Show the onboarding tutorial walkthrough for new users who haven't seen it yet."
+          settingKey="tutorial_enabled"
+          value={settings.tutorial_enabled || 'true'}
+          onChange={handleChange}
+          disabled={saving === 'tutorial_enabled'}
         />
       </SettingsGroup>
 

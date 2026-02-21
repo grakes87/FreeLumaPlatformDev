@@ -13,6 +13,7 @@ import {
   BookOpen,
   BookMarked,
   Clapperboard,
+  Megaphone,
   ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -77,6 +78,11 @@ export function AdminNav({ pendingCount = 0 }: AdminNavProps) {
       label: 'Content Production',
       href: '/admin/content-production',
       icon: Clapperboard,
+    },
+    {
+      label: 'Announcements',
+      href: '/admin/announcements',
+      icon: Megaphone,
     },
     {
       label: 'Analytics',

@@ -61,6 +61,8 @@ import { UsedBibleVerse } from './UsedBibleVerse';
 import { LumaShortCreator } from './LumaShortCreator';
 import ContentGenerationLog from './ContentGenerationLog';
 import { SmsLog } from './SmsLog';
+import { Announcement } from './Announcement';
+import { AnnouncementDismissal } from './AnnouncementDismissal';
 
 // ---- Associations ----
 
@@ -1118,6 +1120,38 @@ SmsLog.belongsTo(User, {
   as: 'recipient',
 });
 
+// ---- Announcements Associations ----
+
+// User -> Announcement (one-to-many via created_by)
+User.hasMany(Announcement, {
+  foreignKey: 'created_by',
+  as: 'createdAnnouncements',
+});
+Announcement.belongsTo(User, {
+  foreignKey: 'created_by',
+  as: 'creator',
+});
+
+// Announcement -> AnnouncementDismissal (one-to-many)
+Announcement.hasMany(AnnouncementDismissal, {
+  foreignKey: 'announcement_id',
+  as: 'dismissals',
+});
+AnnouncementDismissal.belongsTo(Announcement, {
+  foreignKey: 'announcement_id',
+  as: 'announcement',
+});
+
+// User -> AnnouncementDismissal (one-to-many)
+User.hasMany(AnnouncementDismissal, {
+  foreignKey: 'user_id',
+  as: 'announcementDismissals',
+});
+AnnouncementDismissal.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
 export {
   sequelize,
   User,
@@ -1182,4 +1216,6 @@ export {
   LumaShortCreator,
   ContentGenerationLog,
   SmsLog,
+  Announcement,
+  AnnouncementDismissal,
 };

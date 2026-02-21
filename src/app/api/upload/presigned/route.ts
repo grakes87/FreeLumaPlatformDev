@@ -21,12 +21,13 @@ const ALLOWED_CONTENT_TYPES: Record<string, string[]> = {
   video: ['video/mp4', 'video/webm', 'video/quicktime'],
   'creator-video': ['video/mp4', 'video/webm', 'video/quicktime'],
   'category-media': ['image/jpeg', 'image/png', 'image/webp'],
+  announcement: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4'],
 };
 
 /**
  * Upload types that require admin privileges.
  */
-const ADMIN_ONLY_TYPES = new Set(['daily-content', 'video', 'category-media']);
+const ADMIN_ONLY_TYPES = new Set(['daily-content', 'video', 'category-media', 'announcement']);
 
 /**
  * Custom expiry per upload type (in seconds).
@@ -107,7 +108,7 @@ export const GET = withAuth(
 
     // Generate unique key and presigned URL
     const keyPrefix =
-      type === 'avatar' ? 'avatars' : type === 'video' ? 'videos' : type === 'creator-video' ? 'creator-videos' : type === 'category-media' ? 'category-media' : type;
+      type === 'avatar' ? 'avatars' : type === 'video' ? 'videos' : type === 'creator-video' ? 'creator-videos' : type === 'category-media' ? 'category-media' : type === 'announcement' ? 'announcements' : type;
     const key = generateKey(keyPrefix, context.user.id, contentType);
     const expiresIn = EXPIRY_OVERRIDES[type] || 3600;
 
