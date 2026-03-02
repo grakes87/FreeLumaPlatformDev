@@ -51,7 +51,37 @@ export function UnassignedTab({ days, month, mode, language, creators, onRefresh
     [creators, mode, language]
   );
 
+  // Split days: unassigned records (no creator) vs missing dates (no record at all)
+  const { unassignedDays, missingDates } = useMemo(() => {
+    const [yearStr, monthStr] = month.split('-');
+    const year = parseInt(yearStr, 10);
+    const monthNum = parseInt(monthStr, 10);
+    const totalDays = new Date(year, monthNum, 0).getDate();
+
+    // Days with a record but no creator assigned
+    const noCreator = days.filter((d) => d.creator === null);
+
+    // Dates that have no record at all
+    const existingDates = new Set(days.map((d) => d.post_date));
+    const missing: string[] = [];
+    for (let d = 1; d <= totalDays; d++) {
+      const dateStr = `${month}-${String(d).padStart(2, '0')}`;
+      if (!existingDates.has(dateStr)) {
+        missing.push(dateStr);
+      }
+    }
+
+    return { unassignedDays: noCreator, missingDates: missing };
+  }, [days, month]);
+
+  const totalUnassigned = unassignedDays.length + missingDates.length;
+
   const handleAutoAssign = async () => {
+    // Check if there are any actual DB rows to assign (not just missing dates)
+    if (unassignedDays.length === 0) {
+      toast.error('No generated content to assign. Click "Generate Month" first to create content, then auto-assign.');
+      return;
+    }
     setAutoAssigning(true);
     try {
       const res = await fetch('/api/admin/content-production/assign', {
@@ -62,7 +92,11 @@ export function UnassignedTab({ days, month, mode, language, creators, onRefresh
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Auto-assign failed');
-      toast.success(`Assigned ${data.assigned} days (${data.skipped} skipped)`);
+      if (data.assigned === 0) {
+        toast.error('No days were assigned. Make sure content is generated and creators have available capacity.');
+      } else {
+        toast.success(`Assigned ${data.assigned} days (${data.skipped} skipped)`);
+      }
       onRefresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Auto-assign failed');
@@ -94,31 +128,6 @@ export function UnassignedTab({ days, month, mode, language, creators, onRefresh
       setAssigningId(null);
     }
   };
-
-  // Split days: unassigned records (no creator) vs missing dates (no record at all)
-  const { unassignedDays, missingDates } = useMemo(() => {
-    const [yearStr, monthStr] = month.split('-');
-    const year = parseInt(yearStr, 10);
-    const monthNum = parseInt(monthStr, 10);
-    const totalDays = new Date(year, monthNum, 0).getDate();
-
-    // Days with a record but no creator assigned
-    const noCreator = days.filter((d) => d.creator === null);
-
-    // Dates that have no record at all
-    const existingDates = new Set(days.map((d) => d.post_date));
-    const missing: string[] = [];
-    for (let d = 1; d <= totalDays; d++) {
-      const dateStr = `${month}-${String(d).padStart(2, '0')}`;
-      if (!existingDates.has(dateStr)) {
-        missing.push(dateStr);
-      }
-    }
-
-    return { unassignedDays: noCreator, missingDates: missing };
-  }, [days, month]);
-
-  const totalUnassigned = unassignedDays.length + missingDates.length;
 
   const handleModalClose = () => {
     setGenModal({ open: false });
