@@ -213,7 +213,20 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       };
     });
 
-    return successResponse({ stats, days, creators: creatorsData, expectedTranslations });
+    // Creator breakdown: total assignments per creator for the month (all modes/languages)
+    const sequelize = DailyContent.sequelize!;
+    const [breakdownRows] = await sequelize.query(
+      `SELECT dc.creator_id, lsc.name AS creator_name, COUNT(*) AS total_assigned
+       FROM daily_content dc
+       JOIN luma_short_creators lsc ON lsc.id = dc.creator_id
+       WHERE dc.post_date BETWEEN :startDate AND :endDate
+         AND dc.creator_id IS NOT NULL
+       GROUP BY dc.creator_id, lsc.name
+       ORDER BY total_assigned DESC, lsc.name ASC`,
+      { replacements: { startDate, endDate } }
+    );
+
+    return successResponse({ stats, days, creators: creatorsData, expectedTranslations, creatorBreakdown: breakdownRows });
   } catch (error) {
     return serverError(error, 'Failed to fetch month overview');
   }

@@ -41,11 +41,18 @@ interface Creator {
   languages: string[] | string;
 }
 
+interface CreatorBreakdownItem {
+  creator_id: number;
+  creator_name: string;
+  total_assigned: number;
+}
+
 interface MonthData {
   stats: ContentStats;
   days: DayData[];
   creators?: Creator[];
   expectedTranslations?: string[];
+  creatorBreakdown?: CreatorBreakdownItem[];
 }
 
 // ---------------------------------------------------------------------------
@@ -738,6 +745,30 @@ export default function ContentProductionPage() {
 
       {/* Stats header */}
       <StatsHeader stats={data?.stats ?? null} loading={loading} />
+
+      {/* Creator breakdown */}
+      {!loading && data?.creatorBreakdown && data.creatorBreakdown.length > 0 && (
+        <div className="rounded-xl border border-border bg-surface p-4 dark:border-border-dark dark:bg-surface-dark">
+          <p className="mb-3 text-xs font-medium uppercase tracking-wider text-text-muted dark:text-text-muted-dark">
+            Creator Assignments — {selectedMonth}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {data.creatorBreakdown.map((c) => (
+              <div
+                key={c.creator_id}
+                className="flex items-center gap-2 rounded-lg bg-surface-hover px-3 py-1.5 dark:bg-surface-hover-dark"
+              >
+                <span className="text-sm font-medium text-text dark:text-text-dark">
+                  {c.creator_name}
+                </span>
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                  {c.total_assigned}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tab bar */}
       <div className="flex gap-1 rounded-xl bg-surface-hover p-1 dark:bg-surface-hover-dark">
