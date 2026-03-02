@@ -14,6 +14,7 @@ import {
   BookMarked,
   Clapperboard,
   Megaphone,
+  Sparkles,
   ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -78,6 +79,11 @@ export function AdminNav({ pendingCount = 0 }: AdminNavProps) {
       label: 'Content Production',
       href: '/admin/content-production',
       icon: Clapperboard,
+    },
+    {
+      label: 'AI Engagement',
+      href: '/admin/ai-engagement',
+      icon: Sparkles,
     },
     {
       label: 'Announcements',

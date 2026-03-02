@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { b2Client, B2_BUCKET, CDN_BASE_URL, isB2Configured } from '@/lib/storage/b2';
 
 /**
  * HeyGen webhook payload — actual format from HeyGen's servers:
@@ -62,6 +64,69 @@ function deriveStatus(body: HeygenWebhookPayload): 'completed' | 'failed' | 'pro
 }
 
 /**
+ * Download a video from HeyGen's temporary signed URL and upload it to B2.
+ * Returns the permanent CDN URL, or null if B2 is not configured or upload fails.
+ */
+async function persistToB2(
+  heygenUrl: string,
+  dailyContentId: number,
+): Promise<string | null> {
+  if (!isB2Configured || !b2Client) {
+    console.warn('[HeyGen Webhook] B2 not configured — saving HeyGen URL directly');
+    return null;
+  }
+
+  try {
+    // Look up the daily_content row for mode/language/date to build the B2 key
+    const { DailyContent } = await import('@/lib/db/models');
+    const content = await DailyContent.findByPk(dailyContentId, {
+      attributes: ['post_date', 'mode', 'language'],
+    });
+
+    if (!content) {
+      console.warn(`[HeyGen Webhook] daily_content ${dailyContentId} not found — skipping B2`);
+      return null;
+    }
+
+    // Format date as YYYY-MM-DD
+    const postDate =
+      typeof content.post_date === 'string'
+        ? content.post_date
+        : new Date(content.post_date).toISOString().slice(0, 10);
+    const langSuffix = content.language === 'es' ? '-Spanish' : '';
+    const b2Key = `daily-videos/${content.mode}/${postDate}${langSuffix}.mp4`;
+
+    // Download from HeyGen
+    console.log(`[HeyGen Webhook] Downloading video for content ${dailyContentId}...`);
+    const dlRes = await fetch(heygenUrl);
+    if (!dlRes.ok) {
+      console.error(`[HeyGen Webhook] Download failed: HTTP ${dlRes.status}`);
+      return null;
+    }
+    const buf = Buffer.from(await dlRes.arrayBuffer());
+    const sizeMB = (buf.byteLength / 1024 / 1024).toFixed(1);
+
+    // Upload to B2
+    await b2Client.send(
+      new PutObjectCommand({
+        Bucket: B2_BUCKET,
+        Key: b2Key,
+        Body: buf,
+        ContentType: 'video/mp4',
+        CacheControl: 'public, max-age=31536000, immutable',
+      }),
+    );
+
+    const permanentUrl = `${CDN_BASE_URL}/${b2Key}`;
+    console.log(`[HeyGen Webhook] Uploaded ${sizeMB} MB → ${b2Key}`);
+    return permanentUrl;
+  } catch (err) {
+    console.error('[HeyGen Webhook] B2 upload failed:', err);
+    return null;
+  }
+}
+
+/**
  * POST /api/webhooks/heygen
  * HeyGen completion webhook - called when video generation completes or fails.
  *
@@ -116,15 +181,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       if (status === 'completed') {
         if (videoUrl) {
+          // Download from HeyGen and persist to B2 for a permanent URL
+          const permanentUrl = await persistToB2(videoUrl, dailyContentId);
+
           await DailyContent.update(
             {
-              lumashort_video_url: videoUrl,
+              lumashort_video_url: permanentUrl || videoUrl,
               ...(thumbnailUrl ? { creator_video_thumbnail: thumbnailUrl } : {}),
               status: 'submitted',
             },
             { where: { id: dailyContentId } },
           );
-          console.log(`[HeyGen Webhook] Updated content ${dailyContentId} with video URL, status -> submitted`);
+          console.log(`[HeyGen Webhook] Updated content ${dailyContentId} with ${permanentUrl ? 'B2' : 'HeyGen'} URL, status -> submitted`);
         } else {
           console.warn(`[HeyGen Webhook] Completed but no video_url for video_id=${videoId}, content ${dailyContentId}`);
         }
@@ -178,15 +246,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Legacy path: use pending map entry
     if (status === 'completed') {
       if (videoUrl) {
+        // Download from HeyGen and persist to B2 for a permanent URL
+        const permanentUrl = await persistToB2(videoUrl, entry.dailyContentId);
+
         await DailyContent.update(
           {
-            lumashort_video_url: videoUrl,
+            lumashort_video_url: permanentUrl || videoUrl,
             ...(thumbnailUrl ? { creator_video_thumbnail: thumbnailUrl } : {}),
             status: 'submitted',
           },
           { where: { id: entry.dailyContentId } },
         );
-        console.log(`[HeyGen Webhook] (legacy) Updated content ${entry.dailyContentId} with video URL`);
+        console.log(`[HeyGen Webhook] (legacy) Updated content ${entry.dailyContentId} with ${permanentUrl ? 'B2' : 'HeyGen'} URL`);
       }
 
       if (entry.logId) {
