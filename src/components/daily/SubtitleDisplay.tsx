@@ -206,9 +206,13 @@ export function SubtitleDisplay({ srtUrl, chapterText, currentTime, isPlaying }:
     const element = activeRef.current;
     if (activeIndex < 0 || !container || !element) return;
 
-    const scrollTarget =
-      element.offsetTop - container.clientHeight / 2 + element.clientHeight / 2;
-    container.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+    // Use getBoundingClientRect for reliable positioning regardless of offsetParent
+    const containerRect = container.getBoundingClientRect();
+    const elementRect = element.getBoundingClientRect();
+    const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
+    const scrollTarget = relativeTop - container.clientHeight / 2 + element.clientHeight / 2;
+    // Don't scroll above 0 — keeps verse 1 visible instead of hiding it above the mask
+    container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
   }, [activeIndex]);
 
   if (!srtUrl) {
