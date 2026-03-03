@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * FreeLuma Data Import Script
+ * FreeLuma Data Import Script (Non-Destructive / Upsert)
  *
  * Imports data from the old FreeLuma database SQL dump into the new schema.
+ * Uses INSERT IGNORE to skip existing rows — safe to run on a live database.
  * Reference: .planning/phases/08-database-migration-mapping/MIGRATION-DECISIONS.md
  *
  * Usage: node scripts/import-old-data.mjs [--dry-run] [--table=users]
@@ -16,7 +17,7 @@ import bcrypt from 'bcryptjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '..');
-const SQL_DUMP_PATH = path.join(PROJECT_ROOT, 'Old Database', 'Main Free Luma Database.sql');
+const SQL_DUMP_PATH = path.join(PROJECT_ROOT, 'Old Database', '3-2-26.sql');
 const PRE_MIGRATION_PATH = path.join(PROJECT_ROOT, 'Old Database', 'freeluma_dev_pre_migration_2026-02-16.sql');
 const ACTIVATION_CODES_PATH = path.join(PROJECT_ROOT, 'Old Code', 'FreeLumaDev-new', 'free-luma-api', 'public', 'uploads', 'activation_codes.txt');
 
@@ -220,73 +221,6 @@ async function getConnection() {
     multipleStatements: true,
     charset: 'utf8mb4',
   });
-}
-
-// ─── Pre-Migration Wipe ──────────────────────────────────────────────────────
-
-async function wipeTables(conn) {
-  console.log('\n=== PRE-MIGRATION WIPE ===');
-
-  // Tables to wipe (order matters for FK constraints — children first)
-  const tablesToWipe = [
-    'daily_comment_reactions',
-    'daily_reactions',
-    'daily_comments',
-    'bookmarks',
-    'message_status',
-    'message_media',
-    'message_reactions',
-    'messages',
-    'conversation_participants',
-    'conversations',
-    'post_comment_reactions',
-    'post_comments',
-    'post_reactions',
-    'post_media',
-    'post_impressions',
-    'prayer_supports',
-    'prayer_requests',
-    'reposts',
-    'posts',
-    'follows',
-    'blocks',
-    'bans',
-    'reports',
-    'moderation_logs',
-    'notifications',
-    'push_subscriptions',
-    'email_logs',
-    'drafts',
-    'activity_streaks',
-    'listen_logs',
-    'user_settings',
-    'user_categories',
-    'activation_codes',
-    'workshop_chats',
-    'workshop_notes',
-    'workshop_attendees',
-    'workshop_invites',
-    'workshop_bans',
-    'workshops',
-    'workshop_series',
-    'workshop_categories',
-    'users',
-  ];
-
-  // Keep: daily_content, daily_content_translations, videos, video_categories, video_reactions,
-  //       categories, platform_settings, bible_translations, SequelizeMeta
-
-  await conn.query('SET FOREIGN_KEY_CHECKS = 0');
-  for (const table of tablesToWipe) {
-    try {
-      await conn.query(`TRUNCATE TABLE \`${table}\``);
-      console.log(`  Truncated: ${table}`);
-    } catch (e) {
-      console.log(`  Skip (not found): ${table} — ${e.message}`);
-    }
-  }
-  await conn.query('SET FOREIGN_KEY_CHECKS = 1');
-  console.log('  Wipe complete.\n');
 }
 
 // ─── Import: Users ───────────────────────────────────────────────────────────
@@ -654,7 +588,7 @@ async function importPosts(conn, sqlContent, importedUserIds) {
   if (postValues.length > 0 && !DRY_RUN) {
     for (const batch of chunk(postValues, BATCH_SIZE)) {
       await conn.query(
-        `INSERT INTO posts (id, user_id, body, post_type, visibility, mode, edited, is_anonymous,
+        `INSERT IGNORE INTO posts (id, user_id, body, post_type, visibility, mode, edited, is_anonymous,
           flagged, hidden, deleted_at, created_at, updated_at)
         VALUES ?`,
         [batch]
@@ -665,7 +599,7 @@ async function importPosts(conn, sqlContent, importedUserIds) {
     if (mediaValues.length > 0) {
       for (const batch of chunk(mediaValues, BATCH_SIZE)) {
         await conn.query(
-          `INSERT INTO post_media (post_id, url, media_type, thumbnail_url, width, height,
+          `INSERT IGNORE INTO post_media (post_id, url, media_type, thumbnail_url, width, height,
             duration, sort_order, created_at, updated_at)
           VALUES ?`,
           [batch]
@@ -677,7 +611,7 @@ async function importPosts(conn, sqlContent, importedUserIds) {
     if (prayerValues.length > 0) {
       for (const batch of chunk(prayerValues, BATCH_SIZE)) {
         await conn.query(
-          `INSERT INTO prayer_requests (post_id, privacy, status, answered_at,
+          `INSERT IGNORE INTO prayer_requests (post_id, privacy, status, answered_at,
             answered_testimony, pray_count, created_at, updated_at)
           VALUES ?`,
           [batch]
@@ -789,7 +723,7 @@ async function importPostComments(conn, sqlContent, importedUserIds, postIdMap) 
 
     for (const batch of chunk(rootComments, BATCH_SIZE)) {
       await conn.query(
-        `INSERT INTO post_comments (id, user_id, post_id, parent_id, body, edited, flagged, hidden,
+        `INSERT IGNORE INTO post_comments (id, user_id, post_id, parent_id, body, edited, flagged, hidden,
           created_at, updated_at)
         VALUES ?`,
         [batch]
@@ -800,7 +734,7 @@ async function importPostComments(conn, sqlContent, importedUserIds, postIdMap) 
     const validChildren = childComments.filter(v => commentIdSet.has(v[3]));
     for (const batch of chunk(validChildren, BATCH_SIZE)) {
       await conn.query(
-        `INSERT INTO post_comments (id, user_id, post_id, parent_id, body, edited, flagged, hidden,
+        `INSERT IGNORE INTO post_comments (id, user_id, post_id, parent_id, body, edited, flagged, hidden,
           created_at, updated_at)
         VALUES ?`,
         [batch]
@@ -959,7 +893,7 @@ async function importChats(conn, sqlContent, importedUserIds) {
     // Create conversation
     convId++;
     await conn.query(
-      `INSERT INTO conversations (id, type, name, avatar_url, creator_id, last_message_at, created_at, updated_at)
+      `INSERT IGNORE INTO conversations (id, type, name, avatar_url, creator_id, last_message_at, created_at, updated_at)
       VALUES (?, 'direct', NULL, NULL, ?, ?, ?, ?)`,
       [convId, firstMsg.sender_id, lastMsg.createdAt, firstMsg.createdAt, lastMsg.updatedAt]
     );
@@ -1002,7 +936,7 @@ async function importChats(conn, sqlContent, importedUserIds) {
       const content = msgType === 'text' ? (m.message || '') : null;
 
       const [result] = await conn.query(
-        `INSERT INTO messages (conversation_id, sender_id, type, content, reply_to_id, shared_post_id,
+        `INSERT IGNORE INTO messages (conversation_id, sender_id, type, content, reply_to_id, shared_post_id,
           shared_video_id, is_unsent, flagged, created_at, updated_at)
         VALUES (?, ?, ?, ?, NULL, NULL, NULL, 0, 0, ?, ?)`,
         [convId, m.sender_id, msgType, content, m.createdAt, m.updatedAt]
@@ -1018,7 +952,7 @@ async function importChats(conn, sqlContent, importedUserIds) {
         else if (m.message_type === 'AUDIO') mediaType = 'voice';
 
         await conn.query(
-          `INSERT INTO message_media (message_id, media_url, media_type, duration, sort_order, created_at, updated_at)
+          `INSERT IGNORE INTO message_media (message_id, media_url, media_type, duration, sort_order, created_at, updated_at)
           VALUES (?, ?, ?, NULL, 0, ?, ?)`,
           [messageId, m.media, mediaType, m.createdAt, m.updatedAt]
         );
@@ -1028,7 +962,7 @@ async function importChats(conn, sqlContent, importedUserIds) {
       // Message status (for receiver if seen)
       if (m.is_seen === 1) {
         await conn.query(
-          `INSERT INTO message_status (message_id, user_id, status, status_at)
+          `INSERT IGNORE INTO message_status (message_id, user_id, status, status_at)
           VALUES (?, ?, 'read', ?)`,
           [messageId, m.receiver_id, m.updatedAt]
         );
@@ -1062,13 +996,14 @@ async function importDailyComments(conn, sqlContent, importedUserIds) {
   }
   console.log(`  Built dailypost date map: ${dailyPostDateMap.size} entries`);
 
-  // Build date -> new daily_content_id mapping (English entries only)
+  // Build date+mode -> new daily_content_id mapping (English entries only)
+  // category_id: 1=bible, 2=positivity
   const [dcRows] = await conn.query(
-    "SELECT id, DATE_FORMAT(post_date, '%Y-%m-%d') as post_date FROM daily_content WHERE language = 'en'"
+    "SELECT id, DATE_FORMAT(post_date, '%Y-%m-%d') as post_date, mode FROM daily_content WHERE language = 'en'"
   );
-  const dateToContentId = new Map();
+  const dateToContentId = new Map(); // "date-mode" -> id
   for (const row of dcRows) {
-    dateToContentId.set(row.post_date, row.id);
+    dateToContentId.set(`${row.post_date}-${row.mode}`, row.id);
   }
   console.log(`  New daily_content English entries: ${dateToContentId.size}`);
 
@@ -1090,13 +1025,14 @@ async function importDailyComments(conn, sqlContent, importedUserIds) {
       continue;
     }
 
-    // Resolve daily_content_id
+    // Resolve daily_content_id using date + category_id for correct mode
     const dateStr = dailyPostDateMap.get(c.daily_post_id);
     if (!dateStr) {
       stats.daily_comments.skipped++;
       continue;
     }
-    const contentId = dateToContentId.get(dateStr);
+    const mode = c.category_id === 2 ? 'positivity' : 'bible';
+    const contentId = dateToContentId.get(`${dateStr}-${mode}`);
     if (!contentId) {
       stats.daily_comments.skipped++;
       continue;
@@ -1127,7 +1063,7 @@ async function importDailyComments(conn, sqlContent, importedUserIds) {
 
     for (const batch of chunk(roots, BATCH_SIZE)) {
       await conn.query(
-        `INSERT INTO daily_comments (id, user_id, daily_content_id, parent_id, body, edited,
+        `INSERT IGNORE INTO daily_comments (id, user_id, daily_content_id, parent_id, body, edited,
           created_at, updated_at)
         VALUES ?`,
         [batch]
@@ -1138,7 +1074,7 @@ async function importDailyComments(conn, sqlContent, importedUserIds) {
     const validChildren = children.filter(v => commentIdMap.has(v[3]));
     for (const batch of chunk(validChildren, BATCH_SIZE)) {
       await conn.query(
-        `INSERT INTO daily_comments (id, user_id, daily_content_id, parent_id, body, edited,
+        `INSERT IGNORE INTO daily_comments (id, user_id, daily_content_id, parent_id, body, edited,
           created_at, updated_at)
         VALUES ?`,
         [batch]
@@ -1165,13 +1101,14 @@ async function importDailyReactionsAndBookmarks(conn, sqlContent, importedUserId
     dailyPostDateMap.set(dp.id, dp.daily_post_name);
   }
 
-  // Build date -> daily_content_id mapping
+  // Build date+mode -> daily_content_id mapping
+  // category_id: 1=bible, 2=positivity
   const [dcRows] = await conn.query(
-    "SELECT id, DATE_FORMAT(post_date, '%Y-%m-%d') as post_date FROM daily_content WHERE language = 'en'"
+    "SELECT id, DATE_FORMAT(post_date, '%Y-%m-%d') as post_date, mode FROM daily_content WHERE language = 'en'"
   );
-  const dateToContentId = new Map();
+  const dateToContentId = new Map(); // "date-mode" -> id
   for (const row of dcRows) {
-    dateToContentId.set(row.post_date, row.id);
+    dateToContentId.set(`${row.post_date}-${row.mode}`, row.id);
   }
 
   const oldDailyUsers = parseTable(sqlContent, 'dailypostusers');
@@ -1187,7 +1124,8 @@ async function importDailyReactionsAndBookmarks(conn, sqlContent, importedUserId
 
     const dateStr = dailyPostDateMap.get(du.daily_post_id);
     if (!dateStr) continue;
-    const contentId = dateToContentId.get(dateStr);
+    const mode = du.category_id === 2 ? 'positivity' : 'bible';
+    const contentId = dateToContentId.get(`${dateStr}-${mode}`);
     if (!contentId) continue;
 
     // is_liked -> daily_reactions
@@ -1316,7 +1254,7 @@ async function seedAdminAndTestUser(conn) {
   if (!DRY_RUN) {
     // Use unique usernames that won't clash with imported data
     await conn.query(
-      `INSERT INTO users (id, email, password_hash, display_name, username, avatar_color, mode,
+      `INSERT IGNORE INTO users (id, email, password_hash, display_name, username, avatar_color, mode,
         timezone, preferred_translation, language, email_verified, onboarding_complete,
         is_admin, is_verified, role, can_host, status, created_at, updated_at)
       VALUES
@@ -1329,7 +1267,7 @@ async function seedAdminAndTestUser(conn) {
 
     // Create user_settings for both
     await conn.query(
-      `INSERT INTO user_settings (user_id, dark_mode, push_enabled, email_notifications,
+      `INSERT IGNORE INTO user_settings (user_id, dark_mode, push_enabled, email_notifications,
         daily_reminder_time, messaging_access, email_dm_notifications, email_follow_notifications,
         email_prayer_notifications, email_daily_reminder, created_at, updated_at)
       VALUES (?, 'system', 1, 1, '08:00', 'mutual', 1, 1, 1, 1, ?, ?),
@@ -1513,7 +1451,7 @@ async function reimportSeedPosts(conn) {
 
   if (postValues.length > 0 && !DRY_RUN) {
     await conn.query(
-      `INSERT INTO posts (id, user_id, body, post_type, visibility, mode, edited, is_anonymous,
+      `INSERT IGNORE INTO posts (id, user_id, body, post_type, visibility, mode, edited, is_anonymous,
         flagged, hidden, deleted_at, created_at, updated_at)
       VALUES ?`,
       [postValues]
@@ -1542,7 +1480,7 @@ async function reimportSeedPosts(conn) {
 
   if (prayerValues.length > 0 && !DRY_RUN) {
     await conn.query(
-      `INSERT INTO prayer_requests (post_id, privacy, status, answered_at, answered_testimony,
+      `INSERT IGNORE INTO prayer_requests (post_id, privacy, status, answered_at, answered_testimony,
         pray_count, created_at, updated_at)
       VALUES ?`,
       [prayerValues]
@@ -1573,7 +1511,7 @@ async function reimportSeedPosts(conn) {
 
   if (mediaValues.length > 0 && !DRY_RUN) {
     await conn.query(
-      `INSERT INTO post_media (post_id, media_type, url, thumbnail_url, width, height,
+      `INSERT IGNORE INTO post_media (post_id, media_type, url, thumbnail_url, width, height,
         duration, sort_order, created_at, updated_at)
       VALUES ?`,
       [mediaValues]
@@ -1604,7 +1542,7 @@ async function reimportSeedPosts(conn) {
 
     if (repostValues.length > 0) {
       await conn.query(
-        `INSERT INTO reposts (user_id, post_id, quote_post_id, created_at, updated_at)
+        `INSERT IGNORE INTO reposts (user_id, post_id, quote_post_id, created_at, updated_at)
         VALUES ?`,
         [repostValues]
       );
@@ -1740,11 +1678,6 @@ async function main() {
   const start = Date.now();
 
   try {
-    if (!ONLY_TABLE) {
-      // Full import
-      await wipeTables(conn);
-    }
-
     // Disable FK checks for bulk import
     await conn.query('SET FOREIGN_KEY_CHECKS = 0');
     await conn.query("SET SESSION sql_mode = ''"); // Allow flexible inserts

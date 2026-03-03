@@ -98,9 +98,12 @@ export function useMediaRecorder(): UseMediaRecorderResult {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'user',
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
-          aspectRatio: { ideal: 9 / 16 },
+          // Let the browser pick the camera's native resolution.
+          // Requesting specific dimensions (e.g. 1080x1920) causes many
+          // front cameras to digitally zoom/crop, producing a zoomed-in image.
+          // The canvas portrait pipeline below handles cropping to 9:16 if needed.
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
         },
         audio: true,
       });
