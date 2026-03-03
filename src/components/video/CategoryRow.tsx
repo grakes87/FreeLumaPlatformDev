@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { VideoCard, type VideoData } from './VideoCard';
@@ -12,7 +13,7 @@ interface CategoryRowProps {
   className?: string;
 }
 
-export function CategoryRow({ name, videos, className }: CategoryRowProps) {
+export function CategoryRow({ name, slug, videos, className }: CategoryRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollRight = useCallback(() => {
@@ -23,6 +24,8 @@ export function CategoryRow({ name, videos, className }: CategoryRowProps) {
 
   if (videos.length === 0) return null;
 
+  const seeAllHref = slug ? `/watch/category/${slug}` : '/watch/category/all';
+
   return (
     <section className={cn('flex flex-col gap-2', className)}>
       {/* Header */}
@@ -31,15 +34,13 @@ export function CategoryRow({ name, videos, className }: CategoryRowProps) {
           {name}
         </h3>
         {videos.length > 2 && (
-          <button
-            type="button"
-            onClick={scrollRight}
+          <Link
+            href={seeAllHref}
             className="flex items-center gap-0.5 text-xs font-medium text-primary"
-            aria-label={`See more ${name}`}
           >
-            More
+            See All
             <ChevronRight className="h-3.5 w-3.5" />
-          </button>
+          </Link>
         )}
       </div>
 

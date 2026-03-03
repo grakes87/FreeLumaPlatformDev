@@ -84,13 +84,16 @@ export const GET = withOptionalAuth(
 
       // If category_id provided: paginated list of videos in that category
       if (categoryId) {
-        const catId = parseInt(categoryId, 10);
-        if (isNaN(catId)) {
-          return errorResponse('Invalid category_id');
+        const isUncategorized = categoryId === 'uncategorized';
+        if (!isUncategorized) {
+          const catId = parseInt(categoryId, 10);
+          if (isNaN(catId)) {
+            return errorResponse('Invalid category_id');
+          }
         }
 
         const where: Record<string, unknown> = {
-          category_id: catId,
+          category_id: isUncategorized ? null : parseInt(categoryId, 10),
           ...publishedFilter,
           ...ageFilter,
         };
