@@ -35,8 +35,9 @@ export interface Assignment {
   has_srt: boolean;
 }
 
-function getCurrentMonth(): string {
+function getNextMonth(): string {
   const now = new Date();
+  now.setMonth(now.getMonth() + 1);
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
@@ -47,7 +48,7 @@ const STAT_CARDS = [
 ];
 
 export default function CreatorDashboard() {
-  const [month, setMonth] = useState(getCurrentMonth);
+  const [month, setMonth] = useState(getNextMonth);
   const [stats, setStats] = useState<CreatorStats | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -99,7 +100,7 @@ export default function CreatorDashboard() {
 
   // Determine if deadline notice should show
   const now = new Date();
-  const isCurrentMonth = month === getCurrentMonth();
+  const isCurrentMonth = month === getNextMonth();
   const dayOfMonth = now.getDate();
   const hasPending = assignments.some(
     (a) => a.status === 'assigned' || a.status === 'rejected'
