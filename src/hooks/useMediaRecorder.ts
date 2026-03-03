@@ -98,10 +98,10 @@ export function useMediaRecorder(): UseMediaRecorderResult {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'user',
-          // Let the browser pick the camera's native resolution.
-          // Requesting specific dimensions (e.g. 1080x1920) causes many
-          // front cameras to digitally zoom/crop, producing a zoomed-in image.
-          // The canvas portrait pipeline below handles cropping to 9:16 if needed.
+          // Request 720p and let the browser pick the best native resolution.
+          // The canvas pipeline below handles portrait cropping on Android.
+          // iOS Safari records with rotation metadata so portrait output works
+          // even from landscape frames.
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
@@ -111,20 +111,27 @@ export function useMediaRecorder(): UseMediaRecorderResult {
       // Check if camera gave landscape frames (common on Android Chrome).
       // If so, set up a canvas pipeline that center-crops to 9:16 portrait
       // so the MediaRecorder captures portrait video natively.
+      // Skip on iOS — Safari embeds rotation metadata in mp4 so the output
+      // is portrait even though the raw frames are landscape.
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       const videoTrack = mediaStream.getVideoTracks()[0];
       const settings = videoTrack.getSettings();
       const sw = settings.width ?? 0;
       const sh = settings.height ?? 0;
 
-      if (sw > sh && sw > 0 && sh > 0) {
+      if (!isIOS && sw > sh && sw > 0 && sh > 0) {
         try {
           // Calculate center-crop region: keep full height, crop width to 9:16
           const cropW = Math.round(sh * (9 / 16));
           const cropX = Math.round((sw - cropW) / 2);
 
-          // Output canvas at 9:16 portrait dimensions
-          const canvasW = Math.min(1080, cropW * 2);
-          const canvasH = Math.round(canvasW * (16 / 9));
+          // Output canvas at 9:16 portrait dimensions.
+          // Round to multiples of 16 for video codec macroblock alignment —
+          // non-aligned dimensions cause black strips at the edges.
+          const rawW = Math.min(1080, cropW * 2);
+          const canvasW = Math.floor(rawW / 16) * 16 || 720;
+          const canvasH = Math.floor((canvasW * (16 / 9)) / 16) * 16 || 1280;
 
           const canvas = document.createElement('canvas');
           canvas.width = canvasW;
