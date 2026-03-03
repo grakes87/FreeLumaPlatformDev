@@ -140,7 +140,7 @@ export const GET = withOptionalAuth(
               'duration_seconds', 'view_count', 'is_hero', 'published', 'published_at', 'created_at',
             ],
             order: [['view_count', 'DESC']],
-            limit: VIDEOS_PER_CATEGORY,
+            ...(!(isAdmin && drafts) && { limit: VIDEOS_PER_CATEGORY }),
           });
 
           return {
@@ -167,7 +167,7 @@ export const GET = withOptionalAuth(
           'duration_seconds', 'view_count', 'is_hero', 'published', 'published_at', 'created_at',
         ],
         order: [['view_count', 'DESC']],
-        limit: VIDEOS_PER_CATEGORY,
+        ...(!(isAdmin && drafts) && { limit: VIDEOS_PER_CATEGORY }),
       });
 
       // Top 10 most watched
@@ -178,7 +178,7 @@ export const GET = withOptionalAuth(
           'duration_seconds', 'view_count', 'is_hero', 'published', 'published_at', 'created_at',
         ],
         order: [['view_count', 'DESC']],
-        limit: 10,
+        ...(!(isAdmin && drafts) && { limit: 10 }),
       });
 
       // Continue Watching row: user's in-progress videos (only for logged-in users)
