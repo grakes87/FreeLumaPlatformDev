@@ -31,7 +31,7 @@ export default function AdminUsersPage() {
       const res = await fetch(`/api/admin/users?${params}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        setUsers(data.data?.users ?? []);
+        setUsers(data.users ?? []);
       }
     } catch {
       // silently fail
