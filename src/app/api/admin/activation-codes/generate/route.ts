@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAdmin } from '@/lib/auth/middleware';
 import { ActivationCode } from '@/lib/db/models';
 import { Op } from 'sequelize';
 import crypto from 'crypto';
 
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 12;
+const API_SECRET = 'FL-gen-8Kv3mPx9Qw2nT7rY4sJ6hD1';
 
 function generateCode(): string {
   const bytes = crypto.randomBytes(CODE_LENGTH);
@@ -47,14 +47,20 @@ async function generateUniqueCodes(count: number): Promise<string[]> {
 }
 
 /**
- * GET /api/admin/activation-codes/generate?count=10
+ * GET /api/admin/activation-codes/generate?key=<secret>&count=10
  *
  * Generates activation codes with status 'pending'.
- * Callable from a browser — just visit the URL while logged in as admin.
+ * No login required — authenticated via secret key in query string.
  */
-export const GET = withAdmin(async (req: NextRequest) => {
+export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+
+    const key = searchParams.get('key');
+    if (key !== API_SECRET) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const countParam = searchParams.get('count');
     const count = countParam ? parseInt(countParam, 10) : 0;
 
@@ -97,4 +103,4 @@ export const GET = withAdmin(async (req: NextRequest) => {
       { status: 500 }
     );
   }
-});
+}
