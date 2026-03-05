@@ -1,7 +1,8 @@
 'use client';
 
+import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Calendar, BookOpen, Sparkles, Video, FileText, Music, Subtitles, AlertCircle } from 'lucide-react';
+import { Calendar, BookOpen, Sparkles, Video, FileText, Music, Subtitles, AlertCircle, Upload, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import type { Assignment } from './CreatorDashboard';
 
@@ -9,6 +10,7 @@ interface AssignmentListProps {
   assignments: Assignment[];
   loading?: boolean;
   onSelectAssignment?: (id: number) => void;
+  onUploadComplete?: () => void;
 }
 
 const STATUS_CONFIG: Record<
@@ -58,7 +60,80 @@ function SkeletonCard() {
   );
 }
 
-export function AssignmentList({ assignments, loading, onSelectAssignment }: AssignmentListProps) {
+export function AssignmentList({ assignments, loading, onSelectAssignment, onUploadComplete }: AssignmentListProps) {
+  const [uploadingId, setUploadingId] = useState<number | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingAssignmentRef = useRef<number | null>(null);
+
+  const handleUploadClick = useCallback((e: React.MouseEvent, assignmentId: number) => {
+    e.stopPropagation();
+    e.preventDefault();
+    pendingAssignmentRef.current = assignmentId;
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileSelected = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const assignmentId = pendingAssignmentRef.current;
+    if (!file || !assignmentId) return;
+
+    // Reset input so the same file can be re-selected
+    e.target.value = '';
+
+    setUploadingId(assignmentId);
+    setUploadProgress(0);
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    const formData = new FormData();
+    formData.append('video', file);
+    formData.append('daily_content_id', String(assignmentId));
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/creator/upload');
+
+    xhr.upload.onprogress = (evt) => {
+      if (evt.lengthComputable) {
+        setUploadProgress(Math.round((evt.loaded / evt.total) * 70));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        setUploadProgress(100);
+        setUploadingId(null);
+        setUploadSuccess(assignmentId);
+        setTimeout(() => {
+          setUploadSuccess(null);
+          onUploadComplete?.();
+        }, 1500);
+      } else {
+        let msg = 'Upload failed';
+        try { msg = JSON.parse(xhr.responseText).error || msg; } catch { /* ignore */ }
+        setUploadError(msg);
+        setUploadingId(null);
+      }
+    };
+
+    xhr.onerror = () => {
+      setUploadError('Network error — please try again');
+      setUploadingId(null);
+    };
+
+    // After upload completes, server compresses — show progress at 70%+
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState === XMLHttpRequest.DONE && uploadProgress < 70) return;
+      if (xhr.readyState === XMLHttpRequest.LOADING) {
+        setUploadProgress(85);
+      }
+    };
+
+    xhr.send(formData);
+  }, [onUploadComplete, uploadProgress]);
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -87,8 +162,36 @@ export function AssignmentList({ assignments, loading, onSelectAssignment }: Ass
 
   return (
     <div className="space-y-3">
+      {/* Hidden file input shared across all tiles */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={handleFileSelected}
+      />
+
+      {/* Upload error banner */}
+      {uploadError && (
+        <div className="flex items-start gap-2 rounded-xl border border-red-300 bg-red-50 p-3 dark:border-red-700 dark:bg-red-950/30">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
+          <div className="flex-1">
+            <p className="text-sm text-red-800 dark:text-red-200">{uploadError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setUploadError(null)}
+            className="text-xs text-red-600 hover:text-red-800 dark:text-red-400"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {sorted.map((assignment) => {
         const statusCfg = STATUS_CONFIG[assignment.status];
+        const isUploading = uploadingId === assignment.id;
+        const justSucceeded = uploadSuccess === assignment.id;
 
         // Recordable assignments link straight to the recording screen
         // Submitted assignments open the detail overlay to watch / re-record
@@ -191,6 +294,43 @@ export function AssignmentList({ assignments, loading, onSelectAssignment }: Ass
                 </span>
               )}
             </div>
+
+            {/* Upload progress bar (during upload) */}
+            {isUploading && (
+              <div className="mt-3">
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-text-muted dark:text-text-muted-dark">
+                  {uploadProgress >= 70
+                    ? 'Compressing & saving...'
+                    : `Uploading... ${uploadProgress}%`}
+                </p>
+              </div>
+            )}
+
+            {/* Upload success message */}
+            {justSucceeded && (
+              <div className="mt-3 flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="text-xs font-medium">Submitted!</span>
+              </div>
+            )}
+
+            {/* Upload Video button for assigned/rejected tiles */}
+            {canRecord(assignment.status) && !isUploading && !justSucceeded && (
+              <button
+                type="button"
+                onClick={(e) => handleUploadClick(e, assignment.id)}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-text transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-text-dark dark:hover:bg-slate-700"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Upload Video
+              </button>
+            )}
           </Wrapper>
         );
       })}

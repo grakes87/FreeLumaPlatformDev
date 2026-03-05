@@ -161,6 +161,7 @@ export default function CreatorDashboard() {
           assignments={assignments}
           loading={loadingAssignments}
           onSelectAssignment={setSelectedAssignmentId}
+          onUploadComplete={() => fetchAssignments(month)}
         />
       </section>
 

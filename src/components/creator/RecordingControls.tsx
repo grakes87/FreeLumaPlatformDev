@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils/cn';
-import { RotateCcw, Send, Square, Pause, Play } from 'lucide-react';
+import { RotateCcw, Send, Square, Pause, Play, Download } from 'lucide-react';
 
 interface RecordingControlsProps {
   /** Whether actively recording (includes paused state) */
@@ -114,7 +114,7 @@ export function RecordingControls({
         )}
 
         {/* Action buttons */}
-        <div className="flex items-center justify-center gap-6">
+        <div className="flex items-center justify-center gap-4">
           <button
             type="button"
             onClick={onReRecord}
@@ -126,6 +126,27 @@ export function RecordingControls({
           >
             <RotateCcw className="h-4 w-4" />
             Re-record
+          </button>
+
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => {
+              if (!recordedUrl) return;
+              const a = document.createElement('a');
+              a.href = recordedUrl;
+              a.download = `lumashort-${Date.now()}.webm`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            }}
+            className={cn(
+              'flex items-center gap-2 rounded-full bg-white/20 px-5 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all',
+              isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/30 active:scale-95'
+            )}
+          >
+            <Download className="h-4 w-4" />
+            Save
           </button>
 
           <button
