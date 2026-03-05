@@ -55,28 +55,25 @@ export default function CreatorDashboard() {
   const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
 
-  // Fetch stats on mount
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchStats() {
-      setLoadingStats(true);
-      try {
-        const res = await fetch('/api/creator/stats');
-        if (res.ok && !cancelled) {
-          const data = await res.json();
-          setStats(data);
-        }
-      } catch {
-        // silently fail -- layout already verified access
-      } finally {
-        if (!cancelled) setLoadingStats(false);
+  // Fetch stats for the selected month
+  const fetchStats = useCallback(async (m: string) => {
+    setLoadingStats(true);
+    try {
+      const res = await fetch(`/api/creator/stats?month=${m}`);
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
       }
+    } catch {
+      // silently fail -- layout already verified access
+    } finally {
+      setLoadingStats(false);
     }
-
-    fetchStats();
-    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    fetchStats(month);
+  }, [month, fetchStats]);
 
   // Fetch assignments when month changes
   const fetchAssignments = useCallback(async (m: string) => {
@@ -112,7 +109,10 @@ export default function CreatorDashboard() {
       {/* Stats section */}
       <section>
         <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-text-muted dark:text-text-muted-dark">
-          This Month
+          {(() => {
+            const [y, m] = month.split('-').map(Number);
+            return new Date(y, m - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+          })()}
         </h2>
         <div className="grid grid-cols-3 gap-3">
           {STAT_CARDS.map(({ key, label, icon: Icon, color }) => (
@@ -161,7 +161,7 @@ export default function CreatorDashboard() {
           assignments={assignments}
           loading={loadingAssignments}
           onSelectAssignment={setSelectedAssignmentId}
-          onUploadComplete={() => fetchAssignments(month)}
+          onUploadComplete={() => { fetchAssignments(month); fetchStats(month); }}
         />
       </section>
 
