@@ -131,14 +131,27 @@ export function RecordingControls({
           <button
             type="button"
             disabled={isSubmitting}
-            onClick={() => {
-              if (!recordedUrl) return;
-              const a = document.createElement('a');
-              a.href = recordedUrl;
-              a.download = `lumashort-${Date.now()}.webm`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
+            onClick={async () => {
+              if (!recordedBlob) return;
+              const file = new File([recordedBlob], `lumashort-${Date.now()}.mp4`, {
+                type: recordedBlob.type || 'video/mp4',
+              });
+              // iOS: native share sheet with "Save Video" option
+              if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                try {
+                  await navigator.share({ files: [file] });
+                } catch {
+                  // User cancelled — ignore
+                }
+              } else if (recordedUrl) {
+                // Desktop fallback: trigger download
+                const a = document.createElement('a');
+                a.href = recordedUrl;
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              }
             }}
             className={cn(
               'flex items-center gap-2 rounded-full bg-white/20 px-5 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all',
