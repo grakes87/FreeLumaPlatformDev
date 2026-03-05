@@ -50,6 +50,7 @@ export const GET = withCreator(async (req: NextRequest, context: CreatorContext)
     assigned: selectedMonthAssignments.length,
     completed: selectedMonthAssignments.filter((a) => a.status === 'submitted' || a.status === 'approved').length,
     pending: selectedMonthAssignments.filter((a) => a.status === 'assigned' || a.status === 'rejected').length,
+    approved: selectedMonthAssignments.filter((a) => a.status === 'approved').length,
   };
 
   return NextResponse.json({ total, current_month });

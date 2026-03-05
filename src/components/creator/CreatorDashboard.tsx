@@ -19,6 +19,7 @@ interface CreatorStats {
     assigned: number;
     completed: number;
     pending: number;
+    approved: number;
   };
 }
 
@@ -126,7 +127,7 @@ export default function CreatorDashboard() {
                 <div className="flex items-center justify-center gap-1.5">
                   <Icon className={cn('h-4 w-4', color)} />
                   <p className={cn('text-2xl font-bold', color)}>
-                    {key === 'approved' ? stats.total.approved : stats.current_month[key]}
+                    {stats.current_month[key]}
                   </p>
                 </div>
               )}
