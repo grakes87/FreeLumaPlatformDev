@@ -221,7 +221,10 @@ export function useMediaRecorder(): UseMediaRecorderResult {
     chunksRef.current = [];
 
     try {
-      const recorder = new MediaRecorder(recordStream, { mimeType });
+      const recorder = new MediaRecorder(recordStream, {
+        mimeType,
+        videoBitsPerSecond: 2_500_000, // 2.5 Mbps — keeps ~1.5 min video under 30 MB
+      });
 
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
