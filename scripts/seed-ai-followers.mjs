@@ -362,19 +362,24 @@ async function main() {
   }
   console.log(` ✓ (${formatElapsed(startTime)})`);
 
-  // ---- Step 6: Impressions (views) ----
-  console.log(`\n[6/6] Adding impressions on ${posts.length} posts (all ${aiUserIds.length} users per post)...`);
+  // ---- Step 6: Impressions (views) — random 40-90% of users per post ----
+  console.log(`\n[6/6] Adding impressions on ${posts.length} posts (40-90% of users per post)...`);
   let totalImpressions = 0;
 
   for (const post of posts) {
-    for (let batch = 0; batch < aiUserIds.length; batch += BATCH_SIZE) {
-      const batchEnd = Math.min(batch + BATCH_SIZE, aiUserIds.length);
+    const viewPercent = randomInt(40, 90) / 100;
+    const numViewers = Math.floor(aiUserIds.length * viewPercent);
+    const shuffled = [...aiUserIds].sort(() => Math.random() - 0.5);
+    const viewers = shuffled.slice(0, numViewers);
+
+    for (let batch = 0; batch < viewers.length; batch += BATCH_SIZE) {
+      const batchEnd = Math.min(batch + BATCH_SIZE, viewers.length);
       const values = [];
       const params = [];
 
       for (let i = batch; i < batchEnd; i++) {
         values.push('(?, ?, NOW())');
-        params.push(post.id, aiUserIds[i]);
+        params.push(post.id, viewers[i]);
       }
 
       await conn.query(
@@ -384,8 +389,8 @@ async function main() {
       );
     }
 
-    totalImpressions += aiUserIds.length;
-    process.stdout.write(`\r  Post ${post.id}: ${aiUserIds.length} impressions (total: ${totalImpressions})`);
+    totalImpressions += numViewers;
+    process.stdout.write(`\r  Post ${post.id}: ${numViewers} impressions (total: ${totalImpressions})`);
   }
   console.log(` ✓ (${formatElapsed(startTime)})`);
 
