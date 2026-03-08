@@ -50,7 +50,9 @@ export const GET = withOptionalAuth(
         })),
       ];
 
-      return successResponse(result);
+      return successResponse(result, 200, {
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+      });
     } catch (error) {
       return serverError(error, 'Failed to fetch verse categories');
     }

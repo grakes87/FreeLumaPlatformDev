@@ -17,7 +17,9 @@ export async function GET(req: NextRequest) {
       order: [['name', 'ASC']],
     });
 
-    return successResponse(translations);
+    return successResponse(translations, 200, {
+      'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+    });
   } catch (error) {
     return serverError(error, 'Failed to fetch Bible translations');
   }

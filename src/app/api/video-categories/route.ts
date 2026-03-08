@@ -48,7 +48,9 @@ export const GET = withOptionalAuth(
         order: [['sort_order', 'ASC'], ['name', 'ASC']],
       });
 
-      return successResponse({ categories });
+      return successResponse({ categories }, 200, {
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+      });
     } catch (error) {
       return serverError(error, 'Failed to fetch video categories');
     }
