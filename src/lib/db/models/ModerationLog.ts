@@ -4,7 +4,7 @@ import { sequelize } from '../index';
 export interface ModerationLogAttributes {
   id: number;
   admin_id: number;
-  action: 'remove_content' | 'warn_user' | 'ban_user' | 'unban_user' | 'edit_user' | 'dismiss_report';
+  action: 'remove_content' | 'warn_user' | 'ban_user' | 'unban_user' | 'edit_user' | 'dismiss_report' | 'send_reset_email';
   target_user_id: number | null;
   target_content_type: 'post' | 'comment' | 'video' | null;
   target_content_id: number | null;
@@ -26,7 +26,7 @@ export interface ModerationLogCreationAttributes extends Optional<ModerationLogA
 class ModerationLog extends Model<ModerationLogAttributes, ModerationLogCreationAttributes> implements ModerationLogAttributes {
   declare id: number;
   declare admin_id: number;
-  declare action: 'remove_content' | 'warn_user' | 'ban_user' | 'unban_user' | 'edit_user' | 'dismiss_report';
+  declare action: 'remove_content' | 'warn_user' | 'ban_user' | 'unban_user' | 'edit_user' | 'dismiss_report' | 'send_reset_email';
   declare target_user_id: number | null;
   declare target_content_type: 'post' | 'comment' | 'video' | null;
   declare target_content_id: number | null;
@@ -51,7 +51,7 @@ ModerationLog.init(
       },
     },
     action: {
-      type: DataTypes.ENUM('remove_content', 'warn_user', 'ban_user', 'unban_user', 'edit_user', 'dismiss_report'),
+      type: DataTypes.ENUM('remove_content', 'warn_user', 'ban_user', 'unban_user', 'edit_user', 'dismiss_report', 'send_reset_email'),
       allowNull: false,
     },
     target_user_id: {

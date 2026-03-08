@@ -44,7 +44,8 @@ export function FollowList({ userId, type, isOpen, onClose }: FollowListProps) {
   const { user: currentUser } = useAuth();
   const [items, setItems] = useState<FollowListItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [cursor, setCursor] = useState<string | null>(null);
+  const [nextOffset, setNextOffset] = useState<string | null>(null);
+  const [seed, setSeed] = useState<number>(0);
   const [hasMore, setHasMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -55,11 +56,12 @@ export function FollowList({ userId, type, isOpen, onClose }: FollowListProps) {
     return () => setMounted(false);
   }, []);
 
-  const fetchItems = useCallback(async (nextCursor?: string | null) => {
+  const fetchItems = useCallback(async (offsetVal?: string | null, seedVal?: number) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: '20' });
-      if (nextCursor) params.set('cursor', nextCursor);
+      if (offsetVal) params.set('offset', offsetVal);
+      if (seedVal) params.set('seed', String(seedVal));
 
       const res = await fetch(`/api/users/${userId}/${type}?${params}`, {
         credentials: 'include',
@@ -72,12 +74,14 @@ export function FollowList({ userId, type, isOpen, onClose }: FollowListProps) {
       const newItems = data[key] || [];
       const newCursor = data.next_cursor || null;
 
-      if (nextCursor) {
+      if (data.seed) setSeed(data.seed);
+
+      if (offsetVal) {
         setItems((prev) => [...prev, ...newItems]);
       } else {
         setItems(newItems);
       }
-      setCursor(newCursor);
+      setNextOffset(newCursor);
       setHasMore(!!newCursor);
     } catch {
       // Silently fail
@@ -90,7 +94,8 @@ export function FollowList({ userId, type, isOpen, onClose }: FollowListProps) {
   useEffect(() => {
     if (isOpen) {
       setItems([]);
-      setCursor(null);
+      setNextOffset(null);
+      setSeed(0);
       setHasMore(false);
       setSearchQuery('');
       fetchItems();
@@ -98,8 +103,8 @@ export function FollowList({ userId, type, isOpen, onClose }: FollowListProps) {
   }, [isOpen, fetchItems]);
 
   const loadMore = () => {
-    if (!loading && hasMore && cursor) {
-      fetchItems(cursor);
+    if (!loading && hasMore && nextOffset) {
+      fetchItems(nextOffset, seed);
     }
   };
 

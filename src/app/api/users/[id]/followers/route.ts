@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
-import { Op } from 'sequelize';
+import { Op, literal } from 'sequelize';
 
 /**
  * GET /api/users/[id]/followers - Get a user's followers
@@ -36,8 +36,10 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
     }
 
     const { searchParams } = new URL(req.url);
-    const cursor = searchParams.get('cursor');
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10), 0);
     const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50);
+    // Stable seed so paginating doesn't reshuffle — changes daily
+    const seed = parseInt(searchParams.get('seed') || '0', 10) || Math.floor(Date.now() / 86400000);
 
     // Get blocked user IDs to exclude
     const blocks = await Block.findAll({
@@ -62,10 +64,6 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
       status: 'active',
     };
 
-    if (cursor) {
-      where.id = { [Op.lt]: parseInt(cursor, 10) };
-    }
-
     if (blockedIds.size > 0) {
       where.follower_id = { [Op.notIn]: Array.from(blockedIds) };
     }
@@ -79,13 +77,14 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
           attributes: ['id', 'display_name', 'username', 'avatar_url', 'avatar_color', 'bio', 'is_verified', 'status'],
         },
       ],
-      order: [['id', 'DESC']],
+      order: literal(`RAND(${Number(seed)})`),
       limit: limit + 1,
+      offset,
     });
 
     const hasMore = followers.length > limit;
     const items = hasMore ? followers.slice(0, limit) : followers;
-    const nextCursor = hasMore ? items[items.length - 1].id.toString() : null;
+    const nextOffset = hasMore ? offset + limit : null;
 
     // Determine current user's follow status for each follower
     const followerIds = items.map((f) => {
@@ -120,7 +119,8 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
 
     return successResponse({
       followers: enriched,
-      next_cursor: nextCursor,
+      next_cursor: nextOffset !== null ? String(nextOffset) : null,
+      seed,
     });
   } catch (error) {
     return serverError(error, 'Failed to fetch followers');

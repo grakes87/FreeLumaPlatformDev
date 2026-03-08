@@ -10,6 +10,7 @@ import {
   X,
   Check,
   ChevronDown,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useToast } from '@/components/ui/Toast';
@@ -91,6 +92,7 @@ export function UserBrowser() {
     role: 'user',
   });
   const [saving, setSaving] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   // Ban modal state
   const [banUser, setBanUser] = useState<AdminUser | null>(null);
@@ -210,6 +212,29 @@ export function UserBrowser() {
       toast.error('Failed to update user');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendReset = async () => {
+    if (!editUser) return;
+    setSendingReset(true);
+
+    try {
+      const res = await fetch(`/api/admin/users/${editUser.id}/reset-password`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (res.ok) {
+        toast.success(`Password reset email sent to ${editForm.email}`);
+      } else {
+        const errData = await res.json();
+        toast.error(errData.error || 'Failed to send reset email');
+      }
+    } catch {
+      toast.error('Failed to send reset email');
+    } finally {
+      setSendingReset(false);
     }
   };
 
@@ -482,12 +507,28 @@ export function UserBrowser() {
             <label className="mb-1.5 block text-xs font-medium text-text-muted dark:text-text-muted-dark">
               Email
             </label>
-            <input
-              type="email"
-              value={editForm.email}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none dark:border-border-dark dark:bg-background-dark dark:text-text-dark"
-            />
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-text focus:border-primary focus:outline-none dark:border-border-dark dark:bg-background-dark dark:text-text-dark"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSendReset}
+                disabled={sendingReset || saving}
+                className="shrink-0"
+              >
+                {sendingReset ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Mail className="h-4 w-4" />
+                )}
+                <span className="ml-1.5 hidden sm:inline">Reset Link</span>
+              </Button>
+            </div>
           </div>
 
           <div>
