@@ -8,6 +8,8 @@ export interface VerseCategoryCommentAttributes {
   parent_id: number | null;
   body: string;
   edited: boolean;
+  flagged: boolean;
+  hidden: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -16,6 +18,8 @@ export interface VerseCategoryCommentCreationAttributes extends Optional<VerseCa
   | 'id'
   | 'parent_id'
   | 'edited'
+  | 'flagged'
+  | 'hidden'
   | 'created_at'
   | 'updated_at'
 > {}
@@ -27,6 +31,8 @@ class VerseCategoryComment extends Model<VerseCategoryCommentAttributes, VerseCa
   declare parent_id: number | null;
   declare body: string;
   declare edited: boolean;
+  declare flagged: boolean;
+  declare hidden: boolean;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
 }
@@ -67,6 +73,16 @@ VerseCategoryComment.init(
       allowNull: false,
     },
     edited: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    flagged: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    hidden: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

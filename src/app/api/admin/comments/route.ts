@@ -4,9 +4,10 @@ import { withAdmin, type AuthContext } from '@/lib/auth/middleware';
 import { successResponse, serverError } from '@/lib/utils/api';
 
 /**
- * GET /api/admin/comments - List all comments with search, filtering, and pagination
+ * GET /api/admin/comments - List comments with search, filtering, and pagination
  *
  * Query params:
+ *   type: 'post' (default) | 'daily' | 'verse'
  *   search: search comment body text (LIKE)
  *   flagged: 'true' to show only flagged comments
  *   hidden: 'true' to show only hidden, 'false' for visible only
@@ -17,10 +18,14 @@ import { successResponse, serverError } from '@/lib/utils/api';
  */
 export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => {
   try {
-    const { PostComment, User, Post } = await import('@/lib/db/models');
+    const {
+      PostComment, DailyComment, VerseCategoryComment,
+      User, Post, DailyContent, VerseCategoryContent,
+    } = await import('@/lib/db/models');
     const { sequelize } = await import('@/lib/db');
     const url = new URL(req.url);
 
+    const type = url.searchParams.get('type') || 'post';
     const search = url.searchParams.get('search');
     const flagged = url.searchParams.get('flagged');
     const hiddenFilter = url.searchParams.get('hidden');
@@ -59,34 +64,76 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
       where.id = { ...(where.id || {}), [Op.lt]: parseInt(cursor, 10) };
     }
 
-    const comments = await PostComment.findAll({
-      where,
-      attributes: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let comments: any[];
+
+    if (type === 'daily') {
+      comments = await DailyComment.findAll({
+        where,
         include: [
-          [
-            sequelize.literal(
-              '(SELECT COUNT(*) FROM reports WHERE reports.content_type = \'comment\' AND reports.comment_id = `PostComment`.`id`)'
-            ),
-            'report_count',
-          ],
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+          },
+          {
+            model: DailyContent,
+            as: 'dailyContent',
+            attributes: ['id', 'title', 'post_date'],
+          },
         ],
-      },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+        order: [['id', 'DESC']],
+        limit: limit + 1,
+      });
+    } else if (type === 'verse') {
+      comments = await VerseCategoryComment.findAll({
+        where,
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+          },
+          {
+            model: VerseCategoryContent,
+            as: 'verseContent',
+            attributes: ['id', 'verse_reference'],
+          },
+        ],
+        order: [['id', 'DESC']],
+        limit: limit + 1,
+      });
+    } else {
+      // default: post
+      comments = await PostComment.findAll({
+        where,
+        attributes: {
+          include: [
+            [
+              sequelize.literal(
+                '(SELECT COUNT(*) FROM reports WHERE reports.content_type = \'comment\' AND reports.comment_id = `PostComment`.`id`)'
+              ),
+              'report_count',
+            ],
+          ],
         },
-        {
-          model: Post,
-          as: 'post',
-          attributes: ['id', 'body'],
-          paranoid: false,
-        },
-      ],
-      order: [['id', 'DESC']],
-      limit: limit + 1,
-    });
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'username', 'display_name', 'avatar_url', 'avatar_color'],
+          },
+          {
+            model: Post,
+            as: 'post',
+            attributes: ['id', 'body'],
+            paranoid: false,
+          },
+        ],
+        order: [['id', 'DESC']],
+        limit: limit + 1,
+      });
+    }
 
     const hasMore = comments.length > limit;
     const paginatedComments = comments.slice(0, limit);
@@ -97,19 +144,37 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
 
     const commentList = paginatedComments.map((c) => {
       const json = c.toJSON() as unknown as Record<string, unknown>;
-      const post = json.post as Record<string, unknown> | null;
+
+      let contextId: number | null = null;
+      let contextPreview: string | null = null;
+
+      if (type === 'daily') {
+        const dc = json.dailyContent as Record<string, unknown> | null;
+        contextId = dc ? (dc.id as number) : null;
+        contextPreview = dc ? `${dc.post_date} — ${(dc.title as string)?.substring(0, 60)}` : null;
+      } else if (type === 'verse') {
+        const vc = json.verseContent as Record<string, unknown> | null;
+        contextId = vc ? (vc.id as number) : null;
+        contextPreview = vc ? (vc.verse_reference as string) : null;
+      } else {
+        const post = json.post as Record<string, unknown> | null;
+        contextId = json.post_id as number;
+        contextPreview = post ? (post.body as string)?.substring(0, 80) : null;
+      }
+
       return {
         id: json.id,
         body: (json.body as string)?.substring(0, 200),
-        post_id: json.post_id,
+        context_id: contextId,
+        context_preview: contextPreview,
+        comment_type: type,
         parent_id: json.parent_id,
         flagged: json.flagged,
         hidden: json.hidden,
         edited: json.edited,
         created_at: json.created_at,
         author: json.user,
-        post_preview: post ? (post.body as string)?.substring(0, 80) : null,
-        report_count: parseInt(String(json.report_count || '0'), 10),
+        report_count: type === 'post' ? parseInt(String(json.report_count || '0'), 10) : 0,
       };
     });
 

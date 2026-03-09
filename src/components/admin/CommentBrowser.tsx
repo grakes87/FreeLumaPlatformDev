@@ -27,19 +27,39 @@ interface CommentAuthor {
 interface AdminComment {
   id: number;
   body: string;
-  post_id: number;
+  context_id: number | null;
+  context_preview: string | null;
+  comment_type: CommentType;
   parent_id: number | null;
   flagged: boolean;
   hidden: boolean;
   edited: boolean;
   created_at: string;
   author: CommentAuthor | null;
-  post_preview: string | null;
   report_count: number;
 }
 
+type CommentType = 'post' | 'daily' | 'verse';
 type FlagFilter = 'all' | 'flagged';
 type HiddenFilter = 'all' | 'visible' | 'hidden';
+
+const TYPE_LABELS: Record<CommentType, string> = {
+  post: 'Post Comments',
+  daily: 'Daily Comments',
+  verse: 'Verse Comments',
+};
+
+const TYPE_BADGE_STYLES: Record<CommentType, string> = {
+  post: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  daily: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  verse: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+};
+
+const CONTEXT_LABEL: Record<CommentType, string> = {
+  post: 'on post',
+  daily: 'on daily',
+  verse: 'on verse',
+};
 
 export function CommentBrowser() {
   const toast = useToast();
@@ -47,6 +67,7 @@ export function CommentBrowser() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
+  const [commentType, setCommentType] = useState<CommentType>('post');
   const [flagFilter, setFlagFilter] = useState<FlagFilter>('all');
   const [hiddenFilter, setHiddenFilter] = useState<HiddenFilter>('all');
   const [dateFrom, setDateFrom] = useState('');
@@ -64,7 +85,7 @@ export function CommentBrowser() {
       }
 
       try {
-        const params = new URLSearchParams({ limit: '20' });
+        const params = new URLSearchParams({ limit: '20', type: commentType });
         if (search.trim()) params.set('search', search.trim());
         if (flagFilter === 'flagged') params.set('flagged', 'true');
         if (hiddenFilter === 'hidden') params.set('hidden', 'true');
@@ -96,7 +117,7 @@ export function CommentBrowser() {
         setLoadingMore(false);
       }
     },
-    [search, flagFilter, hiddenFilter, dateFrom, dateTo, toast]
+    [search, commentType, flagFilter, hiddenFilter, dateFrom, dateTo, toast]
   );
 
   useEffect(() => {
@@ -117,7 +138,7 @@ export function CommentBrowser() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ hidden: !comment.hidden }),
+        body: JSON.stringify({ hidden: !comment.hidden, type: commentType }),
       });
 
       if (res.ok) {
@@ -154,6 +175,20 @@ export function CommentBrowser() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
+        {/* Comment Type */}
+        <div className="relative">
+          <select
+            value={commentType}
+            onChange={(e) => setCommentType(e.target.value as CommentType)}
+            className="appearance-none rounded-lg border border-border bg-surface py-1.5 pl-3 pr-8 text-xs font-medium text-text dark:border-border-dark dark:bg-surface-dark dark:text-text-dark"
+          >
+            <option value="post">Post Comments</option>
+            <option value="daily">Daily Comments</option>
+            <option value="verse">Verse Comments</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
+        </div>
+
         <div className="relative">
           <select
             value={flagFilter}
@@ -213,7 +248,7 @@ export function CommentBrowser() {
         </div>
       ) : comments.length === 0 ? (
         <p className="py-12 text-center text-sm text-text-muted dark:text-text-muted-dark">
-          No comments found.
+          No {TYPE_LABELS[commentType].toLowerCase()} found.
         </p>
       ) : (
         <div className="space-y-2">
@@ -259,6 +294,14 @@ export function CommentBrowser() {
                       #{comment.id}
                     </span>
 
+                    {/* Type badge */}
+                    <span className={cn(
+                      'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                      TYPE_BADGE_STYLES[comment.comment_type]
+                    )}>
+                      {comment.comment_type}
+                    </span>
+
                     {comment.parent_id && (
                       <span className="flex items-center gap-0.5 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
                         <CornerDownRight className="h-2.5 w-2.5" />
@@ -292,12 +335,12 @@ export function CommentBrowser() {
                     {comment.body}
                   </p>
 
-                  {/* Parent post preview */}
-                  {comment.post_preview && (
+                  {/* Context preview */}
+                  {comment.context_preview && (
                     <div className="mt-1.5 flex items-start gap-1.5 rounded-lg bg-surface-hover p-2 dark:bg-surface-hover-dark">
                       <MessageSquare className="mt-0.5 h-3 w-3 shrink-0 text-text-muted dark:text-text-muted-dark" />
                       <p className="text-xs text-text-muted dark:text-text-muted-dark line-clamp-1">
-                        on post #{comment.post_id}: {comment.post_preview}
+                        {CONTEXT_LABEL[comment.comment_type]} #{comment.context_id}: {comment.context_preview}
                       </p>
                     </div>
                   )}

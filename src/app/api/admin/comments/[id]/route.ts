@@ -5,11 +5,11 @@ import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 /**
  * PUT /api/admin/comments/[id] - Toggle hidden status on a comment
  *
- * Body: { hidden: boolean }
+ * Body: { hidden: boolean, type?: 'post' | 'daily' | 'verse' }
  */
 export const PUT = withAdmin(async (req: NextRequest, context: AuthContext) => {
   try {
-    const { PostComment } = await import('@/lib/db/models');
+    const { PostComment, DailyComment, VerseCategoryComment } = await import('@/lib/db/models');
     const params = await context.params;
     const commentId = parseInt(params.id, 10);
     if (isNaN(commentId)) {
@@ -21,7 +21,18 @@ export const PUT = withAdmin(async (req: NextRequest, context: AuthContext) => {
       return errorResponse('hidden must be a boolean');
     }
 
-    const comment = await PostComment.findByPk(commentId);
+    const type = body.type || 'post';
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let comment: any;
+    if (type === 'daily') {
+      comment = await DailyComment.findByPk(commentId);
+    } else if (type === 'verse') {
+      comment = await VerseCategoryComment.findByPk(commentId);
+    } else {
+      comment = await PostComment.findByPk(commentId);
+    }
+
     if (!comment) {
       return errorResponse('Comment not found', 404);
     }
