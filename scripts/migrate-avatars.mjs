@@ -33,6 +33,10 @@ const OLD_AVATARS_DIR = join(
   process.cwd(),
   'Old Code/FreeLumaDev-new/free-luma-api/public/uploads/user'
 );
+const PROFILE_PHOTOS_DIR = join(
+  process.cwd(),
+  'Old Database/profilephotos'
+);
 
 const args = process.argv.slice(2);
 const EXECUTE = args.includes('--execute');
@@ -127,6 +131,8 @@ async function main() {
     WHERE avatar_url IS NOT NULL
       AND avatar_url != ''
       AND avatar_url NOT LIKE 'http%'
+      AND avatar_url != 'default.jpg'
+      AND avatar_url != 'default.png'
       AND deleted_at IS NULL
     ORDER BY id
   `);
@@ -140,9 +146,12 @@ async function main() {
   const notFound = [];
 
   for (const user of users) {
-    const filePath = join(OLD_AVATARS_DIR, user.avatar_url);
-    if (existsSync(filePath)) {
-      found.push({ ...user, filePath });
+    const oldPath = join(OLD_AVATARS_DIR, user.avatar_url);
+    const newPath = join(PROFILE_PHOTOS_DIR, user.avatar_url);
+    if (existsSync(oldPath)) {
+      found.push({ ...user, filePath: oldPath });
+    } else if (existsSync(newPath)) {
+      found.push({ ...user, filePath: newPath });
     } else {
       notFound.push(user);
     }

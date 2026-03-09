@@ -17,7 +17,7 @@ import bcrypt from 'bcryptjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '..');
-const SQL_DUMP_PATH = path.join(PROJECT_ROOT, 'Old Database', '3-2-26.sql');
+const SQL_DUMP_PATH = path.join(PROJECT_ROOT, 'Old Database', 'finaldata.sql');
 const PRE_MIGRATION_PATH = path.join(PROJECT_ROOT, 'Old Database', 'freeluma_dev_pre_migration_2026-02-16.sql');
 const ACTIVATION_CODES_PATH = path.join(PROJECT_ROOT, 'Old Code', 'FreeLumaDev-new', 'free-luma-api', 'public', 'uploads', 'activation_codes.txt');
 
@@ -213,11 +213,11 @@ function stripHtml(html) {
 
 async function getConnection() {
   return mysql.createConnection({
-    host: '127.0.0.1',
-    port: 3306,
-    user: 'root',
-    password: 'Luma!2026#R9vK3pT7xQ2mZ5sN8cH1yW4',
-    database: 'freeluma_dev',
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASS || 'Luma!2026#R9vK3pT7xQ2mZ5sN8cH1yW4',
+    database: process.env.DB_NAME || 'freeluma_dev',
     multipleStatements: true,
     charset: 'utf8mb4',
   });
@@ -1770,6 +1770,21 @@ async function main() {
     // Re-import seed posts from pre-migration backup, assigned to admin
     if (!ONLY_TABLE) {
       await reimportSeedPosts(conn);
+    }
+
+    // Disable all SMS notifications for every user
+    if (!DRY_RUN && !ONLY_TABLE) {
+      console.log('\n=== DISABLING SMS NOTIFICATIONS ===');
+      const [result] = await conn.query(
+        `UPDATE user_settings SET
+          sms_notifications_enabled = 0,
+          sms_dm_notifications = 0,
+          sms_follow_notifications = 0,
+          sms_prayer_notifications = 0,
+          sms_daily_reminder = 0,
+          sms_workshop_notifications = 0`
+      );
+      console.log(`  Updated ${result.affectedRows} user_settings rows — all SMS notifications disabled`);
     }
 
     const elapsed = ((Date.now() - start) / 1000).toFixed(1);
