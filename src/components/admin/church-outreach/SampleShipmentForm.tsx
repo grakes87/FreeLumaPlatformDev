@@ -39,6 +39,7 @@ export default function SampleShipmentForm({
 
     try {
       const res = await fetch('/api/admin/church-outreach/samples', {
+          credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

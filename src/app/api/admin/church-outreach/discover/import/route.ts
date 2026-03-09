@@ -4,27 +4,14 @@ import { withAdmin, type AuthContext } from '@/lib/auth/middleware';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 
 const importChurchSchema = z.object({
-  placeId: z.string().max(255).optional(),
+  placeId: z.string().max(255).nullish(),
   name: z.string().min(1).max(255),
-  address: z.string().max(500).optional(),
+  address: z.string().max(500).nullish(),
   phone: z.string().max(50).nullish(),
-  website: z.string().url().max(500).nullish(),
-  lat: z.number().optional(),
-  lng: z.number().optional(),
-  // Optional research data
-  pastor_name: z.string().max(255).nullish(),
-  staff_names: z.array(z.string()).nullish(),
-  denomination: z.string().max(100).nullish(),
-  congregation_size_estimate: z.string().max(50).nullish(),
-  youth_programs: z.array(z.string()).nullish(),
-  service_times: z.array(z.string()).nullish(),
-  social_media: z.record(z.string(), z.string()).nullish(),
-  contact_email: z.string().email().max(255).nullish(),
-  contact_phone: z.string().max(50).nullish(),
-  ai_summary: z.string().nullish(),
-  wasScraped: z.boolean().optional(),
-  wasResearched: z.boolean().optional(),
-});
+  website: z.string().max(500).nullish(),
+  lat: z.number().nullish(),
+  lng: z.number().nullish(),
+}).passthrough();
 
 const importBatchSchema = z.object({
   churches: z.array(importChurchSchema).min(1).max(100),
@@ -43,6 +30,7 @@ export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => 
 
     const parsed = importBatchSchema.safeParse(json);
     if (!parsed.success) {
+      console.error('[import] Zod errors:', JSON.stringify(parsed.error.issues, null, 2));
       return errorResponse(parsed.error.issues[0]?.message || 'Invalid input', 400);
     }
 
@@ -69,6 +57,8 @@ export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => 
       const addressParts = parseAddress(data.address || '');
 
       // Create church record
+      const staffNames = data.staff_members?.map((s) => `${s.name} (${s.role})`) || null;
+
       const church = await Church.create({
         google_place_id: data.placeId || null,
         name: data.name,
@@ -83,15 +73,15 @@ export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => 
         longitude: data.lng || null,
         source: 'google_places',
         pipeline_stage: 'new_lead',
-        // Research data (if available)
+        // Research data
         pastor_name: data.pastor_name || null,
-        staff_names: data.staff_names || null,
+        staff_names: staffNames,
         denomination: data.denomination || null,
         congregation_size_estimate: data.congregation_size_estimate || null,
         youth_programs: data.youth_programs || null,
         service_times: data.service_times || null,
         social_media: data.social_media || null,
-        ai_summary: data.ai_summary || null,
+        ai_summary: data.summary || null,
       });
 
       // Create activity: created

@@ -34,6 +34,7 @@ export default function ConversionForm({
 
     try {
       const res = await fetch('/api/admin/church-outreach/conversions', {
+          credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

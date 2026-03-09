@@ -145,7 +145,8 @@ export default function KanbanBoard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/admin/church-outreach/churches?limit=500');
+      const res = await fetch('/api/admin/church-outreach/churches?limit=500', {
+          credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch churches');
       const data = await res.json();
       const allChurches: ChurchCardData[] = (data.data?.churches || []).map(
@@ -257,6 +258,7 @@ export default function KanbanBoard() {
       // Persist to API
       try {
         const res = await fetch('/api/admin/church-outreach/pipeline', {
+          credentials: 'include',
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ churchId, stage: toStage }),

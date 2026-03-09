@@ -9,11 +9,13 @@ const discoverSchema = z.object({
   filters: z.string().max(200).optional(),
 });
 
+const SCRAPE_CONCURRENCY = 5;
+
 /**
  * POST /api/admin/church-outreach/discover - Search for churches via Google Places
  *
  * Returns an array of PlacesResult objects with an `already_imported` boolean
- * flag for each result that already exists in the churches table.
+ * flag and auto-scraped website data (emails, phones, social media) for each result.
  */
 export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) => {
   try {
@@ -35,6 +37,7 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
     }
 
     const { searchChurches } = await import('@/lib/church-outreach/google-places');
+    const { scrapeChurchWebsite } = await import('@/lib/church-outreach/scraper');
     const { Church } = await import('@/lib/db/models');
 
     const results = await searchChurches({ location, radiusMiles, filters });
@@ -54,10 +57,38 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
       );
     }
 
-    const resultsWithStatus = results.map((r) => ({
-      ...r,
-      already_imported: importedPlaceIds.has(r.placeId),
-    }));
+    // Auto-scrape websites in parallel (concurrency-limited, non-blocking on failure)
+    const withWebsite = results.filter((r) => r.website);
+    const scrapeResults = new Map<string, Awaited<ReturnType<typeof scrapeChurchWebsite>>>();
+
+    for (let i = 0; i < withWebsite.length; i += SCRAPE_CONCURRENCY) {
+      const batch = withWebsite.slice(i, i + SCRAPE_CONCURRENCY);
+      const scraped = await Promise.all(
+        batch.map(async (r) => {
+          const data = await scrapeChurchWebsite(r.website!);
+          return { placeId: r.placeId, data };
+        })
+      );
+      for (const { placeId, data } of scraped) {
+        scrapeResults.set(placeId, data);
+      }
+    }
+
+    const resultsWithStatus = results.map((r) => {
+      const scraped = scrapeResults.get(r.placeId);
+      return {
+        ...r,
+        already_imported: importedPlaceIds.has(r.placeId),
+        scraped: scraped
+          ? {
+              emails: scraped.emails,
+              phones: scraped.phones,
+              socialMedia: scraped.socialMedia,
+              description: scraped.metaDescription,
+            }
+          : null,
+      };
+    });
 
     return successResponse({ results: resultsWithStatus });
   } catch (error) {

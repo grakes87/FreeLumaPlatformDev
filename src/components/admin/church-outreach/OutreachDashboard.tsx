@@ -82,6 +82,7 @@ export default function OutreachDashboard() {
     setError(null);
     try {
       const res = await fetch('/api/admin/church-outreach/reports', {
+          credentials: 'include',
         credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to load reports');

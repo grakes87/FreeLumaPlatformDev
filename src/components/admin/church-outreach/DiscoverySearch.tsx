@@ -35,18 +35,34 @@ interface DiscoveryResult {
   types: string[];
   googleMapsUrl: string;
   already_imported: boolean;
-  // Enriched from scrape/research
+  // Auto-scraped during initial search
+  scraped?: {
+    emails: string[];
+    phones: string[];
+    socialMedia: Record<string, string>;
+    description: string;
+  } | null;
+  // Enriched from AI research
   researchData?: {
     pastor_name?: string;
+    pastor_email?: string;
     denomination?: string;
     youth_programs?: string[];
     congregation_size_estimate?: string;
-    ai_summary?: string;
-    staff_names?: string[];
+    summary?: string;
+    staff_members?: { name: string; role: string }[];
     service_times?: string[];
     social_media?: Record<string, string>;
     contact_email?: string;
     contact_phone?: string;
+    website_quality?: string;
+    has_youth_ministry?: boolean;
+    has_young_adult_ministry?: boolean;
+    has_small_groups?: boolean;
+    has_missions_focus?: boolean;
+    community_involvement?: string[];
+    outreach_fit_score?: number;
+    outreach_fit_reason?: string;
   };
   wasScraped?: boolean;
   wasResearched?: boolean;
@@ -201,15 +217,24 @@ export default function DiscoverySearch() {
                 researchData: data.research
                   ? {
                       pastor_name: data.research.pastor_name,
+                      pastor_email: data.research.pastor_email,
                       denomination: data.research.denomination,
                       youth_programs: data.research.youth_programs,
                       congregation_size_estimate: data.research.congregation_size_estimate,
-                      ai_summary: data.research.ai_summary,
-                      staff_names: data.research.staff_names,
+                      summary: data.research.summary,
+                      staff_members: data.research.staff_members,
                       service_times: data.research.service_times,
                       social_media: data.research.social_media,
                       contact_email: data.research.contact_email,
                       contact_phone: data.research.contact_phone,
+                      website_quality: data.research.website_quality,
+                      has_youth_ministry: data.research.has_youth_ministry,
+                      has_young_adult_ministry: data.research.has_young_adult_ministry,
+                      has_small_groups: data.research.has_small_groups,
+                      has_missions_focus: data.research.has_missions_focus,
+                      community_involvement: data.research.community_involvement,
+                      outreach_fit_score: data.research.outreach_fit_score,
+                      outreach_fit_reason: data.research.outreach_fit_reason,
                     }
                   : undefined,
               };
@@ -558,41 +583,190 @@ function ResultCard({
             )}
           </div>
 
-          {/* Research data (if enriched) */}
+          {/* Auto-scraped data (from initial search) */}
+          {result.scraped && !result.researchData && (
+            <div className="mt-2 space-y-1.5 text-sm">
+              {result.scraped.description && (
+                <p className="text-xs italic text-text-muted dark:text-text-muted-dark">
+                  {result.scraped.description}
+                </p>
+              )}
+              <div className="flex flex-wrap items-center gap-3 text-text-muted dark:text-text-muted-dark">
+                {result.scraped.emails.length > 0 && (
+                  <span className="flex items-center gap-1">
+                    <span className="font-medium text-text dark:text-text-dark">Email:</span>
+                    <a href={`mailto:${result.scraped.emails[0]}`} className="text-primary hover:underline">
+                      {result.scraped.emails[0]}
+                    </a>
+                    {result.scraped.emails.length > 1 && (
+                      <span className="text-xs">(+{result.scraped.emails.length - 1})</span>
+                    )}
+                  </span>
+                )}
+                {result.scraped.phones.length > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="h-3.5 w-3.5" />
+                    {result.scraped.phones[0]}
+                  </span>
+                )}
+              </div>
+              {Object.keys(result.scraped.socialMedia).length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {Object.entries(result.scraped.socialMedia).map(([platform, url]) => (
+                    <a
+                      key={platform}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800"
+                    >
+                      {platform}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Research data (if enriched via AI) */}
           {result.researchData && (
             <div className="mt-2 rounded-lg bg-surface-hover p-3 dark:bg-surface-hover-dark">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted dark:text-text-muted-dark">
-                Research Results
-              </p>
-              <div className="grid gap-1 text-sm">
-                {result.researchData.pastor_name && (
-                  <p>
-                    <span className="font-medium text-text dark:text-text-dark">Pastor:</span>{' '}
-                    <span className="text-text-muted dark:text-text-muted-dark">
-                      {result.researchData.pastor_name}
-                    </span>
+              {/* Header with fit score */}
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted dark:text-text-muted-dark">
+                  AI Research Results
+                </p>
+                {result.researchData.outreach_fit_score != null && (
+                  <span className={cn(
+                    'rounded-full px-2.5 py-0.5 text-xs font-bold',
+                    result.researchData.outreach_fit_score >= 7
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                      : result.researchData.outreach_fit_score >= 4
+                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                  )}>
+                    Fit: {result.researchData.outreach_fit_score}/10
+                  </span>
+                )}
+              </div>
+
+              <div className="grid gap-1.5 text-sm">
+                {/* Summary at top */}
+                {result.researchData.summary && (
+                  <p className="mb-1 text-text-muted dark:text-text-muted-dark">
+                    {result.researchData.summary}
                   </p>
                 )}
-                {result.researchData.denomination && (
-                  <p>
-                    <span className="font-medium text-text dark:text-text-dark">Denomination:</span>{' '}
-                    <span className="text-text-muted dark:text-text-muted-dark">
-                      {result.researchData.denomination}
-                    </span>
-                  </p>
+
+                {/* Two-column grid for key details */}
+                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                  {result.researchData.pastor_name && (
+                    <p>
+                      <span className="font-medium text-text dark:text-text-dark">Pastor:</span>{' '}
+                      <span className="text-text-muted dark:text-text-muted-dark">
+                        {result.researchData.pastor_name}
+                        {result.researchData.pastor_email && (
+                          <> — <a href={`mailto:${result.researchData.pastor_email}`} className="text-primary hover:underline">{result.researchData.pastor_email}</a></>
+                        )}
+                      </span>
+                    </p>
+                  )}
+                  {result.researchData.denomination && (
+                    <p>
+                      <span className="font-medium text-text dark:text-text-dark">Denomination:</span>{' '}
+                      <span className="text-text-muted dark:text-text-muted-dark">
+                        {result.researchData.denomination}
+                      </span>
+                    </p>
+                  )}
+                  {result.researchData.congregation_size_estimate && (
+                    <p>
+                      <span className="font-medium text-text dark:text-text-dark">Size:</span>{' '}
+                      <span className="text-text-muted dark:text-text-muted-dark">
+                        {result.researchData.congregation_size_estimate}
+                      </span>
+                    </p>
+                  )}
+                  {result.researchData.contact_email && (
+                    <p>
+                      <span className="font-medium text-text dark:text-text-dark">Email:</span>{' '}
+                      <a href={`mailto:${result.researchData.contact_email}`} className="text-primary hover:underline">
+                        {result.researchData.contact_email}
+                      </a>
+                    </p>
+                  )}
+                  {result.researchData.contact_phone && (
+                    <p>
+                      <span className="font-medium text-text dark:text-text-dark">Phone:</span>{' '}
+                      <span className="text-text-muted dark:text-text-muted-dark">
+                        {result.researchData.contact_phone}
+                      </span>
+                    </p>
+                  )}
+                  {result.researchData.service_times && result.researchData.service_times.length > 0 && (
+                    <p>
+                      <span className="font-medium text-text dark:text-text-dark">Services:</span>{' '}
+                      <span className="text-text-muted dark:text-text-muted-dark">
+                        {result.researchData.service_times.join(' · ')}
+                      </span>
+                    </p>
+                  )}
+                  {result.researchData.website_quality && result.researchData.website_quality !== 'unknown' && (
+                    <p>
+                      <span className="font-medium text-text dark:text-text-dark">Website:</span>{' '}
+                      <span className="text-text-muted dark:text-text-muted-dark capitalize">
+                        {result.researchData.website_quality}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Staff members */}
+                {result.researchData.staff_members && result.researchData.staff_members.length > 0 && (
+                  <div>
+                    <span className="font-medium text-text dark:text-text-dark">Staff:</span>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {result.researchData.staff_members.map((s, i) => (
+                        <span
+                          key={i}
+                          className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        >
+                          {s.name} <span className="text-gray-500">({s.role})</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
-                {result.researchData.congregation_size_estimate && (
-                  <p>
-                    <span className="font-medium text-text dark:text-text-dark">Size:</span>{' '}
-                    <span className="text-text-muted dark:text-text-muted-dark">
-                      {result.researchData.congregation_size_estimate}
+
+                {/* Ministry tags */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {result.researchData.has_youth_ministry && (
+                    <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                      Youth Ministry
                     </span>
-                  </p>
-                )}
+                  )}
+                  {result.researchData.has_young_adult_ministry && (
+                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+                      Young Adults
+                    </span>
+                  )}
+                  {result.researchData.has_small_groups && (
+                    <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-700 dark:bg-teal-900 dark:text-teal-300">
+                      Small Groups
+                    </span>
+                  )}
+                  {result.researchData.has_missions_focus && (
+                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-900 dark:text-orange-300">
+                      Missions
+                    </span>
+                  )}
+                </div>
+
+                {/* Youth programs */}
                 {result.researchData.youth_programs &&
                   result.researchData.youth_programs.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1">
-                      <span className="font-medium text-text dark:text-text-dark">Youth:</span>
+                      <span className="font-medium text-text dark:text-text-dark">Programs:</span>
                       {result.researchData.youth_programs.map((prog) => (
                         <span
                           key={prog}
@@ -603,9 +777,44 @@ function ResultCard({
                       ))}
                     </div>
                   )}
-                {result.researchData.ai_summary && (
-                  <p className="mt-1 text-xs italic text-text-muted dark:text-text-muted-dark">
-                    {result.researchData.ai_summary}
+
+                {/* Community involvement */}
+                {result.researchData.community_involvement && result.researchData.community_involvement.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className="font-medium text-text dark:text-text-dark">Community:</span>
+                    {result.researchData.community_involvement.map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Social media */}
+                {result.researchData.social_media && Object.keys(result.researchData.social_media).length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-medium text-text dark:text-text-dark">Social:</span>
+                    {Object.entries(result.researchData.social_media).map(([platform, url]) => (
+                      <a
+                        key={platform}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800"
+                      >
+                        {platform}
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {/* Fit reason */}
+                {result.researchData.outreach_fit_reason && (
+                  <p className="mt-1 rounded border-l-2 border-primary/30 pl-2 text-xs text-text-muted dark:text-text-muted-dark">
+                    <span className="font-medium">Fit assessment:</span> {result.researchData.outreach_fit_reason}
                   </p>
                 )}
               </div>

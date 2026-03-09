@@ -90,7 +90,8 @@ export default function ReportsView() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/admin/church-outreach/reports', { credentials: 'include' });
+      const res = await fetch('/api/admin/church-outreach/reports', {
+          credentials: 'include', credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load reports');
       const json = await res.json();
       setData(json.data ?? json);
