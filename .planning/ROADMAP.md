@@ -566,7 +566,7 @@ Plans:
 - [x] 15-08-PLAN.md -- Public sample request landing page: hero section, form with honeypot, duplicate detection, thank-you page
 - [x] 15-09-PLAN.md -- Admin UI part 1: page shell with 6 tabs, AdminNav link, OutreachDashboard, DiscoverySearch, ChurchDetailModal, dnd-kit install
 - [x] 15-10-PLAN.md -- Kanban pipeline board: @dnd-kit drag-and-drop columns, ChurchCard, KanbanColumn, optimistic stage updates
-- [ ] 15-11-PLAN.md -- Admin UI part 2: CampaignManager, TemplateEditor, SequenceManager, SequenceBuilder, ReportsView, SampleShipmentForm, ConversionForm
+- [x] 15-11-PLAN.md -- Admin UI part 2: CampaignManager, TemplateEditor, SequenceManager, SequenceBuilder, ReportsView, SampleShipmentForm, ConversionForm
 - [ ] 15-12-PLAN.md -- Integration: drip scheduler wiring in server.js, tab finalization, build verification, human verification checkpoint
 
 ---
