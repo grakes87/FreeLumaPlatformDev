@@ -33,7 +33,7 @@ async function send(subject, html, headers) {
   try {
     await sgMail.send({
       to: TEST_EMAIL,
-      from: { email: 'hello@freeluma.com', name: 'Free Luma' },
+      from: { email: process.env.EMAIL_FROM || 'orders@freeluma.com', name: 'Free Luma' },
       subject,
       html,
       headers,
