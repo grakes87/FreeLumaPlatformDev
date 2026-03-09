@@ -324,6 +324,10 @@ Recent decisions affecting current work:
 - **Custom outreach click/open tracking:** SendGrid built-in tracking disabled; custom link rewriting and tracking pixel for outreach-specific analytics
 - **CAN-SPAM footer injection:** Every outreach email appends physical address and unsubscribe link; configurable via OUTREACH_PHYSICAL_ADDRESS env var
 - **Confirmation emails no tracking:** Sample request thank-you emails intentionally skip click/open tracking (not marketing emails)
+- **Lazy template seeding:** Default email templates created on first GET request rather than via migration; keeps migrations schema-only
+- **Synchronous campaign send:** Emails dispatched in API request loop for simplicity; acceptable for 50-200 church batches
+- **Template deletion protection:** Templates checked against campaigns AND drip steps before delete; 409 if referenced
+- **Campaign action POST pattern:** POST /campaigns/[id] with { action: 'send'|'cancel' } rather than separate endpoints
 - **Cheerio over Puppeteer for church scraping:** Church websites are predominantly static HTML; Cheerio is 10x faster and lighter with no browser overhead
 - **claude-sonnet-4-20250514 for AI church research:** Cost-effective model for structured data extraction; matches existing codebase pattern
 - **Scraper null-return pattern:** scrapeChurchWebsite returns null on any error rather than throwing; callers handle gracefully
@@ -464,5 +468,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Completed 15-06-PLAN.md (Drip Sequences & Scheduler)
+Stopped at: Completed 15-05-PLAN.md (Email Templates & Campaigns)
 Resume file: None
