@@ -528,6 +528,46 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 12. Content Production Platform | 14/14 | Complete | 2026-02-17 |
 | 13. SMS Notifications & Phone Number | 7/7 | Complete | 2026-02-18 |
 | 14. First-Time User Tutorial & Walkthrough | 3/3 | Complete | 2026-02-20 |
+| 15. Admin Church Outreach & Research Management | 0/12 | Planned | - |
+
+### Phase 15: Admin Church Outreach & Research Management
+**Goal:** Full church outreach CRM integrated into the FreeLuma admin dashboard -- automated church discovery (Google Places + web scraping + AI research), pipeline management with drag-and-drop kanban board, email campaigns with drip sequences and merge-field templates, public sample request landing page, sample shipment logging, conversion tracking, and reporting dashboard. All admin-only tooling except the public /sample-request page.
+
+**Depends on:** Phase 14
+
+**Requirements**: CO-01 through CO-14 (derived from churchoutreach project spec)
+
+**Success Criteria** (what must be TRUE):
+  1. All 11 church outreach tables exist in the database with correct schema
+  2. Admin can search for churches via Google Places by location and radius
+  3. Admin can scrape church websites and generate AI-powered profiles
+  4. Admin can import discovered churches into the CRM with duplicate detection
+  5. Admin can manage churches through a drag-and-drop kanban pipeline board
+  6. Admin can create email templates with merge fields and preview rendering
+  7. Admin can create and send email campaigns to filtered church segments
+  8. Admin can create and manage drip sequences with configurable steps and delays
+  9. Email open and click tracking works via tracking pixel and link rewriting
+  10. Public sample request page at /sample-request collects church information
+  11. Admin can log sample shipments with auto-pipeline-advance and drip trigger
+  12. Admin can mark churches as converted with order details and revenue estimate
+  13. Reports dashboard shows pipeline funnel, email metrics, and conversion data
+  14. CAN-SPAM compliance: unsubscribe links and physical address in every outreach email
+
+**Plans:** 12 plans in 6 waves
+
+Plans:
+- [ ] 15-01-PLAN.md -- Database foundation: 11 migrations, 11 models (Church, ChurchActivity, OutreachTemplate, OutreachCampaign, OutreachEmail, OutreachUnsubscribe, DripSequence, DripStep, DripEnrollment, SampleShipment, ChurchConversion), associations
+- [ ] 15-02-PLAN.md -- Discovery pipeline: Google Places API search, Cheerio web scraper, Claude AI researcher
+- [ ] 15-03-PLAN.md -- Outreach email infrastructure: template renderer with merge fields, click tracking link rewriter, email sender with separate sender identity and CAN-SPAM compliance
+- [ ] 15-04-PLAN.md -- Church CRUD + discovery API routes: search, scrape, import, pipeline stage updates, activity history
+- [ ] 15-05-PLAN.md -- Email template CRUD + campaign API: 5 default templates, template preview, campaign creation and send
+- [ ] 15-06-PLAN.md -- Drip sequence API + cron scheduler: sequence CRUD, enrollment management, cron-driven email dispatch
+- [ ] 15-07-PLAN.md -- Sample/conversion/reports/tracking API: sample shipment logging, conversion tracking, reports aggregation, public open/click/unsubscribe endpoints
+- [ ] 15-08-PLAN.md -- Public sample request landing page: hero section, form with honeypot, duplicate detection, thank-you page
+- [ ] 15-09-PLAN.md -- Admin UI part 1: page shell with 6 tabs, AdminNav link, OutreachDashboard, DiscoverySearch, ChurchDetailModal, dnd-kit install
+- [ ] 15-10-PLAN.md -- Kanban pipeline board: @dnd-kit drag-and-drop columns, ChurchCard, KanbanColumn, optimistic stage updates
+- [ ] 15-11-PLAN.md -- Admin UI part 2: CampaignManager, TemplateEditor, SequenceManager, SequenceBuilder, ReportsView, SampleShipmentForm, ConversionForm
+- [ ] 15-12-PLAN.md -- Integration: drip scheduler wiring in server.js, tab finalization, build verification, human verification checkpoint
 
 ---
 *Roadmap created: 2026-02-11*
@@ -556,4 +596,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 *Phase 14 added: 2026-02-20 (First-Time User Tutorial & Walkthrough)*
 *Phase 14 planned: 2026-02-20 (3 plans in 3 waves)*
 *Phase 14 executed: 2026-02-20 (3 plans in 3 waves, 8 min)*
-*Depth: Comprehensive (14 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category + content production + SMS notifications + user tutorial)*
+*Phase 15 added: 2026-03-09 (Admin Church Outreach & Research Management)*
+*Phase 15 planned: 2026-03-09 (12 plans in 6 waves)*
+*Depth: Comprehensive (15 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category + content production + SMS notifications + user tutorial + church outreach CRM)*
