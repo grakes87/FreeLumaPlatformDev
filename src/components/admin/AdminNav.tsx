@@ -15,6 +15,7 @@ import {
   Clapperboard,
   Megaphone,
   Sparkles,
+  Church,
   ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -89,6 +90,11 @@ export function AdminNav({ pendingCount = 0 }: AdminNavProps) {
       label: 'Announcements',
       href: '/admin/announcements',
       icon: Megaphone,
+    },
+    {
+      label: 'Church Outreach',
+      href: '/admin/church-outreach',
+      icon: Church,
     },
     {
       label: 'Analytics',
