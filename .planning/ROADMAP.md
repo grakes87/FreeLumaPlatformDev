@@ -557,13 +557,13 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 Plans:
 - [x] 15-01-PLAN.md -- Database foundation: 11 migrations, 11 models (Church, ChurchActivity, OutreachTemplate, OutreachCampaign, OutreachEmail, OutreachUnsubscribe, DripSequence, DripStep, DripEnrollment, SampleShipment, ChurchConversion), associations
-- [ ] 15-02-PLAN.md -- Discovery pipeline: Google Places API search, Cheerio web scraper, Claude AI researcher
-- [ ] 15-03-PLAN.md -- Outreach email infrastructure: template renderer with merge fields, click tracking link rewriter, email sender with separate sender identity and CAN-SPAM compliance
-- [ ] 15-04-PLAN.md -- Church CRUD + discovery API routes: search, scrape, import, pipeline stage updates, activity history
-- [ ] 15-05-PLAN.md -- Email template CRUD + campaign API: 5 default templates, template preview, campaign creation and send
-- [ ] 15-06-PLAN.md -- Drip sequence API + cron scheduler: sequence CRUD, enrollment management, cron-driven email dispatch
-- [ ] 15-07-PLAN.md -- Sample/conversion/reports/tracking API: sample shipment logging, conversion tracking, reports aggregation, public open/click/unsubscribe endpoints
-- [ ] 15-08-PLAN.md -- Public sample request landing page: hero section, form with honeypot, duplicate detection, thank-you page
+- [x] 15-02-PLAN.md -- Discovery pipeline: Google Places API search, Cheerio web scraper, Claude AI researcher
+- [x] 15-03-PLAN.md -- Outreach email infrastructure: template renderer with merge fields, click tracking link rewriter, email sender with separate sender identity and CAN-SPAM compliance
+- [x] 15-04-PLAN.md -- Church CRUD + discovery API routes: search, scrape, import, pipeline stage updates, activity history
+- [x] 15-05-PLAN.md -- Email template CRUD + campaign API: 5 default templates, template preview, campaign creation and send
+- [x] 15-06-PLAN.md -- Drip sequence API + cron scheduler: sequence CRUD, enrollment management, cron-driven email dispatch
+- [x] 15-07-PLAN.md -- Sample/conversion/reports/tracking API: sample shipment logging, conversion tracking, reports aggregation, public open/click/unsubscribe endpoints
+- [x] 15-08-PLAN.md -- Public sample request landing page: hero section, form with honeypot, duplicate detection, thank-you page
 - [ ] 15-09-PLAN.md -- Admin UI part 1: page shell with 6 tabs, AdminNav link, OutreachDashboard, DiscoverySearch, ChurchDetailModal, dnd-kit install
 - [ ] 15-10-PLAN.md -- Kanban pipeline board: @dnd-kit drag-and-drop columns, ChurchCard, KanbanColumn, optimistic stage updates
 - [ ] 15-11-PLAN.md -- Admin UI part 2: CampaignManager, TemplateEditor, SequenceManager, SequenceBuilder, ReportsView, SampleShipmentForm, ConversionForm
