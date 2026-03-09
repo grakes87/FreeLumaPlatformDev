@@ -6,16 +6,16 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Daily inspirational content delivery and faith-based community connection — users come back every day for their daily post and stay to engage with their community.
 
-**Current focus:** Phase 14 — First-Time User Tutorial & Walkthrough
+**Current focus:** Phase 15 — Admin Church Outreach & Research Management
 
 ## Current Position
 
-Phase: 14 of 14 (First-Time User Tutorial & Walkthrough)
-Plan: 3 of 3 complete
-Status: Phase complete -- ALL PHASES COMPLETE
-Last activity: 2026-02-20 — Completed 14-03-PLAN.md (Tutorial Integration & Wiring)
+Phase: 15 of 15 (Admin Church Outreach & Research Management)
+Plan: 1 of 12 complete
+Status: In progress
+Last activity: 2026-03-09 — Completed 15-01-PLAN.md (Database Schema & Models)
 
-Progress: [████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████] 116/116 plans (100%)
+Progress: [█████████████████████████████████████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░] 117/128 plans (91%)
 
 ## Performance Metrics
 
@@ -41,9 +41,10 @@ Progress: [███████████████████████
 | 12-content-production-platform | 14/14 | 52 min | 4 min |
 | 13-sms-notifications | 7/7 | 17 min | 2 min |
 | 14-first-time-user-tutorial | 3/3 | 8 min | 3 min |
+| 15-admin-church-outreach | 1/12 | 5 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 13-07 (5 min), 14-01 (2 min), 14-02 (4 min), 14-03 (2 min)
+- Last 5 plans: 14-01 (2 min), 14-02 (4 min), 14-03 (2 min), 15-01 (5 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -314,6 +315,12 @@ Recent decisions affecting current work:
 - **Duration timer custom hook:** useDurationTimer extracted as reusable hook with HH:MM:SS format counting from startedAt
 - **Notes fire-and-forget unmount save:** WorkshopNotes uses fire-and-forget fetch on unmount to prevent data loss during navigation
 
+- **Church pipeline 7 stages:** new_lead, contacted, engaged, sample_requested, sample_sent, converted, lost -- each stage maps to a clear outreach action
+- **Deferred FK pattern for cross-migration references:** outreach_emails.drip_enrollment_id created as plain INTEGER in migration 109, FK constraint added in migration 113 after drip_enrollments table exists
+- **Append-only CRM audit tables:** ChurchActivity, OutreachEmail, OutreachUnsubscribe, ChurchConversion use updatedAt:false for immutable records
+- **One conversion per church:** church_conversions.church_id has unique constraint at DB level
+- **JSON columns for flexible CRM data:** staff_names, youth_programs, service_times, social_media, filter_criteria, metadata stored as JSON
+
 - **WorkshopRoom default export:** Required for Next.js dynamic() import compatibility (named exports break ssr:false pattern)
 - **Screen share UID+100000 offset:** Separate Agora client per research; screen share UID = user.id + 100000 to avoid collision
 - **Token auto-refresh 50min:** Agora tokens expire at 1 hour; proactive 50-minute refresh prevents mid-session disconnection
@@ -448,6 +455,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-20
-Stopped at: Completed 14-03-PLAN.md (Tutorial Integration & Wiring) -- ALL PHASES COMPLETE
+Last session: 2026-03-09
+Stopped at: Completed 15-01-PLAN.md (Database Schema & Models)
 Resume file: None

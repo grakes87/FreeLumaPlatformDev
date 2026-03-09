@@ -556,7 +556,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 **Plans:** 12 plans in 6 waves
 
 Plans:
-- [ ] 15-01-PLAN.md -- Database foundation: 11 migrations, 11 models (Church, ChurchActivity, OutreachTemplate, OutreachCampaign, OutreachEmail, OutreachUnsubscribe, DripSequence, DripStep, DripEnrollment, SampleShipment, ChurchConversion), associations
+- [x] 15-01-PLAN.md -- Database foundation: 11 migrations, 11 models (Church, ChurchActivity, OutreachTemplate, OutreachCampaign, OutreachEmail, OutreachUnsubscribe, DripSequence, DripStep, DripEnrollment, SampleShipment, ChurchConversion), associations
 - [ ] 15-02-PLAN.md -- Discovery pipeline: Google Places API search, Cheerio web scraper, Claude AI researcher
 - [ ] 15-03-PLAN.md -- Outreach email infrastructure: template renderer with merge fields, click tracking link rewriter, email sender with separate sender identity and CAN-SPAM compliance
 - [ ] 15-04-PLAN.md -- Church CRUD + discovery API routes: search, scrape, import, pipeline stage updates, activity history
