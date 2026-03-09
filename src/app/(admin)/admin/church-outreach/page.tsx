@@ -14,15 +14,15 @@ const DiscoverySearch = lazy(
 const KanbanBoard = lazy(
   () => import('@/components/admin/church-outreach/KanbanBoard')
 );
-
-// Placeholder for tabs built in future plans
-function ComingSoon() {
-  return (
-    <div className="p-8 text-center text-text-muted dark:text-text-muted-dark">
-      Coming soon...
-    </div>
-  );
-}
+const CampaignManager = lazy(
+  () => import('@/components/admin/church-outreach/CampaignManager')
+);
+const SequenceManager = lazy(
+  () => import('@/components/admin/church-outreach/SequenceManager')
+);
+const ReportsView = lazy(
+  () => import('@/components/admin/church-outreach/ReportsView')
+);
 
 type TabKey =
   | 'dashboard'
@@ -87,9 +87,9 @@ export default function ChurchOutreachPage() {
         {activeTab === 'dashboard' && <OutreachDashboard />}
         {activeTab === 'discovery' && <DiscoverySearch />}
         {activeTab === 'pipeline' && <KanbanBoard />}
-        {activeTab === 'campaigns' && <ComingSoon />}
-        {activeTab === 'sequences' && <ComingSoon />}
-        {activeTab === 'reports' && <ComingSoon />}
+        {activeTab === 'campaigns' && <CampaignManager />}
+        {activeTab === 'sequences' && <SequenceManager />}
+        {activeTab === 'reports' && <ReportsView />}
       </Suspense>
     </div>
   );

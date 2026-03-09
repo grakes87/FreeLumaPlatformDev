@@ -78,6 +78,7 @@ if (cluster.isPrimary) {
         setTimeout(() => {
           if (globalThis.__initEmailScheduler) globalThis.__initEmailScheduler();
           if (globalThis.__initAccountCleanup) globalThis.__initAccountCleanup();
+          if (globalThis.__initDripScheduler) globalThis.__initDripScheduler();
           console.log(`> Worker ${process.pid}: cron schedulers started`);
         }, 5000);
       }
