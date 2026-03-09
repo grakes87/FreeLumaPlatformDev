@@ -63,6 +63,17 @@ import ContentGenerationLog from './ContentGenerationLog';
 import { SmsLog } from './SmsLog';
 import { Announcement } from './Announcement';
 import { AnnouncementDismissal } from './AnnouncementDismissal';
+import { Church } from './Church';
+import { ChurchActivity } from './ChurchActivity';
+import { OutreachTemplate } from './OutreachTemplate';
+import { OutreachCampaign } from './OutreachCampaign';
+import { OutreachEmail } from './OutreachEmail';
+import { OutreachUnsubscribe } from './OutreachUnsubscribe';
+import { DripSequence } from './DripSequence';
+import { DripStep } from './DripStep';
+import { DripEnrollment } from './DripEnrollment';
+import { SampleShipment } from './SampleShipment';
+import { ChurchConversion } from './ChurchConversion';
 
 // ---- Associations ----
 
@@ -1152,6 +1163,178 @@ AnnouncementDismissal.belongsTo(User, {
   as: 'user',
 });
 
+// ---- Phase 15: Church Outreach CRM Associations ----
+
+// Church -> ChurchActivity (one-to-many)
+Church.hasMany(ChurchActivity, {
+  foreignKey: 'church_id',
+  as: 'activities',
+});
+ChurchActivity.belongsTo(Church, {
+  foreignKey: 'church_id',
+  as: 'church',
+});
+
+// User -> ChurchActivity (one-to-many via admin_id)
+User.hasMany(ChurchActivity, {
+  foreignKey: 'admin_id',
+  as: 'churchActivities',
+});
+ChurchActivity.belongsTo(User, {
+  foreignKey: 'admin_id',
+  as: 'admin',
+});
+
+// Church -> OutreachEmail (one-to-many)
+Church.hasMany(OutreachEmail, {
+  foreignKey: 'church_id',
+  as: 'emails',
+});
+OutreachEmail.belongsTo(Church, {
+  foreignKey: 'church_id',
+  as: 'church',
+});
+
+// Church -> OutreachUnsubscribe (one-to-many)
+Church.hasMany(OutreachUnsubscribe, {
+  foreignKey: 'church_id',
+  as: 'unsubscribes',
+});
+OutreachUnsubscribe.belongsTo(Church, {
+  foreignKey: 'church_id',
+  as: 'church',
+});
+
+// Church -> DripEnrollment (one-to-many)
+Church.hasMany(DripEnrollment, {
+  foreignKey: 'church_id',
+  as: 'enrollments',
+});
+DripEnrollment.belongsTo(Church, {
+  foreignKey: 'church_id',
+  as: 'church',
+});
+
+// Church -> SampleShipment (one-to-many)
+Church.hasMany(SampleShipment, {
+  foreignKey: 'church_id',
+  as: 'shipments',
+});
+SampleShipment.belongsTo(Church, {
+  foreignKey: 'church_id',
+  as: 'church',
+});
+
+// Church -> ChurchConversion (one-to-one)
+Church.hasOne(ChurchConversion, {
+  foreignKey: 'church_id',
+  as: 'conversion',
+});
+ChurchConversion.belongsTo(Church, {
+  foreignKey: 'church_id',
+  as: 'church',
+});
+
+// OutreachTemplate -> OutreachCampaign (one-to-many)
+OutreachTemplate.hasMany(OutreachCampaign, {
+  foreignKey: 'template_id',
+  as: 'campaigns',
+});
+OutreachCampaign.belongsTo(OutreachTemplate, {
+  foreignKey: 'template_id',
+  as: 'template',
+});
+
+// OutreachTemplate -> OutreachEmail (one-to-many)
+OutreachTemplate.hasMany(OutreachEmail, {
+  foreignKey: 'template_id',
+  as: 'emails',
+});
+OutreachEmail.belongsTo(OutreachTemplate, {
+  foreignKey: 'template_id',
+  as: 'template',
+});
+
+// OutreachTemplate -> DripStep (one-to-many)
+OutreachTemplate.hasMany(DripStep, {
+  foreignKey: 'template_id',
+  as: 'dripSteps',
+});
+DripStep.belongsTo(OutreachTemplate, {
+  foreignKey: 'template_id',
+  as: 'template',
+});
+
+// OutreachCampaign -> OutreachEmail (one-to-many)
+OutreachCampaign.hasMany(OutreachEmail, {
+  foreignKey: 'campaign_id',
+  as: 'emails',
+});
+OutreachEmail.belongsTo(OutreachCampaign, {
+  foreignKey: 'campaign_id',
+  as: 'campaign',
+});
+
+// OutreachCampaign -> User (created_by)
+OutreachCampaign.belongsTo(User, {
+  foreignKey: 'created_by',
+  as: 'creator',
+});
+User.hasMany(OutreachCampaign, {
+  foreignKey: 'created_by',
+  as: 'outreachCampaigns',
+});
+
+// DripSequence -> DripStep (one-to-many)
+DripSequence.hasMany(DripStep, {
+  foreignKey: 'sequence_id',
+  as: 'steps',
+});
+DripStep.belongsTo(DripSequence, {
+  foreignKey: 'sequence_id',
+  as: 'sequence',
+});
+
+// DripSequence -> DripEnrollment (one-to-many)
+DripSequence.hasMany(DripEnrollment, {
+  foreignKey: 'sequence_id',
+  as: 'enrollments',
+});
+DripEnrollment.belongsTo(DripSequence, {
+  foreignKey: 'sequence_id',
+  as: 'sequence',
+});
+
+// DripEnrollment -> OutreachEmail (one-to-many)
+DripEnrollment.hasMany(OutreachEmail, {
+  foreignKey: 'drip_enrollment_id',
+  as: 'emails',
+});
+OutreachEmail.belongsTo(DripEnrollment, {
+  foreignKey: 'drip_enrollment_id',
+  as: 'enrollment',
+});
+
+// SampleShipment -> User (created_by)
+SampleShipment.belongsTo(User, {
+  foreignKey: 'created_by',
+  as: 'creator',
+});
+User.hasMany(SampleShipment, {
+  foreignKey: 'created_by',
+  as: 'sampleShipments',
+});
+
+// ChurchConversion -> User (created_by)
+ChurchConversion.belongsTo(User, {
+  foreignKey: 'created_by',
+  as: 'creator',
+});
+User.hasMany(ChurchConversion, {
+  foreignKey: 'created_by',
+  as: 'churchConversions',
+});
+
 export {
   sequelize,
   User,
@@ -1218,4 +1401,15 @@ export {
   SmsLog,
   Announcement,
   AnnouncementDismissal,
+  Church,
+  ChurchActivity,
+  OutreachTemplate,
+  OutreachCampaign,
+  OutreachEmail,
+  OutreachUnsubscribe,
+  DripSequence,
+  DripStep,
+  DripEnrollment,
+  SampleShipment,
+  ChurchConversion,
 };
