@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
       attributes: ['id', 'email'],
     });
 
+    console.log(`[Forgot Password] Lookup for ${normalizedEmail}: ${user ? `found user ${user.id}` : 'not found'}`);
+
     if (user) {
       // Generate a signed JWT with 1-hour expiry for password reset
       const resetToken = await new SignJWT({
@@ -62,12 +64,18 @@ export async function POST(req: NextRequest) {
         .setExpirationTime('1h')
         .sign(getResetSecret());
 
-      await sendPasswordResetEmail(user.email, resetToken);
+      try {
+        await sendPasswordResetEmail(user.email, resetToken);
+        console.log(`[Forgot Password] Reset email sent to ${user.email}`);
+      } catch (emailErr) {
+        console.error(`[Forgot Password] Failed to send reset email to ${user.email}:`, emailErr);
+      }
     }
 
     // Always return 200 to avoid revealing whether email exists
     return successResponse({ message: GENERIC_MESSAGE });
   } catch (error) {
+    console.error('[Forgot Password] Route error:', error);
     return serverError(error, 'Failed to process password reset request');
   }
 }
