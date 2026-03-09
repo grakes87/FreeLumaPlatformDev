@@ -239,8 +239,12 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
       }
     }
 
+    // Admin/system account penalty — deprioritize freeluma posts so user content surfaces first
+    const isAdminPost = post.user_id === 31631;
+    const adminPenalty = isAdminPost ? 0.3 : 0;
+
     // Combined score
-    const score = 0.4 * recencyScore + 0.3 * engagementScore + 0.2 * relationshipScore + 0.1 * categoryScore;
+    const score = Math.max(0, 0.4 * recencyScore + 0.3 * engagementScore + 0.2 * relationshipScore + 0.1 * categoryScore - adminPenalty);
 
     return {
       post,
