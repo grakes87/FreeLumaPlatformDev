@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 ## Current Position
 
 Phase: 15 of 15 (Admin Church Outreach & Research Management)
-Plan: 1 of 12 complete
+Plan: 3 of 12 complete
 Status: In progress
-Last activity: 2026-03-09 — Completed 15-01-PLAN.md (Database Schema & Models)
+Last activity: 2026-03-09 — Completed 15-03-PLAN.md (Email Infrastructure)
 
-Progress: [█████████████████████████████████████████████████████████████████████████████████████████████████████████████░░░░░░░░░░░] 117/128 plans (91%)
+Progress: [████████████████████████████████████████████████████████████████████████████████████████████████████████████████░░░░░░░░░] 119/128 plans (93%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 116
+- Total plans completed: 118
 - Average duration: 4 min
-- Total execution time: 489 min
+- Total execution time: 491 min
 
 **By Phase:**
 
@@ -41,10 +41,10 @@ Progress: [███████████████████████
 | 12-content-production-platform | 14/14 | 52 min | 4 min |
 | 13-sms-notifications | 7/7 | 17 min | 2 min |
 | 14-first-time-user-tutorial | 3/3 | 8 min | 3 min |
-| 15-admin-church-outreach | 1/12 | 5 min | 5 min |
+| 15-admin-church-outreach | 3/12 | 7 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 14-01 (2 min), 14-02 (4 min), 14-03 (2 min), 15-01 (5 min)
+- Last 5 plans: 14-02 (4 min), 14-03 (2 min), 15-01 (5 min), 15-02 (--), 15-03 (2 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -320,6 +320,10 @@ Recent decisions affecting current work:
 - **Append-only CRM audit tables:** ChurchActivity, OutreachEmail, OutreachUnsubscribe, ChurchConversion use updatedAt:false for immutable records
 - **One conversion per church:** church_conversions.church_id has unique constraint at DB level
 - **JSON columns for flexible CRM data:** staff_names, youth_programs, service_times, social_media, filter_criteria, metadata stored as JSON
+- **Separate outreach sender identity:** OUTREACH_FROM (outreach@freelumabracelets.com) distinct from platform transactional emails (orders@freeluma.com)
+- **Custom outreach click/open tracking:** SendGrid built-in tracking disabled; custom link rewriting and tracking pixel for outreach-specific analytics
+- **CAN-SPAM footer injection:** Every outreach email appends physical address and unsubscribe link; configurable via OUTREACH_PHYSICAL_ADDRESS env var
+- **Confirmation emails no tracking:** Sample request thank-you emails intentionally skip click/open tracking (not marketing emails)
 
 - **WorkshopRoom default export:** Required for Next.js dynamic() import compatibility (named exports break ssr:false pattern)
 - **Screen share UID+100000 offset:** Separate Agora client per research; screen share UID = user.id + 100000 to avoid collision
@@ -456,5 +460,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-09
-Stopped at: Completed 15-01-PLAN.md (Database Schema & Models)
+Stopped at: Completed 15-03-PLAN.md (Email Infrastructure)
 Resume file: None
