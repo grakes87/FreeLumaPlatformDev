@@ -109,17 +109,17 @@ async function main() {
   console.log(`Mode: ${EXECUTE ? 'EXECUTE' : 'DRY-RUN'}`);
   console.log(`Source: ${OLD_AVATARS_DIR}\n`);
 
-  if (!existsSync(OLD_AVATARS_DIR)) {
-    console.error('ERROR: Old avatars directory not found');
+  if (!existsSync(OLD_AVATARS_DIR) && !existsSync(PROFILE_PHOTOS_DIR)) {
+    console.error('ERROR: No avatar source directories found');
     process.exit(1);
   }
 
   const conn = await mysql.createConnection({
-    host: '127.0.0.1',
-    port: 3306,
-    user: 'root',
-    password: 'Luma!2026#R9vK3pT7xQ2mZ5sN8cH1yW4',
-    database: 'freeluma_dev',
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASS || 'Luma!2026#R9vK3pT7xQ2mZ5sN8cH1yW4',
+    database: process.env.DB_NAME || 'freeluma_dev',
   });
 
   // ── Step 1: Get users with bare filename avatars ──────────────────────
