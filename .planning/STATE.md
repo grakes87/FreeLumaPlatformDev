@@ -324,6 +324,10 @@ Recent decisions affecting current work:
 - **Custom outreach click/open tracking:** SendGrid built-in tracking disabled; custom link rewriting and tracking pixel for outreach-specific analytics
 - **CAN-SPAM footer injection:** Every outreach email appends physical address and unsubscribe link; configurable via OUTREACH_PHYSICAL_ADDRESS env var
 - **Confirmation emails no tracking:** Sample request thank-you emails intentionally skip click/open tracking (not marketing emails)
+- **Cheerio over Puppeteer for church scraping:** Church websites are predominantly static HTML; Cheerio is 10x faster and lighter with no browser overhead
+- **claude-sonnet-4-20250514 for AI church research:** Cost-effective model for structured data extraction; matches existing codebase pattern
+- **Scraper null-return pattern:** scrapeChurchWebsite returns null on any error rather than throwing; callers handle gracefully
+- **Google Places field mask optimization:** X-Goog-FieldMask requests only needed fields to stay in Pro pricing tier ($32/1K requests)
 
 - **WorkshopRoom default export:** Required for Next.js dynamic() import compatibility (named exports break ssr:false pattern)
 - **Screen share UID+100000 offset:** Separate Agora client per research; screen share UID = user.id + 100000 to avoid collision
