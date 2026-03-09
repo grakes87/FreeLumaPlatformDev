@@ -149,7 +149,7 @@ export default function KanbanBoard() {
           credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch churches');
       const data = await res.json();
-      const allChurches: ChurchCardData[] = (data.data?.churches || []).map(
+      const allChurches: ChurchCardData[] = ((data.data ?? data).churches || []).map(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (c: any) => ({
           id: c.id,
