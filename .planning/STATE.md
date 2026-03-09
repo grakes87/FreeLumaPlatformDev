@@ -383,6 +383,7 @@ Recent decisions affecting current work:
 - 14-02: Tutorial UI via createPortal z-60; box-shadow spotlight for coach marks; RAF polling for DOM targets; Swiper slideshow with mode-specific content
 - 14-03: data-tutorial attributes on 4 target components; TutorialProvider wraps AppShell inside NotificationProvider; Replay Tutorial in Settings calls reset API + refreshUser() + navigate to /
 - 09-01: QuickReactionPicker made configurable via reactionTypes prop (shared component serves daily/prayer/post contexts with different reaction sets)
+- Phase 15 added: Admin Church Outreach & Research Management (church outreach CRM integrated into /admin — find churches, track pipeline, email campaigns, sample tracking, conversion reporting; based on churchoutreach project spec)
 
 ### Pending Todos
 
