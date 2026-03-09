@@ -145,5 +145,3 @@ export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => 
     return serverError(error, 'Failed to create campaign');
   }
 });
-
-export { buildChurchFilter };
