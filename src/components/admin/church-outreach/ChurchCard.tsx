@@ -108,7 +108,7 @@ function ChurchCardInner({ church, onClick, isDragging, isOverlay }: ChurchCardP
         {church.contact_phone && (
           <Phone className="h-3 w-3 text-green-500" aria-label="Has phone" />
         )}
-        {church.youth_programs?.slice(0, 3).map((program) => (
+        {(Array.isArray(church.youth_programs) ? church.youth_programs : []).slice(0, 3).map((program) => (
           <span
             key={program}
             className="inline-block rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
@@ -116,7 +116,7 @@ function ChurchCardInner({ church, onClick, isDragging, isOverlay }: ChurchCardP
             {program}
           </span>
         ))}
-        {church.youth_programs && church.youth_programs.length > 3 && (
+        {Array.isArray(church.youth_programs) && church.youth_programs.length > 3 && (
           <span className="text-[10px] text-text-muted dark:text-text-muted-dark">
             +{church.youth_programs.length - 3}
           </span>
