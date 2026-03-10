@@ -53,7 +53,7 @@ export function useDailyFeed(mode?: string, language?: string) {
       params.set('language', effectiveLanguage);
       params.set('date', getLocalDate());
       params.set('limit', '5');
-      params.set('v', '2');
+      params.set('v', '3');
       if (pageCursor) params.set('cursor', pageCursor);
 
       try {
