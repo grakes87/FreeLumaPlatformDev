@@ -22,7 +22,11 @@ export const registerSchema = z.object({
     ),
   activation_code: z
     .string()
-    .length(12, 'Activation code must be 12 characters'),
+    .transform(s => s.replace(/\s/g, ''))
+    .pipe(z.string().refine(
+      s => s.replace(/-/g, '').length === 12,
+      'Activation code must be 12 characters'
+    )),
   date_of_birth: z
     .string()
     .min(1, 'Date of birth is required')
@@ -78,7 +82,10 @@ export const loginSchema = z.object({
 export type LoginInput = z.infer<typeof loginSchema>;
 
 export const activationCodeSchema = z.object({
-  code: z.string().length(12, 'Activation code must be 12 characters'),
+  code: z.string().transform(s => s.replace(/\s/g, '')).pipe(z.string().refine(
+    s => s.replace(/-/g, '').length === 12,
+    'Activation code must be 12 characters'
+  )),
 });
 
 export type ActivationCodeInput = z.infer<typeof activationCodeSchema>;
