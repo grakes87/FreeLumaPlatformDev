@@ -8,6 +8,7 @@ const updateSchema = z.object({
   subject: z.string().min(1).max(500).optional(),
   html_body: z.string().min(1).optional(),
   merge_fields: z.array(z.string()).nullable().optional(),
+  template_assets: z.record(z.string(), z.string()).nullable().optional(),
 });
 
 /**
@@ -58,6 +59,7 @@ export const PUT = withAdmin(async (req: NextRequest, context: AuthContext) => {
     if (parsed.data.subject !== undefined) updates.subject = parsed.data.subject;
     if (parsed.data.html_body !== undefined) updates.html_body = parsed.data.html_body;
     if (parsed.data.merge_fields !== undefined) updates.merge_fields = parsed.data.merge_fields;
+    if (parsed.data.template_assets !== undefined) updates.template_assets = parsed.data.template_assets;
 
     await template.update(updates);
 

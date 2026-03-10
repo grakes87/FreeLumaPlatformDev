@@ -3,6 +3,11 @@ export const MERGE_FIELDS = [
   'Denomination', 'ContactName',
 ] as const;
 
+export const ASSET_FIELDS = [
+  'LogoUrl', 'HeroImageUrl', 'VideoUrl', 'VideoThumbnailUrl',
+  'Step1ImageUrl', 'Step2ImageUrl', 'Step3ImageUrl',
+] as const;
+
 export type MergeField = typeof MERGE_FIELDS[number];
 
 interface ChurchData {
@@ -14,7 +19,11 @@ interface ChurchData {
   contact_email?: string | null;
 }
 
-export function renderTemplate(template: string, church: ChurchData): string {
+export function renderTemplate(
+  template: string,
+  church: ChurchData,
+  assets?: Record<string, string> | null,
+): string {
   const fieldMap: Record<string, string> = {
     PastorName: church.pastor_name || 'Pastor',
     ChurchName: church.name,
@@ -23,6 +32,15 @@ export function renderTemplate(template: string, church: ChurchData): string {
     Denomination: church.denomination || 'your church',
     ContactName: church.pastor_name || church.contact_email?.split('@')[0] || 'Friend',
   };
+
+  // Include asset URLs in the replacement map
+  if (assets) {
+    for (const key of ASSET_FIELDS) {
+      if (assets[key]) {
+        fieldMap[key] = assets[key];
+      }
+    }
+  }
 
   return template.replace(
     /\{(\w+)\}/g,

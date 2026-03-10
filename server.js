@@ -79,6 +79,7 @@ if (cluster.isPrimary) {
           if (globalThis.__initEmailScheduler) globalThis.__initEmailScheduler();
           if (globalThis.__initAccountCleanup) globalThis.__initAccountCleanup();
           if (globalThis.__initDripScheduler) globalThis.__initDripScheduler();
+          if (globalThis.__initAutoDiscoveryScheduler) globalThis.__initAutoDiscoveryScheduler();
           console.log(`> Worker ${process.pid}: cron schedulers started`);
         }, 5000);
       }

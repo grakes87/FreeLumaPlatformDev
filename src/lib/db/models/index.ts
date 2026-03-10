@@ -1165,6 +1165,16 @@ AnnouncementDismissal.belongsTo(User, {
 
 // ---- Phase 15: Church Outreach CRM Associations ----
 
+// OutreachEmail -> User (reviewed_by)
+OutreachEmail.belongsTo(User, {
+  foreignKey: 'reviewed_by',
+  as: 'reviewer',
+});
+User.hasMany(OutreachEmail, {
+  foreignKey: 'reviewed_by',
+  as: 'reviewedEmails',
+});
+
 // Church -> ChurchActivity (one-to-many)
 Church.hasMany(ChurchActivity, {
   foreignKey: 'church_id',

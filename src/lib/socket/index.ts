@@ -93,6 +93,12 @@ function setupNamespaces(io: SocketIOServer): void {
   }).catch((err) => {
     console.error('[Socket] Failed to initialize workshop crons:', err);
   });
+
+  import('@/lib/church-outreach/auto-discovery-scheduler').then(({ initAutoDiscoveryScheduler }) => {
+    initAutoDiscoveryScheduler();
+  }).catch((err) => {
+    console.error('[Socket] Failed to initialize auto-discovery scheduler:', err);
+  });
 }
 
 /**

@@ -9,6 +9,7 @@ const createSchema = z.object({
   subject: z.string().min(1).max(500),
   html_body: z.string().min(1),
   merge_fields: z.array(z.string()).optional(),
+  template_assets: z.record(z.string(), z.string()).nullable().optional(),
 });
 
 /**
@@ -55,6 +56,7 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
       subject: parsed.data.subject,
       html_body: parsed.data.html_body,
       merge_fields: parsed.data.merge_fields || null,
+      template_assets: parsed.data.template_assets || null,
       is_default: false,
     });
 

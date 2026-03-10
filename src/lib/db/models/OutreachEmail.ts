@@ -1,7 +1,7 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../index';
 
-export const OUTREACH_EMAIL_STATUSES = ['queued', 'sent', 'bounced', 'opened', 'clicked'] as const;
+export const OUTREACH_EMAIL_STATUSES = ['queued', 'sent', 'bounced', 'opened', 'clicked', 'pending_review', 'rejected'] as const;
 export type OutreachEmailStatus = typeof OUTREACH_EMAIL_STATUSES[number];
 
 export interface OutreachEmailAttributes {
@@ -17,6 +17,12 @@ export interface OutreachEmailAttributes {
   sent_at: Date | null;
   opened_at: Date | null;
   clicked_at: Date | null;
+  reviewed_by: number | null;
+  reviewed_at: Date | null;
+  ai_html: string | null;
+  rendered_html: string | null;
+  ai_subject: string | null;
+  rejection_reason: string | null;
   created_at: Date;
 }
 
@@ -28,6 +34,12 @@ export type OutreachEmailCreationAttributes = Optional<OutreachEmailAttributes,
   | 'sent_at'
   | 'opened_at'
   | 'clicked_at'
+  | 'reviewed_by'
+  | 'reviewed_at'
+  | 'ai_html'
+  | 'rendered_html'
+  | 'ai_subject'
+  | 'rejection_reason'
   | 'created_at'
 >;
 
@@ -44,6 +56,12 @@ class OutreachEmail extends Model<OutreachEmailAttributes, OutreachEmailCreation
   declare sent_at: Date | null;
   declare opened_at: Date | null;
   declare clicked_at: Date | null;
+  declare reviewed_by: number | null;
+  declare reviewed_at: Date | null;
+  declare ai_html: string | null;
+  declare rendered_html: string | null;
+  declare ai_subject: string | null;
+  declare rejection_reason: string | null;
   declare readonly created_at: Date;
 }
 
@@ -98,6 +116,30 @@ OutreachEmail.init(
     },
     clicked_at: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    reviewed_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    reviewed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    ai_html: {
+      type: DataTypes.TEXT('long'),
+      allowNull: true,
+    },
+    rendered_html: {
+      type: DataTypes.TEXT('long'),
+      allowNull: true,
+    },
+    ai_subject: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
+    rejection_reason: {
+      type: DataTypes.STRING(500),
       allowNull: true,
     },
     created_at: DataTypes.DATE,

@@ -26,6 +26,7 @@ interface Template {
   subject: string;
   html_body: string;
   merge_fields: string[] | null;
+  template_assets: Record<string, string> | null;
   is_default: boolean;
 }
 
@@ -113,7 +114,6 @@ export default function CampaignManager() {
   const fetchCampaigns = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/church-outreach/campaigns', {
-          credentials: 'include',
         credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to load campaigns');
@@ -127,7 +127,6 @@ export default function CampaignManager() {
   const fetchTemplates = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/church-outreach/templates', {
-          credentials: 'include',
         credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to load templates');
@@ -193,7 +192,6 @@ export default function CampaignManager() {
     setCreateLoading(true);
     try {
       const res = await fetch('/api/admin/church-outreach/campaigns', {
-          credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -222,7 +220,6 @@ export default function CampaignManager() {
     setError(null);
     try {
       const res = await fetch('/api/admin/church-outreach/campaigns', {
-          credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

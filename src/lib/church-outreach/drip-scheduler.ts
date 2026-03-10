@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { v4 as uuidv4 } from 'uuid';
 import { renderTemplate, renderSubject } from './template-renderer';
-import { sendOutreachEmail } from './email-sender';
+import { generatePersonalizedEmail } from './ai-email-writer';
 
 let initialized = false;
 
@@ -122,7 +122,7 @@ export async function processPendingDripSteps(): Promise<void> {
           return;
         }
 
-        // Render template with church data
+        // Render template with church data (used as fallback + reference)
         const renderedHtml = renderTemplate(template.html_body, {
           name: church.name,
           pastor_name: church.pastor_name,
@@ -130,7 +130,7 @@ export async function processPendingDripSteps(): Promise<void> {
           state: church.state,
           denomination: church.denomination,
           contact_email: church.contact_email,
-        });
+        }, template.template_assets);
         const renderedSubject = renderSubject(template.subject, {
           name: church.name,
           pastor_name: church.pastor_name,
@@ -140,94 +140,76 @@ export async function processPendingDripSteps(): Promise<void> {
           contact_email: church.contact_email,
         });
 
-        // Generate tracking ID
-        const trackingId = uuidv4();
-
-        // Create OutreachEmail record (queued)
-        const outreachEmail = await OutreachEmail.create(
-          {
-            church_id: church.id,
-            drip_enrollment_id: lockedEnrollment.id,
-            template_id: template.id,
-            to_email: church.contact_email,
-            subject: renderedSubject,
-            status: 'queued',
-            tracking_id: trackingId,
-          },
-          { transaction: t }
-        );
-
-        // Send via sendOutreachEmail
-        await sendOutreachEmail({
-          to: church.contact_email,
-          subject: renderedSubject,
-          html: renderedHtml,
-          emailId: outreachEmail.id,
-          trackingId,
-          churchId: church.id,
-        });
-
-        // Update email status to sent
-        await outreachEmail.update(
-          { status: 'sent', sent_at: new Date() },
-          { transaction: t }
-        );
-
-        // Load sequence for activity metadata
+        // Load sequence for metadata
         const sequence = await DripSequence.findByPk(lockedEnrollment.sequence_id, {
           attributes: ['id', 'name'],
           transaction: t,
         });
 
-        // Create church activity log
-        await ChurchActivity.create(
+        // Count total steps in sequence
+        const totalSteps = await DripStep.count({
+          where: { sequence_id: lockedEnrollment.sequence_id },
+          transaction: t,
+        });
+
+        // Generate tracking ID
+        const trackingId = uuidv4();
+
+        // Generate AI-personalized email (outside transaction for API call)
+        let aiResult = { subject: renderedSubject, html: renderedHtml };
+        try {
+          aiResult = await generatePersonalizedEmail(
+            {
+              name: church.name,
+              pastor_name: church.pastor_name,
+              denomination: church.denomination,
+              congregation_size_estimate: church.congregation_size_estimate,
+              city: church.city,
+              state: church.state,
+              youth_programs: church.youth_programs,
+              ai_summary: church.ai_summary,
+              outreach_fit_score: church.outreach_fit_score,
+              outreach_fit_reason: church.outreach_fit_reason,
+              has_youth_ministry: church.has_youth_ministry,
+              has_young_adult_ministry: church.has_young_adult_ministry,
+              has_small_groups: church.has_small_groups,
+              has_missions_focus: church.has_missions_focus,
+            },
+            renderedSubject,
+            renderedHtml,
+            {
+              stepOrder: currentStepOrder,
+              totalSteps,
+              sequenceName: sequence?.name || 'Outreach',
+            },
+            template.template_assets,
+          );
+        } catch (aiErr) {
+          console.warn(`[Drip Scheduler] AI email generation failed for enrollment ${lockedEnrollment.id}, using template fallback`);
+        }
+
+        // Create OutreachEmail record as pending_review (NOT sent)
+        await OutreachEmail.create(
           {
             church_id: church.id,
-            activity_type: 'email_sent',
-            description: `Drip email sent: "${renderedSubject}" (step ${currentStepOrder} of sequence "${sequence?.name || 'Unknown'}")`,
-            metadata: {
-              drip_sequence_id: lockedEnrollment.sequence_id,
-              drip_sequence_name: sequence?.name,
-              drip_step_order: currentStepOrder,
-              outreach_email_id: outreachEmail.id,
-              template_id: template.id,
-            },
+            drip_enrollment_id: lockedEnrollment.id,
+            template_id: template.id,
+            to_email: church.contact_email,
+            subject: aiResult.subject,
+            status: 'pending_review',
+            tracking_id: trackingId,
+            rendered_html: renderedHtml,
+            ai_html: aiResult.html,
+            ai_subject: aiResult.subject,
           },
           { transaction: t }
         );
 
-        // Advance enrollment to next step
-        const newCurrentStep = lockedEnrollment.current_step + 1;
-
-        // Check if there's a next step
-        const nextStep = await DripStep.findOne({
-          where: {
-            sequence_id: lockedEnrollment.sequence_id,
-            step_order: newCurrentStep + 1,
-          },
-          transaction: t,
-        });
-
-        if (nextStep) {
-          // Calculate next_step_at based on next step's delay_days
-          const nextStepAt = new Date();
-          nextStepAt.setDate(nextStepAt.getDate() + nextStep.delay_days);
-          await lockedEnrollment.update(
-            { current_step: newCurrentStep, next_step_at: nextStepAt },
-            { transaction: t }
-          );
-        } else {
-          // No more steps -- mark as completed
-          await lockedEnrollment.update(
-            {
-              current_step: newCurrentStep,
-              status: 'completed',
-              completed_at: new Date(),
-              next_step_at: null,
-            },
-            { transaction: t }
-          );
-        }
+        // Pause enrollment until admin reviews (next_step_at = null)
+        await lockedEnrollment.update(
+          { next_step_at: null },
+          { transaction: t }
+        );
 
         processedCount++;
       });

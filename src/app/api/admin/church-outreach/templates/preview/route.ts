@@ -30,7 +30,7 @@ export const POST = withAdmin(async (req: NextRequest, _context: AuthContext) =>
     if (!church) return errorResponse('Church not found', 404);
 
     const renderedSubject = renderSubject(template.subject, church);
-    const renderedHtml = renderTemplate(template.html_body, church);
+    const renderedHtml = renderTemplate(template.html_body, church, template.template_assets);
 
     return successResponse({
       subject: renderedSubject,

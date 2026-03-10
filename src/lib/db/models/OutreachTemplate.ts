@@ -7,6 +7,7 @@ export interface OutreachTemplateAttributes {
   subject: string;
   html_body: string;
   merge_fields: string[] | null;
+  template_assets: Record<string, string> | null;
   is_default: boolean;
   created_at: Date;
   updated_at: Date;
@@ -15,6 +16,7 @@ export interface OutreachTemplateAttributes {
 export type OutreachTemplateCreationAttributes = Optional<OutreachTemplateAttributes,
   | 'id'
   | 'merge_fields'
+  | 'template_assets'
   | 'is_default'
   | 'created_at'
   | 'updated_at'
@@ -26,6 +28,7 @@ class OutreachTemplate extends Model<OutreachTemplateAttributes, OutreachTemplat
   declare subject: string;
   declare html_body: string;
   declare merge_fields: string[] | null;
+  declare template_assets: Record<string, string> | null;
   declare is_default: boolean;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
@@ -53,6 +56,18 @@ OutreachTemplate.init(
     merge_fields: {
       type: DataTypes.JSON,
       allowNull: true,
+    },
+    template_assets: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      get() {
+        const raw = this.getDataValue('template_assets');
+        if (!raw) return null;
+        if (typeof raw === 'string') {
+          try { return JSON.parse(raw); } catch { return null; }
+        }
+        return raw;
+      },
     },
     is_default: {
       type: DataTypes.BOOLEAN,

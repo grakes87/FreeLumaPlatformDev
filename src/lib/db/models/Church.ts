@@ -31,6 +31,12 @@ export interface ChurchAttributes {
   longitude: number | null;
   pipeline_stage: PipelineStage;
   ai_summary: string | null;
+  outreach_fit_score: number | null;
+  outreach_fit_reason: string | null;
+  has_youth_ministry: boolean;
+  has_young_adult_ministry: boolean;
+  has_small_groups: boolean;
+  has_missions_focus: boolean;
   source: ChurchSource;
   notes: string | null;
   created_at: Date;
@@ -60,6 +66,12 @@ export type ChurchCreationAttributes = Optional<ChurchAttributes,
   | 'longitude'
   | 'pipeline_stage'
   | 'ai_summary'
+  | 'outreach_fit_score'
+  | 'outreach_fit_reason'
+  | 'has_youth_ministry'
+  | 'has_young_adult_ministry'
+  | 'has_small_groups'
+  | 'has_missions_focus'
   | 'source'
   | 'notes'
   | 'created_at'
@@ -90,6 +102,12 @@ class Church extends Model<ChurchAttributes, ChurchCreationAttributes> implement
   declare longitude: number | null;
   declare pipeline_stage: PipelineStage;
   declare ai_summary: string | null;
+  declare outreach_fit_score: number | null;
+  declare outreach_fit_reason: string | null;
+  declare has_youth_ministry: boolean;
+  declare has_young_adult_ministry: boolean;
+  declare has_small_groups: boolean;
+  declare has_missions_focus: boolean;
   declare source: ChurchSource;
   declare notes: string | null;
   declare readonly created_at: Date;
@@ -193,6 +211,34 @@ Church.init(
     ai_summary: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    outreach_fit_score: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    outreach_fit_reason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    has_youth_ministry: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    has_young_adult_ministry: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    has_small_groups: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    has_missions_focus: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     source: {
       type: DataTypes.ENUM(...CHURCH_SOURCES),

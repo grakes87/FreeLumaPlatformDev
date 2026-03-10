@@ -12,6 +12,10 @@ export const CHURCH_ACTIVITY_TYPES = [
   'created',
   'scrape_completed',
   'ai_researched',
+  'auto_discovered',
+  'auto_imported',
+  'email_approved',
+  'email_rejected',
 ] as const;
 export type ChurchActivityType = typeof CHURCH_ACTIVITY_TYPES[number];
 
