@@ -11,7 +11,26 @@ const importChurchSchema = z.object({
   website: z.string().max(500).nullish(),
   lat: z.number().nullish(),
   lng: z.number().nullish(),
-}).passthrough();
+  // AI research fields (optional, from ai-researcher)
+  pastor_name: z.string().nullish(),
+  contact_phone: z.string().nullish(),
+  contact_email: z.string().nullish(),
+  staff_members: z.array(z.object({ name: z.string(), role: z.string() })).nullish(),
+  denomination: z.string().nullish(),
+  congregation_size_estimate: z.string().nullish(),
+  youth_programs: z.array(z.string()).nullish(),
+  service_times: z.array(z.string()).nullish(),
+  social_media: z.record(z.string(), z.string()).nullish(),
+  summary: z.string().nullish(),
+  outreach_fit_score: z.number().nullish(),
+  outreach_fit_reason: z.string().nullish(),
+  has_youth_ministry: z.boolean().optional(),
+  has_young_adult_ministry: z.boolean().optional(),
+  has_small_groups: z.boolean().optional(),
+  has_missions_focus: z.boolean().optional(),
+  wasScraped: z.boolean().optional(),
+  wasResearched: z.boolean().optional(),
+});
 
 const importBatchSchema = z.object({
   churches: z.array(importChurchSchema).min(1).max(100),
@@ -57,7 +76,7 @@ export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => 
       const addressParts = parseAddress(data.address || '');
 
       // Create church record
-      const staffNames = data.staff_members?.map((s) => `${s.name} (${s.role})`) || null;
+      const staffNames = (data.staff_members as Array<{name: string; role: string}> | null | undefined)?.map((s) => `${s.name} (${s.role})`) || null;
 
       const church = await Church.create({
         google_place_id: data.placeId || null,
@@ -82,6 +101,12 @@ export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => 
         service_times: data.service_times || null,
         social_media: data.social_media || null,
         ai_summary: data.summary || null,
+        outreach_fit_score: data.outreach_fit_score ?? null,
+        outreach_fit_reason: data.outreach_fit_reason || null,
+        has_youth_ministry: data.has_youth_ministry || false,
+        has_young_adult_ministry: data.has_young_adult_ministry || false,
+        has_small_groups: data.has_small_groups || false,
+        has_missions_focus: data.has_missions_focus || false,
       });
 
       // Create activity: created
