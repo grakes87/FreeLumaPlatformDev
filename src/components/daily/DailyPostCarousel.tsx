@@ -11,6 +11,7 @@ import { useDailyTranslation } from '@/context/DailyTranslationContext';
 import { DailyPostSlide } from './DailyPostSlide';
 import { AudioPlayerSlide } from './AudioPlayerSlide';
 import { LumaShortSlide } from './LumaShortSlide';
+import { DevotionalSlide } from './DevotionalSlide';
 
 interface DailyPostCarouselProps {
   /** Single-day mode: fetch by date (existing behavior) */
@@ -210,9 +211,18 @@ function CarouselSwiper({
     content.verse_reference,
     content.post_date,
     content.mode,
+    content.devotional_reflection,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     content.translations.length,
   ]);
+
+  // Determine if devotional slide should be shown (bible mode only, non-empty text)
+  const hasDevotional = content.mode === 'bible' &&
+    !!content.devotional_reflection?.trim();
+
+  // Dynamic slide indices based on whether devotional slide is present
+  const audioIndex = hasDevotional ? 2 : 1;
+  const lumaShortIndex = hasDevotional ? 3 : 2;
 
   return (
     <Swiper
@@ -243,7 +253,17 @@ function CarouselSwiper({
         />
       </SwiperSlide>
 
-      {/* Slide 2: Audio player with SRT subtitle sync */}
+      {/* Slide 2: Devotional reflection (bible mode only, conditional) */}
+      {hasDevotional && (
+        <SwiperSlide>
+          <DevotionalSlide
+            content={slideContent}
+            isActive={isActive && activeSlide === 1}
+          />
+        </SwiperSlide>
+      )}
+
+      {/* Slide 2/3: Audio player with SRT subtitle sync */}
       <SwiperSlide>
         <AudioPlayerSlide
           content={content}
@@ -251,13 +271,13 @@ function CarouselSwiper({
           resolvedAudioUrl={resolvedAudioUrl}
           resolvedSrtUrl={resolvedSrtUrl}
           resolvedChapterText={resolvedChapterText}
-          isActive={isActive && activeSlide === 1}
+          isActive={isActive && activeSlide === audioIndex}
         />
       </SwiperSlide>
 
-      {/* Slide 3: LumaShort video */}
+      {/* Slide 3/4: LumaShort video */}
       <SwiperSlide>
-        <LumaShortSlide content={content} isActive={isActive && activeSlide === 2} />
+        <LumaShortSlide content={content} isActive={isActive && activeSlide === lumaShortIndex} />
       </SwiperSlide>
     </Swiper>
   );
