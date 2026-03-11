@@ -129,6 +129,7 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
       chapter_reference: content.chapter_reference,
       video_background_url: content.video_background_url,
       lumashort_video_url: content.lumashort_video_url,
+      devotional_reflection: content.devotional_reflection ?? null,
       translations,
       translation_names: translationNames,
       creator,

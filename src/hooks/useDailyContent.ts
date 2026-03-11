@@ -21,6 +21,7 @@ export interface DailyContentData {
   chapter_reference: string | null;
   video_background_url: string;
   lumashort_video_url: string | null;
+  devotional_reflection: string | null;
   translations: Array<{ code: string; text: string; audio_url: string | null; audio_srt_url: string | null; chapter_text: string | null }>;
   translation_names: Record<string, string>;
   creator?: DailyContentCreator | null;
