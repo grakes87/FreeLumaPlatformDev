@@ -26,6 +26,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 12: Content Production Platform** - Creator management (LumaShortCreator), daily content generation pipeline (bible verse selection, positivity quotes, multi-translation fetch, TTS via ElevenLabs/Murf, SRT generation, background video prompts, 45s camera scripts), auto-assignment to creators, admin content management UI (unassigned/assigned/pending/completed/background tabs), HeyGen AI video integration for Spanish content, and content approval workflow
 - [ ] **Phase 13: SMS Notifications & Phone Number** - Add phone number field to user profiles (onboarding + settings), integrate SMS provider (Twilio/SendGrid), enable text message notifications as user-configurable option alongside email/in-app, SMS preferences per notification category
 - [ ] **Phase 14: First-Time User Tutorial & Walkthrough** - Guided tutorial for first-time logged-in users covering daily feed, mode switching, verse-by-category, bottom navigation, and social features with coach marks and welcome slideshow
+- [ ] **Phase 15: Admin Church Outreach & Research Management** - Church discovery via Google Places, AI research pipeline, outreach email system with templates, drip sequences, kanban pipeline, sample request fulfillment
+- [ ] **Phase 16: Daily Content Devotional** - Daily content devotional improvements
 
 ## Phase Details
 
@@ -568,6 +570,18 @@ Plans:
 - [x] 15-10-PLAN.md -- Kanban pipeline board: @dnd-kit drag-and-drop columns, ChurchCard, KanbanColumn, optimistic stage updates
 - [x] 15-11-PLAN.md -- Admin UI part 2: CampaignManager, TemplateEditor, SequenceManager, SequenceBuilder, ReportsView, SampleShipmentForm, ConversionForm
 - [ ] 15-12-PLAN.md -- Integration: drip scheduler wiring in server.js, tab finalization, build verification, human verification checkpoint
+
+### Phase 16: Daily Content Devotional
+
+**Goal:** Add a devotional reflection slide to the daily content carousel for bible-mode users. The slide displays AI-generated `devotional_reflection` text over the same video background as the verse slide, inserted between the verse slide and the audio slide (Verse -> Devotional -> Audio -> LumaShort). Positivity mode unaffected.
+
+**Requirements**: None (post-v1 enhancement — devotional_reflection field already exists from Phase 12)
+**Depends on:** Phase 15
+**Plans:** 2 plans in 2 waves
+
+Plans:
+- [x] 16-01-PLAN.md -- API + type changes: add devotional_reflection to 3 daily-posts API routes and DailyContentData TypeScript interface
+- [ ] 16-02-PLAN.md -- DevotionalSlide component + carousel integration: create DevotionalSlide with video bg + share button, conditionally insert into DailyPostCarousel with dynamic slide indexing
 
 ---
 *Roadmap created: 2026-02-11*
