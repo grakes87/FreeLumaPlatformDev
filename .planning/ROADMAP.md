@@ -27,7 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 13: SMS Notifications & Phone Number** - Add phone number field to user profiles (onboarding + settings), integrate SMS provider (Twilio/SendGrid), enable text message notifications as user-configurable option alongside email/in-app, SMS preferences per notification category
 - [ ] **Phase 14: First-Time User Tutorial & Walkthrough** - Guided tutorial for first-time logged-in users covering daily feed, mode switching, verse-by-category, bottom navigation, and social features with coach marks and welcome slideshow
 - [ ] **Phase 15: Admin Church Outreach & Research Management** - Church discovery via Google Places, AI research pipeline, outreach email system with templates, drip sequences, kanban pipeline, sample request fulfillment
-- [ ] **Phase 16: Daily Content Devotional** - Daily content devotional improvements
+- [x] **Phase 16: Daily Content Devotional** - Daily content devotional improvements (completed 2026-03-11)
 
 ## Phase Details
 
@@ -577,7 +577,7 @@ Plans:
 
 **Requirements**: None (post-v1 enhancement — devotional_reflection field already exists from Phase 12)
 **Depends on:** Phase 15
-**Plans:** 2 plans in 2 waves
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 16-01-PLAN.md -- API + type changes: add devotional_reflection to 3 daily-posts API routes and DailyContentData TypeScript interface
