@@ -42,9 +42,6 @@ const MERGE_FIELDS = [
 const IMAGE_SLOTS = [
   { key: 'LogoUrl', label: 'Logo', hint: 'Header logo image' },
   { key: 'HeroImageUrl', label: 'Bracelet Photo', hint: 'Main product photo' },
-  { key: 'Step1ImageUrl', label: 'Step 1', hint: 'Wear the bracelet' },
-  { key: 'Step2ImageUrl', label: 'Step 2', hint: 'Scan the QR code' },
-  { key: 'Step3ImageUrl', label: 'Step 3', hint: 'Daily inspiration' },
 ] as const;
 
 const SAMPLE_CHURCH = {
@@ -197,25 +194,35 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
     }
   }, []);
 
-  // Upload video: uploads mp4 + extracts & uploads first-frame thumbnail
+  // Upload video (mp4) or GIF for the video slot
   const handleVideoUpload = useCallback(async (file: File) => {
     setUploadingSlot('VideoUrl');
     setError(null);
     try {
-      // Upload video
-      const videoPublicUrl = await uploadToB2(file, file.type);
+      const isGif = file.type === 'image/gif';
 
-      // Extract first frame and upload as thumbnail
-      const thumbBlob = await extractVideoThumbnail(file);
-      const thumbPublicUrl = await uploadToB2(thumbBlob, 'image/jpeg');
+      // Upload the file
+      const publicUrl = await uploadToB2(file, file.type);
 
-      setTemplateAssets((prev) => ({
-        ...prev,
-        VideoUrl: videoPublicUrl,
-        VideoThumbnailUrl: thumbPublicUrl,
-      }));
+      if (isGif) {
+        // GIF: use as both VideoUrl and VideoThumbnailUrl (autoplays inline in email)
+        setTemplateAssets((prev) => ({
+          ...prev,
+          VideoUrl: publicUrl,
+          VideoThumbnailUrl: publicUrl,
+        }));
+      } else {
+        // Video: extract first frame as thumbnail
+        const thumbBlob = await extractVideoThumbnail(file);
+        const thumbPublicUrl = await uploadToB2(thumbBlob, 'image/jpeg');
+        setTemplateAssets((prev) => ({
+          ...prev,
+          VideoUrl: publicUrl,
+          VideoThumbnailUrl: thumbPublicUrl,
+        }));
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Video upload failed');
+      setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploadingSlot(null);
     }
@@ -471,12 +478,12 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
                   ) : (
                     <>
                       <Upload className="mb-1 h-4 w-4 text-text-muted dark:text-text-muted-dark" />
-                      <span className="text-[11px] text-text-muted dark:text-text-muted-dark">Upload mp4</span>
+                      <span className="text-[11px] text-text-muted dark:text-text-muted-dark">Upload mp4 or gif</span>
                     </>
                   )}
                   <input
                     type="file"
-                    accept="video/mp4"
+                    accept="video/mp4,image/gif"
                     className="hidden"
                     disabled={isVideoUploading}
                     onChange={(e) => {

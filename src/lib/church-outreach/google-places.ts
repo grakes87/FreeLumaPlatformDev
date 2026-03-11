@@ -1,8 +1,9 @@
 /**
  * Google Places API (New) — Church Discovery
  *
- * Uses Text Search endpoint with location bias to find churches within
- * a radius of a given location (ZIP code or city name).
+ * Uses Text Search endpoint to find churches. Supports two modes:
+ * 1. Location-based: search near a ZIP/city with a radius (locationBias)
+ * 2. US-wide: search across the continental US (locationRestriction)
  *
  * Requires GOOGLE_PLACES_API_KEY environment variable.
  */
@@ -14,13 +15,19 @@ const MAX_RADIUS_METERS = 50000;
 const PAGE_SIZE = 20;
 const PAGINATION_DELAY_MS = 200;
 
+// Continental US bounding box
+const US_BOUNDS = {
+  low: { latitude: 24.396308, longitude: -125.0 },
+  high: { latitude: 49.384358, longitude: -66.93457 },
+};
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface DiscoveryParams {
-  location: string;       // ZIP code or city name
-  radiusMiles: number;    // radius in miles (converted to meters internally)
+  location?: string;      // optional ZIP code or city name (omit for US-wide)
+  radiusMiles?: number;   // optional radius in miles (only used with location)
   filters?: string;       // optional additional search terms (e.g., "baptist", "youth ministry")
   maxResults?: number;    // default 60, cap at 100
 }
@@ -105,16 +112,32 @@ export async function searchChurches(
 ): Promise<PlacesResult[]> {
   const apiKey = getApiKey();
 
-  // Step 1: Geocode the location
-  const { lat, lng } = await geocodeLocation(params.location);
-
-  // Step 2: Build search parameters
-  const radiusMeters = Math.min(
-    params.radiusMiles * MILES_TO_METERS,
-    MAX_RADIUS_METERS
-  );
   const maxResults = Math.min(params.maxResults ?? 60, 100);
   const textQuery = `churches ${params.filters || ''}`.trim();
+
+  // Build location constraint: specific location+radius or US-wide
+  let locationConstraint: Record<string, unknown>;
+  if (params.location) {
+    const { lat, lng } = await geocodeLocation(params.location);
+    const radiusMeters = Math.min(
+      (params.radiusMiles ?? 25) * MILES_TO_METERS,
+      MAX_RADIUS_METERS
+    );
+    locationConstraint = {
+      locationBias: {
+        circle: {
+          center: { latitude: lat, longitude: lng },
+          radius: radiusMeters,
+        },
+      },
+    };
+  } else {
+    locationConstraint = {
+      locationRestriction: {
+        rectangle: US_BOUNDS,
+      },
+    };
+  }
 
   const fieldMask = [
     'places.id',
@@ -132,18 +155,13 @@ export async function searchChurches(
   const results: PlacesResult[] = [];
   let nextPageToken: string | undefined;
 
-  // Step 3: Paginate through results
+  // Paginate through results
   const maxPages = Math.ceil(maxResults / PAGE_SIZE);
 
   for (let page = 0; page < maxPages; page++) {
     const body: Record<string, unknown> = {
       textQuery,
-      locationBias: {
-        circle: {
-          center: { latitude: lat, longitude: lng },
-          radius: radiusMeters,
-        },
-      },
+      ...locationConstraint,
       pageSize: PAGE_SIZE,
       includedType: 'church',
     };

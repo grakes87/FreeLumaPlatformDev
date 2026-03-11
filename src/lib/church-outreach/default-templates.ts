@@ -38,9 +38,14 @@ export const DEFAULT_TEMPLATES: DefaultTemplate[] = [
     ministry.
   </p>
   <p style="line-height:1.7;font-size:15px;">
-    Would you be open to trying them out? Just reply to this email and I will get samples
-    on their way.
+    Click below to request your free samples — just fill in your shipping info and we will
+    get them on their way!
   </p>
+  <div style="text-align:center;margin:30px 0;">
+    <a href="{SampleRequestUrl}" style="display:inline-block;background:#EA580C;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">
+      Request Free Samples
+    </a>
+  </div>
   <p style="line-height:1.7;font-size:15px;margin-top:30px;">
     Blessings,<br/>
     <strong>The Free Luma Bracelets Team</strong>

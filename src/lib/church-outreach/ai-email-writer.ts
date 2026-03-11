@@ -52,10 +52,10 @@ export interface AIEmailResult {
 function buildEmailPrompt(
   church: ChurchProfile,
   templateSubject: string,
-  templateHtml: string,
-  stepContext: StepContext,
+  _templateHtml: string,
+  _stepContext: StepContext,
   freelumaContext: string,
-  assets?: Record<string, string> | null,
+  _assets?: Record<string, string> | null,
 ): string {
   const youthPrograms = Array.isArray(church.youth_programs)
     ? church.youth_programs.join(', ')
@@ -68,56 +68,39 @@ function buildEmailPrompt(
     church.has_missions_focus && 'Missions Focus',
   ].filter(Boolean).join(', ') || 'None identified';
 
-  return `You are writing a personalized outreach email for Free Luma Bracelets to a church.
+  return `Write a personalized paragraph (3-5 sentences) explaining why Free Luma Bracelets would be a great fit for this specific church. This paragraph will be inserted into an existing email template right after the greeting — you are NOT writing the full email.
 
 ## About Free Luma
 ${freelumaContext}
 
-## Church Profile
+## Church Research
 - **Name:** ${church.name}
 - **Pastor:** ${church.pastor_name || 'Unknown'}
 - **Denomination:** ${church.denomination || 'Unknown'}
 - **Size:** ${church.congregation_size_estimate || 'Unknown'}
 - **Location:** ${church.city || 'Unknown'}, ${church.state || ''}
 - **Youth Programs:** ${youthPrograms}
-- **Ministry Flags:** ${ministryFlags}
-- **Fit Score:** ${church.outreach_fit_score ?? 'N/A'}/10
-- **Fit Reason:** ${church.outreach_fit_reason || 'N/A'}
-- **AI Summary:** ${church.ai_summary || 'No summary available'}
+- **Ministries:** ${ministryFlags}
+${church.ai_summary ? `- **AI Research Summary:** ${church.ai_summary}` : ''}
+${church.outreach_fit_reason ? `- **Why They're a Good Fit:** ${church.outreach_fit_reason}` : ''}
 
-## Email Context
-This is step ${stepContext.stepOrder} of ${stepContext.totalSteps} in the "${stepContext.sequenceName}" drip sequence.
+## Instructions
+Write a paragraph that:
+1. **Mentions specific things you know about this church** — reference their programs by name (e.g. "your AWANA program", "your student ministry", "your small groups"), their denomination or values, their community involvement, or anything from the summary.
+2. **Connects those specifics to Free Luma** — explain how the bracelets with daily scripture would complement what they already do.
+3. **Sounds personal and genuine** — like someone who actually researched this church, not a mail merge.
 
-## Reference Template (for tone and structure guidance)
-Subject: ${templateSubject}
----
-${templateHtml}
----
+BAD example (too generic): "I believe Free Luma Bracelets could be a meaningful addition to your ministry."
+GOOD example: "I noticed your church runs an active youth group and AWANA program — Free Luma bracelets give students a daily touchpoint with scripture right on their wrist, which could be a perfect complement to what you're already building into their lives."
 
-${assets && Object.keys(assets).length > 0 ? `## Asset URLs (use these exact URLs for images in the email)
-${Object.entries(assets).map(([k, v]) => `- **${k}:** ${v}`).join('\n')}
+Return ONLY valid JSON:
+{"subject": "${templateSubject}", "paragraph": "Your personalized paragraph here."}
 
-` : ''}## Instructions
-Write a personalized email that:
-1. References specific details about this church (pastor name, programs, denomination, community involvement)
-2. Connects Free Luma's bracelet ministry to their specific needs and programs
-3. Feels warm, genuine, and not mass-produced
-4. Keeps a similar structure and length to the template above
-5. Uses professional but friendly tone — church-to-church partnership feel
-6. If pastor name is known, address them directly
-7. For step 1: introduce Free Luma. For later steps: follow up naturally, reference the previous outreach
-
-Return ONLY valid JSON with exactly two fields:
-{
-  "subject": "Personalized email subject line",
-  "html": "<p>Full HTML email body...</p>"
-}
-
-Important:
-- The html should use simple HTML (p, strong, br, a tags) suitable for email clients
-- Do NOT include any header/footer/unsubscribe — those are added automatically
-- Keep subject under 100 characters
-- Return ONLY the JSON, no other text`;
+- Keep subject as-is or personalize slightly (under 100 chars)
+- The paragraph is plain text, no HTML
+- 3-5 sentences
+- You MUST reference at least one specific detail about the church
+- Return ONLY the JSON`;
 }
 
 // ---------------------------------------------------------------------------
@@ -173,13 +156,36 @@ export async function generatePersonalizedEmail(
     const jsonStr = raw.replace(/^```json?\s*/, '').replace(/\s*```$/, '');
     const parsed = JSON.parse(jsonStr);
 
-    if (!parsed.subject || !parsed.html) {
-      throw new Error('AI response missing subject or html fields');
+    if (!parsed.subject || !parsed.paragraph) {
+      throw new Error('AI response missing subject or paragraph fields');
+    }
+
+    // Insert the personalized paragraph into the template HTML.
+    // Find the <!-- Hero image --> marker and insert right before it.
+    const heroMarker = '<!-- Hero image -->';
+    const heroIdx = templateHtml.indexOf(heroMarker);
+
+    const pTag = `<p style="line-height:1.7;font-size:15px;">${parsed.paragraph}</p>`;
+
+    let aiHtml: string;
+    if (heroIdx !== -1) {
+      // Insert personalized paragraph just before the hero image
+      aiHtml = templateHtml.slice(0, heroIdx) + pTag + '\n\n    ' + templateHtml.slice(heroIdx);
+    } else {
+      // Fallback: append after the second </p> (after generic intro)
+      let secondP = templateHtml.indexOf('</p>');
+      if (secondP !== -1) secondP = templateHtml.indexOf('</p>', secondP + 4);
+      if (secondP !== -1) {
+        const insertAt = secondP + 4;
+        aiHtml = templateHtml.slice(0, insertAt) + '\n\n    ' + pTag + templateHtml.slice(insertAt);
+      } else {
+        aiHtml = templateHtml;
+      }
     }
 
     return {
       subject: String(parsed.subject).slice(0, 500),
-      html: String(parsed.html),
+      html: aiHtml,
     };
   } catch (err) {
     console.warn(

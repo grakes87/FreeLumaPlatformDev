@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const FALLBACK_URL = 'https://freelumabracelets.com';
+const FALLBACK_URL = 'https://freeluma.app';
 
 /**
  * GET /api/church-outreach/click?id={emailId}&url={encodedUrl}

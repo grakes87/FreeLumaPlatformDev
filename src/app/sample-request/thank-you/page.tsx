@@ -50,25 +50,19 @@ export default function ThankYouPage() {
           <p className="text-gray-500 mb-8">
             If you have any questions, feel free to reach out at{' '}
             <a
-              href="mailto:outreach@freelumabracelets.com"
+              href="mailto:outreach@freeluma.com"
               className="text-amber-600 hover:text-amber-700 underline"
             >
-              outreach@freelumabracelets.com
+              outreach@freeluma.com
             </a>
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex justify-center">
             <Link
-              href="https://freelumabracelets.com"
+              href="https://freeluma.app"
               className="inline-block rounded-lg bg-amber-600 px-6 py-3 text-white font-medium shadow-md transition hover:bg-amber-700"
             >
               Visit FreeLumaBracelets.com
-            </Link>
-            <Link
-              href="/"
-              className="inline-block rounded-lg border border-gray-300 bg-white px-6 py-3 text-gray-700 font-medium transition hover:bg-gray-50"
-            >
-              Explore the Free Luma App
             </Link>
           </div>
         </div>

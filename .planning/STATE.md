@@ -403,6 +403,7 @@ Recent decisions affecting current work:
 - 14-03: data-tutorial attributes on 4 target components; TutorialProvider wraps AppShell inside NotificationProvider; Replay Tutorial in Settings calls reset API + refreshUser() + navigate to /
 - 09-01: QuickReactionPicker made configurable via reactionTypes prop (shared component serves daily/prayer/post contexts with different reaction sets)
 - Phase 15 added: Admin Church Outreach & Research Management (church outreach CRM integrated into /admin — find churches, track pipeline, email campaigns, sample tracking, conversion reporting; based on churchoutreach project spec)
+- Phase 15.1 inserted after Phase 15: Church Outreach Sample Request & Fulfillment (URGENT)
 
 ### Pending Todos
 

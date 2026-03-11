@@ -124,6 +124,7 @@ export async function processPendingDripSteps(): Promise<void> {
 
         // Render template with church data (used as fallback + reference)
         const renderedHtml = renderTemplate(template.html_body, {
+          id: church.id,
           name: church.name,
           pastor_name: church.pastor_name,
           city: church.city,
@@ -132,6 +133,7 @@ export async function processPendingDripSteps(): Promise<void> {
           contact_email: church.contact_email,
         }, template.template_assets);
         const renderedSubject = renderSubject(template.subject, {
+          id: church.id,
           name: church.name,
           pastor_name: church.pastor_name,
           city: church.city,

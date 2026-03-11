@@ -304,9 +304,10 @@ export default function DiscoverySearch() {
       );
       setSelectedIds(new Set());
 
-      toast.success(
-        `Imported ${data.imported} churches${data.skipped > 0 ? ` (${data.skipped} already existed)` : ''}`
-      );
+      const parts = [`Imported ${data.imported} churches`];
+      if (data.emailsQueued > 0) parts.push(`${data.emailsQueued} email drafts queued for review`);
+      if (data.skipped > 0) parts.push(`${data.skipped} already existed`);
+      toast.success(parts.join(' — '));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Import failed');
     } finally {

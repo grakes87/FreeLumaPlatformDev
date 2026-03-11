@@ -4,6 +4,9 @@ import { sequelize } from '../index';
 export const CARRIER_TYPES = ['usps', 'ups', 'fedex', 'other'] as const;
 export type CarrierType = typeof CARRIER_TYPES[number];
 
+export const SHIPMENT_STATUSES = ['pending', 'shipped', 'delivered'] as const;
+export type ShipmentStatus = typeof SHIPMENT_STATUSES[number];
+
 export interface SampleShipmentAttributes {
   id: number;
   church_id: number;
@@ -14,7 +17,10 @@ export interface SampleShipmentAttributes {
   quantity: number | null;
   shipping_address: string | null;
   notes: string | null;
-  created_by: number;
+  status: ShipmentStatus;
+  delivered_at: Date | null;
+  follow_up_sent_at: Date | null;
+  created_by: number | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -27,6 +33,9 @@ export type SampleShipmentCreationAttributes = Optional<SampleShipmentAttributes
   | 'quantity'
   | 'shipping_address'
   | 'notes'
+  | 'status'
+  | 'delivered_at'
+  | 'follow_up_sent_at'
   | 'created_at'
   | 'updated_at'
 >;
@@ -41,7 +50,10 @@ class SampleShipment extends Model<SampleShipmentAttributes, SampleShipmentCreat
   declare quantity: number | null;
   declare shipping_address: string | null;
   declare notes: string | null;
-  declare created_by: number;
+  declare status: ShipmentStatus;
+  declare delivered_at: Date | null;
+  declare follow_up_sent_at: Date | null;
+  declare created_by: number | null;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
 }
@@ -86,9 +98,22 @@ SampleShipment.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    status: {
+      type: DataTypes.ENUM(...SHIPMENT_STATUSES),
+      allowNull: false,
+      defaultValue: 'shipped',
+    },
+    delivered_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    follow_up_sent_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     created_by: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE,

@@ -22,8 +22,7 @@ export const GET = withAdmin(async (_req: NextRequest, _context: AuthContext) =>
 
 const configSchema = z.object({
   enabled: z.boolean().optional(),
-  target_locations: z.array(z.string().min(1).max(200)).optional(),
-  radius_miles: z.number().min(1).max(50).optional(),
+  search_filters: z.string().max(500).optional(),
   min_fit_score: z.number().min(1).max(10).optional(),
   max_per_run: z.number().min(1).max(100).optional(),
   auto_enroll_sequence_id: z.number().nullable().optional(),
@@ -63,13 +62,39 @@ export const PUT = withAdmin(async (req: NextRequest, _context: AuthContext) => 
 });
 
 /**
- * POST /api/admin/church-outreach/auto-discovery - Trigger manual run
+ * POST /api/admin/church-outreach/auto-discovery - Trigger manual run (SSE stream)
  */
 export const POST = withAdmin(async (_req: NextRequest, _context: AuthContext) => {
   try {
     const { runAutoDiscovery } = await import('@/lib/church-outreach/auto-discovery-scheduler');
-    const stats = await runAutoDiscovery();
-    return successResponse({ stats });
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const send = (data: unknown) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        };
+
+        try {
+          const stats = await runAutoDiscovery((progress) => {
+            send(progress);
+          });
+          send({ phase: 'done', stats });
+        } catch (err) {
+          send({ phase: 'error', message: String(err) });
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      },
+    });
   } catch (error) {
     return serverError(error, 'Failed to run auto-discovery');
   }

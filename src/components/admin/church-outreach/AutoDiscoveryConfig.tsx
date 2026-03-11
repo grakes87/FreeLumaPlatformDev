@@ -7,16 +7,13 @@ import {
   ChevronUp,
   Play,
   Save,
-  Plus,
-  X,
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface Config {
   enabled: boolean;
-  target_locations: string[];
-  radius_miles: number;
+  search_filters: string;
   min_fit_score: number;
   max_per_run: number;
   auto_enroll_sequence_id: number | null;
@@ -28,6 +25,23 @@ interface Sequence {
   name: string;
 }
 
+// Convert UTC hour ↔ local hour using browser timezone offset
+function utcToLocal(utcHour: number): number {
+  const now = new Date();
+  now.setUTCHours(utcHour, 0, 0, 0);
+  return now.getHours();
+}
+function localToUtc(localHour: number): number {
+  const now = new Date();
+  now.setHours(localHour, 0, 0, 0);
+  return now.getUTCHours();
+}
+function formatHour(h: number): string {
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:00 ${period}`;
+}
+
 export default function AutoDiscoveryConfig() {
   const [expanded, setExpanded] = useState(false);
   const [config, setConfig] = useState<Config | null>(null);
@@ -37,7 +51,13 @@ export default function AutoDiscoveryConfig() {
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<string | null>(null);
-  const [newLocation, setNewLocation] = useState('');
+  const [progress, setProgress] = useState<{
+    phase: string;
+    message: string;
+    current: number;
+    total: number;
+    stats: { discovered: number; imported: number; enrolled: number; errors: number };
+  } | null>(null);
 
   const fetchConfig = useCallback(async () => {
     setLoading(true);
@@ -89,31 +109,50 @@ export default function AutoDiscoveryConfig() {
   const handleRunNow = async () => {
     setRunning(true);
     setRunResult(null);
+    setProgress(null);
     try {
       const res = await fetch('/api/admin/church-outreach/auto-discovery', {
         method: 'POST',
         credentials: 'include',
       });
       if (!res.ok) throw new Error('Run failed');
-      const data = await res.json();
-      const s = data.stats;
-      setRunResult(`Discovered: ${s.discovered}, Imported: ${s.imported}, Enrolled: ${s.enrolled}, Errors: ${s.errors}`);
-    } catch (err) {
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No stream');
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse SSE lines
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.phase === 'done') {
+              const s = data.stats;
+              setRunResult(`Discovered: ${s.discovered}, Imported: ${s.imported}, Enrolled: ${s.enrolled}, Errors: ${s.errors}`);
+              setProgress(null);
+            } else if (data.phase === 'error') {
+              setRunResult(`Error: ${data.message}`);
+              setProgress(null);
+            } else {
+              setProgress(data);
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+    } catch {
       setRunResult('Run failed — check server logs');
+      setProgress(null);
     } finally {
       setRunning(false);
     }
-  };
-
-  const addLocation = () => {
-    if (!newLocation.trim() || !config) return;
-    setConfig({ ...config, target_locations: [...config.target_locations, newLocation.trim()] });
-    setNewLocation('');
-  };
-
-  const removeLocation = (idx: number) => {
-    if (!config) return;
-    setConfig({ ...config, target_locations: config.target_locations.filter((_, i) => i !== idx) });
   };
 
   return (
@@ -155,55 +194,25 @@ export default function AutoDiscoveryConfig() {
                 </span>
               </label>
 
-              {/* Target locations */}
+              {/* Search filters */}
               <div>
                 <label className="mb-1 block text-sm font-medium text-text dark:text-text-dark">
-                  Target Locations
+                  Search Filters
                 </label>
-                <div className="mb-2 flex flex-wrap gap-2">
-                  {config.target_locations.map((loc, idx) => (
-                    <span
-                      key={idx}
-                      className="flex items-center gap-1 rounded-full bg-surface-hover px-3 py-1 text-sm dark:bg-surface-hover-dark"
-                    >
-                      {loc}
-                      <button onClick={() => removeLocation(idx)} className="text-text-muted hover:text-red-500">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newLocation}
-                    onChange={(e) => setNewLocation(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addLocation()}
-                    placeholder="e.g., Austin, TX or 78701"
-                    className="flex-1 rounded-lg border border-border bg-surface-hover p-2 text-sm text-text dark:border-border-dark dark:bg-surface-hover-dark dark:text-text-dark"
-                  />
-                  <button
-                    onClick={addLocation}
-                    className="rounded-lg bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  value={config.search_filters}
+                  onChange={(e) => setConfig({ ...config, search_filters: e.target.value })}
+                  placeholder="e.g., baptist, youth ministry (optional — leave blank for all churches)"
+                  className="w-full rounded-lg border border-border bg-surface-hover p-2 text-sm text-text dark:border-border-dark dark:bg-surface-hover-dark dark:text-text-dark"
+                />
+                <p className="mt-1 text-xs text-text-muted dark:text-text-muted-dark">
+                  Searches churches across the United States. Add keywords to narrow results.
+                </p>
               </div>
 
               {/* Settings grid */}
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-text-muted dark:text-text-muted-dark">Radius (miles)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={config.radius_miles}
-                    onChange={(e) => setConfig({ ...config, radius_miles: parseInt(e.target.value) || 25 })}
-                    className="w-full rounded-lg border border-border bg-surface-hover p-2 text-sm dark:border-border-dark dark:bg-surface-hover-dark dark:text-text-dark"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-text-muted dark:text-text-muted-dark">Min Fit Score</label>
                   <input
@@ -211,7 +220,7 @@ export default function AutoDiscoveryConfig() {
                     min={1}
                     max={10}
                     value={config.min_fit_score}
-                    onChange={(e) => setConfig({ ...config, min_fit_score: parseInt(e.target.value) || 6 })}
+                    onChange={(e) => setConfig({ ...config, min_fit_score: parseInt(e.target.value) || 8 })}
                     className="w-full rounded-lg border border-border bg-surface-hover p-2 text-sm dark:border-border-dark dark:bg-surface-hover-dark dark:text-text-dark"
                   />
                 </div>
@@ -227,15 +236,16 @@ export default function AutoDiscoveryConfig() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-text-muted dark:text-text-muted-dark">Run Hour (UTC)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={23}
-                    value={config.run_at_hour_utc}
-                    onChange={(e) => setConfig({ ...config, run_at_hour_utc: parseInt(e.target.value) || 6 })}
+                  <label className="mb-1 block text-xs font-medium text-text-muted dark:text-text-muted-dark">Run Time</label>
+                  <select
+                    value={utcToLocal(config.run_at_hour_utc)}
+                    onChange={(e) => setConfig({ ...config, run_at_hour_utc: localToUtc(parseInt(e.target.value)) })}
                     className="w-full rounded-lg border border-border bg-surface-hover p-2 text-sm dark:border-border-dark dark:bg-surface-hover-dark dark:text-text-dark"
-                  />
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>{formatHour(i)}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -281,13 +291,49 @@ export default function AutoDiscoveryConfig() {
                 </button>
                 <button
                   onClick={handleRunNow}
-                  disabled={running || !config.enabled || config.target_locations.length === 0}
+                  disabled={running || !config.enabled}
                   className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
                 >
                   {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                   Run Now
                 </button>
               </div>
+
+              {/* Progress indicator */}
+              {running && progress && (
+                <div className="rounded-lg border border-border bg-surface-hover p-4 dark:border-border-dark dark:bg-surface-hover-dark">
+                  <div className="mb-2 flex items-center justify-between text-sm">
+                    <span className="font-medium text-text dark:text-text-dark">{progress.message}</span>
+                    {progress.total > 0 && (
+                      <span className="text-xs text-text-muted dark:text-text-muted-dark">
+                        {progress.current}/{progress.total}
+                      </span>
+                    )}
+                  </div>
+                  {progress.total > 0 && (
+                    <div className="mb-3 h-2 overflow-hidden rounded-full bg-border dark:bg-border-dark">
+                      <div
+                        className={cn(
+                          'h-full rounded-full transition-all duration-500',
+                          progress.phase === 'researching' ? 'bg-purple-500' :
+                          progress.phase === 'scraping' ? 'bg-blue-500' :
+                          progress.phase === 'importing' ? 'bg-green-500' :
+                          progress.phase === 'email' ? 'bg-amber-500' :
+                          'bg-primary'
+                        )}
+                        style={{ width: `${Math.min(100, (progress.current / progress.total) * 100)}%` }}
+                      />
+                    </div>
+                  )}
+                  <div className="flex gap-4 text-xs text-text-muted dark:text-text-muted-dark">
+                    <span>Found: {progress.stats.discovered}</span>
+                    <span>Imported: {progress.stats.imported}</span>
+                    {progress.stats.errors > 0 && (
+                      <span className="text-red-500">Errors: {progress.stats.errors}</span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {runResult && (
                 <p className="rounded-lg bg-surface-hover p-3 text-sm text-text dark:bg-surface-hover-dark dark:text-text-dark">

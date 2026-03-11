@@ -599,3 +599,13 @@ Plans:
 *Phase 15 added: 2026-03-09 (Admin Church Outreach & Research Management)*
 *Phase 15 planned: 2026-03-09 (12 plans in 6 waves)*
 *Depth: Comprehensive (15 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category + content production + SMS notifications + user tutorial + church outreach CRM)*
+
+### Phase 15.1: Church Outreach Sample Request & Fulfillment (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 15
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 15.1 to break down)

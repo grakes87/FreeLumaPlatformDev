@@ -140,7 +140,7 @@ export function TopBar({ transparent = false }: TopBarProps) {
     >
       {/* Left: App logo + Translation selector */}
       <div className="flex items-center gap-2">
-        <a href="https://freelumabracelets.com" target="_blank" rel="noopener noreferrer">
+        <a href="https://freeluma.app" target="_blank" rel="noopener noreferrer">
           <Image
             src={logoSrc}
             alt="Free Luma"

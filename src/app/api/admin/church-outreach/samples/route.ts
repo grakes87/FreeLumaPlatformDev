@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { withAdmin, type AuthContext } from '@/lib/auth/middleware';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
 import { PIPELINE_STAGES, type PipelineStage } from '@/lib/db/models/Church';
-import { CARRIER_TYPES } from '@/lib/db/models/SampleShipment';
+import { CARRIER_TYPES, SHIPMENT_STATUSES } from '@/lib/db/models/SampleShipment';
 
 const createSampleSchema = z.object({
   churchId: z.number().int().positive(),
@@ -14,6 +14,7 @@ const createSampleSchema = z.object({
   quantity: z.number().int().positive().nullish(),
   shippingAddress: z.string().nullish(),
   notes: z.string().nullish(),
+  status: z.enum(SHIPMENT_STATUSES).optional().default('shipped'),
 });
 
 /**
@@ -36,12 +37,50 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
     const { Op } = await import('sequelize');
 
     const url = new URL(req.url);
+    const view = url.searchParams.get('view'); // 'pending_requests' to get churches awaiting shipment
+
+    // Special view: churches at sample_requested stage with no shipment
+    if (view === 'pending_requests') {
+      const { sequelize } = await import('@/lib/db');
+      const { QueryTypes } = await import('sequelize');
+
+      const requests = await sequelize.query<{
+        id: number;
+        shipment_id: number;
+        name: string;
+        pastor_name: string | null;
+        contact_email: string | null;
+        contact_phone: string | null;
+        address_line1: string | null;
+        shipping_address: string | null;
+        city: string | null;
+        state: string | null;
+        zip_code: string | null;
+        created_at: Date;
+        source: string;
+      }>(
+        `SELECT c.id, ss.id AS shipment_id, c.name, c.pastor_name, c.contact_email, c.contact_phone,
+                c.address_line1, ss.shipping_address, c.city, c.state, c.zip_code, ss.created_at, c.source
+         FROM sample_shipments ss
+         JOIN churches c ON c.id = ss.church_id
+         WHERE ss.status = 'pending'
+         ORDER BY ss.created_at DESC`,
+        { type: QueryTypes.SELECT }
+      );
+
+      return successResponse({ requests });
+    }
+
     const cursor = url.searchParams.get('cursor');
     const limit = Math.min(Number(url.searchParams.get('limit')) || 25, 100);
+    const status = url.searchParams.get('status');
 
     const where: Record<string, unknown> = {};
     if (cursor) {
       where.id = { [Op.lt]: Number(cursor) };
+    }
+    if (status && ['pending', 'shipped', 'delivered'].includes(status)) {
+      where.status = status;
     }
 
     const shipments = await SampleShipment.findAll({
@@ -50,7 +89,7 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
         {
           model: Church,
           as: 'church',
-          attributes: ['id', 'name', 'pipeline_stage'],
+          attributes: ['id', 'name', 'pipeline_stage', 'contact_email', 'city', 'state'],
         },
       ],
       order: [['ship_date', 'DESC'], ['id', 'DESC']],
@@ -82,7 +121,7 @@ export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => 
       return errorResponse(parsed.error.issues.map((e: { message: string }) => e.message).join(', '));
     }
 
-    const { churchId, shipDate, trackingNumber, carrier, braceletType, quantity, shippingAddress, notes } = parsed.data;
+    const { churchId, shipDate, trackingNumber, carrier, braceletType, quantity, shippingAddress, notes, status } = parsed.data;
 
     const { SampleShipment, Church, ChurchActivity } = await import('@/lib/db/models');
 
@@ -102,6 +141,7 @@ export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => 
       quantity: quantity ?? null,
       shipping_address: shippingAddress ?? null,
       notes: notes ?? null,
+      status: status!,
       created_by: context.user.id,
     });
 

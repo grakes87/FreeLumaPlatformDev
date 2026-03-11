@@ -1,7 +1,11 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 import { withAdmin, type AuthContext } from '@/lib/auth/middleware';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
+import { renderTemplate, renderSubject } from '@/lib/church-outreach/template-renderer';
+import { generatePersonalizedEmail } from '@/lib/church-outreach/ai-email-writer';
+import { seedDefaultTemplates } from '@/lib/church-outreach/default-templates';
 
 const importChurchSchema = z.object({
   placeId: z.string().max(255).nullish(),
@@ -11,26 +15,7 @@ const importChurchSchema = z.object({
   website: z.string().max(500).nullish(),
   lat: z.number().nullish(),
   lng: z.number().nullish(),
-  // AI research fields (optional, from ai-researcher)
-  pastor_name: z.string().nullish(),
-  contact_phone: z.string().nullish(),
-  contact_email: z.string().nullish(),
-  staff_members: z.array(z.object({ name: z.string(), role: z.string() })).nullish(),
-  denomination: z.string().nullish(),
-  congregation_size_estimate: z.string().nullish(),
-  youth_programs: z.array(z.string()).nullish(),
-  service_times: z.array(z.string()).nullish(),
-  social_media: z.record(z.string(), z.string()).nullish(),
-  summary: z.string().nullish(),
-  outreach_fit_score: z.number().nullish(),
-  outreach_fit_reason: z.string().nullish(),
-  has_youth_ministry: z.boolean().optional(),
-  has_young_adult_ministry: z.boolean().optional(),
-  has_small_groups: z.boolean().optional(),
-  has_missions_focus: z.boolean().optional(),
-  wasScraped: z.boolean().optional(),
-  wasResearched: z.boolean().optional(),
-});
+}).passthrough();
 
 const importBatchSchema = z.object({
   churches: z.array(importChurchSchema).min(1).max(100),
@@ -44,7 +29,7 @@ const importBatchSchema = z.object({
  */
 export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => {
   try {
-    const { Church, ChurchActivity } = await import('@/lib/db/models');
+    const { Church, ChurchActivity, OutreachTemplate, OutreachEmail } = await import('@/lib/db/models');
     const json = await req.json();
 
     const parsed = importBatchSchema.safeParse(json);
@@ -58,9 +43,19 @@ export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => 
 
     let imported = 0;
     let skipped = 0;
+    let emailsQueued = 0;
     const createdChurches: unknown[] = [];
 
-    for (const data of churchData) {
+    // Load default template for email generation (seed if none exist)
+    await seedDefaultTemplates();
+    const defaultTemplate = await OutreachTemplate.findOne({
+      where: { is_default: true },
+      order: [['id', 'ASC']],
+    });
+
+    for (const rawData of churchData) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = rawData as any;
       // Check for duplicate by google_place_id
       if (data.placeId) {
         const existing = await Church.findOne({
@@ -76,7 +71,9 @@ export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => 
       const addressParts = parseAddress(data.address || '');
 
       // Create church record
-      const staffNames = (data.staff_members as Array<{name: string; role: string}> | null | undefined)?.map((s) => `${s.name} (${s.role})`) || null;
+      const staffNames = Array.isArray(data.staff_members)
+        ? data.staff_members.filter((s: any) => s?.name).map((s: any) => `${s.name}${s.role ? ` (${s.role})` : ''}`)
+        : null;
 
       const church = await Church.create({
         google_place_id: data.placeId || null,
@@ -137,6 +134,74 @@ export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => 
         });
       }
 
+      // Generate AI email draft if church has contact_email and template exists
+      if (church.contact_email && defaultTemplate) {
+        try {
+          const churchData2 = {
+            name: church.name,
+            pastor_name: church.pastor_name,
+            city: church.city,
+            state: church.state,
+            denomination: church.denomination,
+            contact_email: church.contact_email,
+          };
+
+          const renderedHtml = renderTemplate(
+            defaultTemplate.html_body,
+            churchData2,
+            defaultTemplate.template_assets,
+          );
+          const renderedSubjectStr = renderSubject(defaultTemplate.subject, churchData2);
+
+          // AI personalization (falls back to template if AI unavailable)
+          let aiResult = { subject: renderedSubjectStr, html: renderedHtml };
+          try {
+            aiResult = await generatePersonalizedEmail(
+              {
+                name: church.name,
+                pastor_name: church.pastor_name,
+                denomination: church.denomination,
+                congregation_size_estimate: church.congregation_size_estimate,
+                city: church.city,
+                state: church.state,
+                youth_programs: church.youth_programs,
+                ai_summary: church.ai_summary,
+                outreach_fit_score: church.outreach_fit_score,
+                outreach_fit_reason: church.outreach_fit_reason,
+                has_youth_ministry: church.has_youth_ministry,
+                has_young_adult_ministry: church.has_young_adult_ministry,
+                has_small_groups: church.has_small_groups,
+                has_missions_focus: church.has_missions_focus,
+              },
+              renderedSubjectStr,
+              renderedHtml,
+              { stepOrder: 1, totalSteps: 1, sequenceName: 'Import Outreach' },
+              defaultTemplate.template_assets,
+            );
+          } catch (aiErr) {
+            console.warn(`[import] AI email generation failed for church ${church.id}, using template fallback`);
+          }
+
+          const trackingId = uuidv4();
+          await OutreachEmail.create({
+            church_id: church.id,
+            template_id: defaultTemplate.id,
+            to_email: church.contact_email,
+            subject: aiResult.subject,
+            status: 'pending_review',
+            tracking_id: trackingId,
+            rendered_html: renderedHtml,
+            ai_html: aiResult.html,
+            ai_subject: aiResult.subject,
+          });
+
+          emailsQueued++;
+        } catch (emailErr) {
+          console.error(`[import] Email generation failed for church ${church.id}:`, emailErr);
+          // Don't fail the import — church is already created
+        }
+      }
+
       createdChurches.push(church.toJSON());
       imported++;
     }
@@ -144,6 +209,7 @@ export const POST = withAdmin(async (req: NextRequest, context: AuthContext) => 
     return successResponse({
       imported,
       skipped,
+      emailsQueued,
       churches: createdChurches,
     }, 201);
   } catch (error) {

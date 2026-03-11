@@ -14,7 +14,57 @@ function getClientIP(req: NextRequest): string {
   );
 }
 
-const sampleRequestSchema = z.object({
+/**
+ * GET /api/sample-request?cid=<churchId>
+ * Load church info for the sample request form (public, limited fields).
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const cid = Number(new URL(req.url).searchParams.get('cid'));
+    if (!cid || isNaN(cid)) {
+      return errorResponse('Missing church ID', 400);
+    }
+
+    const church = await Church.findByPk(cid, {
+      attributes: ['id', 'name', 'pastor_name', 'contact_email', 'contact_phone',
+                   'address_line1', 'address_line2', 'city', 'state', 'zip_code'],
+    });
+
+    if (!church) {
+      return errorResponse('Church not found', 404);
+    }
+
+    return successResponse({
+      id: church.id,
+      name: church.name,
+      pastorName: church.pastor_name,
+      email: church.contact_email,
+      phone: church.contact_phone,
+      addressLine1: church.address_line1,
+      addressLine2: church.address_line2,
+      city: church.city,
+      state: church.state,
+      zipCode: church.zip_code,
+    });
+  } catch (error) {
+    return serverError(error, 'Failed to load church');
+  }
+}
+
+// Schema for submissions WITH a known church ID (from email CTA)
+const knownChurchSchema = z.object({
+  churchId: z.number().int().positive(),
+  addressLine1: z.string().min(2, 'Street address is required').max(255),
+  addressLine2: z.string().max(255).optional().or(z.literal('')),
+  city: z.string().min(2, 'City is required').max(100),
+  state: z.string().min(2, 'State is required').max(50),
+  zipCode: z.string().min(3, 'ZIP code is required').max(20),
+  phone: z.string().max(50).optional().or(z.literal('')),
+  honeypot: z.string().optional(),
+});
+
+// Schema for organic submissions (no church ID — new visitor)
+const newChurchSchema = z.object({
   churchName: z.string().min(2, 'Church name must be at least 2 characters').max(255),
   pastorName: z.string().min(2, 'Pastor/leader name must be at least 2 characters').max(255),
   email: z.string().email('Please enter a valid email address'),
@@ -30,7 +80,6 @@ const sampleRequestSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    // Rate limiting: 5 submissions per IP per hour
     const ip = getClientIP(req);
     const rateLimitResult = rateLimit(`sample-request:${ip}`, 5, 60 * 60 * 1000);
     if (!rateLimitResult.success) {
@@ -39,33 +88,85 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate input
-    const parsed = sampleRequestSchema.safeParse(body);
+    // ---- Known church flow (from email CTA with ?cid=) ----
+    if (body.churchId) {
+      const parsed = knownChurchSchema.safeParse(body);
+      if (!parsed.success) {
+        const firstError = parsed.error.issues[0];
+        return errorResponse(firstError?.message || 'Invalid input', 400);
+      }
+
+      if (parsed.data.honeypot) {
+        return successResponse({ success: true });
+      }
+
+      const { SampleShipment } = await import('@/lib/db/models');
+
+      const church = await Church.findByPk(parsed.data.churchId);
+      if (!church) {
+        return errorResponse('Church not found', 404);
+      }
+
+      // Update church shipping address
+      await church.update({
+        address_line1: parsed.data.addressLine1,
+        address_line2: parsed.data.addressLine2 || null,
+        city: parsed.data.city,
+        state: parsed.data.state,
+        zip_code: parsed.data.zipCode,
+        contact_phone: parsed.data.phone || church.contact_phone,
+        pipeline_stage: 'sample_requested',
+      });
+
+      // Create a pending sample shipment
+      const address = [
+        parsed.data.addressLine1,
+        parsed.data.addressLine2,
+        `${parsed.data.city}, ${parsed.data.state} ${parsed.data.zipCode}`,
+      ].filter(Boolean).join('\n');
+
+      await SampleShipment.create({
+        church_id: church.id,
+        ship_date: new Date().toISOString().slice(0, 10),
+        status: 'pending',
+        shipping_address: address,
+        created_by: null, // system-created (public form)
+      });
+
+      await ChurchActivity.create({
+        church_id: church.id,
+        activity_type: 'created',
+        description: 'Submitted sample request via email CTA',
+      });
+
+      // Confirmation email
+      try {
+        await sendConfirmationEmail(church.contact_email || '', church.name);
+      } catch {
+        // fire-and-forget
+      }
+
+      return successResponse({ success: true });
+    }
+
+    // ---- Organic flow (new visitor, no church ID) ----
+    const parsed = newChurchSchema.safeParse(body);
     if (!parsed.success) {
       const firstError = parsed.error.issues[0];
       return errorResponse(firstError?.message || 'Invalid input', 400);
     }
 
     const {
-      churchName,
-      pastorName,
-      email,
-      phone,
-      addressLine1,
-      addressLine2,
-      city,
-      state,
-      zipCode,
-      howHeardAboutUs,
-      honeypot,
+      churchName, pastorName, email, phone,
+      addressLine1, addressLine2, city, state, zipCode,
+      howHeardAboutUs, honeypot,
     } = parsed.data;
 
-    // Honeypot check: if filled, silently accept (don't reveal bot detection)
     if (honeypot) {
       return successResponse({ success: true });
     }
 
-    // Duplicate detection: church name LIKE match + same ZIP code
+    // Duplicate detection
     const existing = await Church.findOne({
       where: {
         name: { [Op.like]: `%${churchName}%` },
@@ -74,7 +175,6 @@ export async function POST(req: NextRequest) {
     });
 
     if (existing) {
-      // Don't create duplicate, but log the attempt
       await ChurchActivity.create({
         church_id: existing.id,
         activity_type: 'created',
@@ -82,17 +182,17 @@ export async function POST(req: NextRequest) {
         metadata: { email, pastorName, source: 'sample_request_duplicate' },
       });
 
-      // Still send confirmation email (submitter doesn't know about duplicate)
       try {
         await sendConfirmationEmail(email, churchName);
       } catch {
-        // Fire-and-forget: don't fail the request
+        // fire-and-forget
       }
 
       return successResponse({ success: true });
     }
 
-    // Create new church record
+    const { SampleShipment } = await import('@/lib/db/models');
+
     const church = await Church.create({
       name: churchName,
       pastor_name: pastorName,
@@ -108,18 +208,30 @@ export async function POST(req: NextRequest) {
       notes: howHeardAboutUs || null,
     });
 
-    // Log activity
+    // Create pending shipment
+    const address = [
+      addressLine1, addressLine2,
+      `${city}, ${state} ${zipCode}`,
+    ].filter(Boolean).join('\n');
+
+    await SampleShipment.create({
+      church_id: church.id,
+      ship_date: new Date().toISOString().slice(0, 10),
+      status: 'pending',
+      shipping_address: address,
+      created_by: 0,
+    });
+
     await ChurchActivity.create({
       church_id: church.id,
       activity_type: 'created',
       description: 'Submitted sample request via landing page',
     });
 
-    // Send confirmation email (fire-and-forget)
     try {
       await sendConfirmationEmail(email, churchName);
     } catch {
-      // Don't fail the request if email fails
+      // fire-and-forget
     }
 
     return successResponse({ success: true });
