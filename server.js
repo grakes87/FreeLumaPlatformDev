@@ -73,13 +73,18 @@ if (cluster.isPrimary) {
     httpServer.listen(0, () => {
       console.log(`> Worker ${process.pid} ready`);
 
-      // Only first worker (id=1) runs cron jobs to avoid duplicates
+      // Only first worker (id=1) runs cron jobs to avoid duplicates.
+      // IMPORTANT: This is the ONLY place schedulers should be initialized.
+      // Do NOT add scheduler init to setupNamespaces() or getIO() — those
+      // run on every worker and cause duplicate emails/tasks.
       if (cluster.worker?.id === 1) {
         setTimeout(() => {
           if (globalThis.__initEmailScheduler) globalThis.__initEmailScheduler();
           if (globalThis.__initAccountCleanup) globalThis.__initAccountCleanup();
           if (globalThis.__initDripScheduler) globalThis.__initDripScheduler();
           if (globalThis.__initAutoDiscoveryScheduler) globalThis.__initAutoDiscoveryScheduler();
+          if (globalThis.__initSampleFollowUpScheduler) globalThis.__initSampleFollowUpScheduler();
+          if (globalThis.__initWorkshopCrons) globalThis.__initWorkshopCrons();
           console.log(`> Worker ${process.pid}: cron schedulers started`);
         }, 5000);
       }

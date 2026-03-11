@@ -75,30 +75,10 @@ function setupNamespaces(io: SocketIOServer): void {
     globalThis.__ioNamespacesReady = true;
   }
 
-  // Initialize cron job schedulers (idempotent — safe to call multiple times)
-  import('@/lib/email/scheduler').then(({ initEmailScheduler }) => {
-    initEmailScheduler();
-  }).catch((err) => {
-    console.error('[Socket] Failed to initialize email scheduler:', err);
-  });
-
-  import('@/lib/cron/accountCleanup').then(({ initAccountCleanup }) => {
-    initAccountCleanup();
-  }).catch((err) => {
-    console.error('[Socket] Failed to initialize account cleanup:', err);
-  });
-
-  import('@/lib/workshop/reminders').then(({ initWorkshopCrons }) => {
-    initWorkshopCrons();
-  }).catch((err) => {
-    console.error('[Socket] Failed to initialize workshop crons:', err);
-  });
-
-  import('@/lib/church-outreach/auto-discovery-scheduler').then(({ initAutoDiscoveryScheduler }) => {
-    initAutoDiscoveryScheduler();
-  }).catch((err) => {
-    console.error('[Socket] Failed to initialize auto-discovery scheduler:', err);
-  });
+  // NOTE: Cron schedulers are initialized ONLY from server.js on worker #1
+  // (cluster.worker.id === 1) to prevent duplicate execution across workers.
+  // Do NOT initialize schedulers here — getIO()/setupNamespaces() runs on
+  // every worker, which caused duplicate emails in production.
 }
 
 /**
