@@ -26,6 +26,12 @@ const AutoDiscoveryConfig = lazy(
 const TemplateManager = lazy(
   () => import('@/components/admin/church-outreach/TemplateManager')
 );
+const SamplesTab = lazy(
+  () => import('@/components/admin/church-outreach/SamplesTab')
+);
+const UnsubscribedTab = lazy(
+  () => import('@/components/admin/church-outreach/UnsubscribedTab')
+);
 
 type TabKey =
   | 'dashboard'
@@ -33,13 +39,17 @@ type TabKey =
   | 'pipeline'
   | 'sequences'
   | 'templates'
-  | 'review';
+  | 'review'
+  | 'samples'
+  | 'unsubscribed';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'discovery', label: 'Discovery' },
   { key: 'review', label: 'Review Queue' },
   { key: 'pipeline', label: 'Pipeline' },
+  { key: 'samples', label: 'Samples' },
+  { key: 'unsubscribed', label: 'Unsubscribed' },
   { key: 'templates', label: 'Templates' },
   { key: 'sequences', label: 'Sequences' },
 ];
@@ -111,6 +121,8 @@ export default function ChurchOutreachPage() {
         {activeTab === 'templates' && <TemplateManager />}
         {activeTab === 'sequences' && <SequenceManager />}
         {activeTab === 'review' && <ReviewQueue />}
+        {activeTab === 'samples' && <SamplesTab />}
+        {activeTab === 'unsubscribed' && <UnsubscribedTab />}
       </Suspense>
     </div>
   );

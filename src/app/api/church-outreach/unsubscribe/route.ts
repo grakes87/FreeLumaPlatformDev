@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const normalizedEmail = email.toLowerCase().trim();
 
   try {
-    const { OutreachUnsubscribe, Church, DripEnrollment } =
+    const { OutreachUnsubscribe, Church, DripEnrollment, ChurchActivity } =
       await import('@/lib/db/models');
     const { Op } = await import('sequelize');
 
@@ -35,37 +35,44 @@ export async function GET(req: NextRequest) {
     });
 
     // Try to find the church by contact_email and set church_id if not already set
-    if (!unsub.church_id) {
+    let churchId = unsub.church_id;
+    if (!churchId) {
       const church = await Church.findOne({
         where: { contact_email: normalizedEmail },
         attributes: ['id'],
       });
 
       if (church) {
+        churchId = church.id;
         await unsub.update({ church_id: church.id });
-
-        // Cancel any active drip enrollments for this church
-        await DripEnrollment.update(
-          { status: 'cancelled', next_step_at: null },
-          {
-            where: {
-              church_id: church.id,
-              status: { [Op.in]: ['active', 'paused'] },
-            },
-          }
-        );
       }
-    } else {
-      // Church ID already set -- still cancel any active enrollments
+    }
+
+    if (churchId) {
+      // Set pipeline_stage to 'unsubscribed'
+      await Church.update(
+        { pipeline_stage: 'unsubscribed' },
+        { where: { id: churchId } }
+      );
+
+      // Cancel any active drip enrollments
       await DripEnrollment.update(
         { status: 'cancelled', next_step_at: null },
         {
           where: {
-            church_id: unsub.church_id,
+            church_id: churchId,
             status: { [Op.in]: ['active', 'paused'] },
           },
         }
       );
+
+      // Log activity
+      await ChurchActivity.create({
+        church_id: churchId,
+        activity_type: 'stage_change',
+        description: 'Church unsubscribed via email link',
+        metadata: { from_stage: 'unknown', to_stage: 'unsubscribed' },
+      });
     }
 
     const message = created

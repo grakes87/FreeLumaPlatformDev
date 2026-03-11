@@ -4,7 +4,12 @@ import { rewriteLinksForTracking, getTrackingPixel } from './tracking';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://freeluma.app';
 
 const OUTREACH_FROM = {
-  email: process.env.OUTREACH_EMAIL_FROM || 'outreach@freelumabracelets.com',
+  email: process.env.OUTREACH_EMAIL_FROM || 'orders@freeluma.com',
+  name: process.env.OUTREACH_EMAIL_FROM_NAME || 'Free Luma Bracelets',
+};
+
+const OUTREACH_REPLY_TO = {
+  email: process.env.OUTREACH_REPLY_TO || 'outreach@freeluma.com',
   name: process.env.OUTREACH_EMAIL_FROM_NAME || 'Free Luma Bracelets',
 };
 
@@ -69,6 +74,7 @@ export async function sendOutreachEmail(params: OutreachEmailParams): Promise<vo
     await sgMail.send({
       to,
       from: OUTREACH_FROM,
+      replyTo: OUTREACH_REPLY_TO,
       subject,
       html: trackedHtml,
       headers: {
@@ -115,6 +121,9 @@ export async function sendConfirmationEmail(to: string, churchName: string): Pro
       </p>
       <div style="margin-top:40px;padding-top:20px;border-top:1px solid #e0e0e0;font-size:12px;color:#888;text-align:center;">
         <p>${PHYSICAL_ADDRESS}</p>
+        <p>
+          <a href="${APP_URL}/api/church-outreach/unsubscribe?email=${encodeURIComponent(to)}" style="color:#888;text-decoration:underline;">Unsubscribe from future emails</a>
+        </p>
       </div>
     </div>
   `;
@@ -129,6 +138,8 @@ export async function sendConfirmationEmail(to: string, churchName: string): Pro
     return;
   }
 
+  const unsubscribeUrl = `${APP_URL}/api/church-outreach/unsubscribe?email=${encodeURIComponent(to)}`;
+
   try {
     if (process.env.SENDGRID_API_KEY) {
       sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -137,8 +148,13 @@ export async function sendConfirmationEmail(to: string, churchName: string): Pro
     await sgMail.send({
       to,
       from: OUTREACH_FROM,
+      replyTo: OUTREACH_REPLY_TO,
       subject,
       html,
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
       trackingSettings: {
         clickTracking: { enable: false, enableText: false },
         openTracking: { enable: false },
@@ -148,6 +164,97 @@ export async function sendConfirmationEmail(to: string, churchName: string): Pro
     const sgError = error as { response?: { body?: unknown } };
     if (sgError.response?.body) {
       console.error('[Confirmation Email] SendGrid error details:', sgError.response.body);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Send a follow-up email 1 week after sample delivery.
+ * Asks for feedback and presents bulk order information.
+ */
+export async function sendFollowUpEmail(to: string, churchName: string, pastorName: string | null): Promise<void> {
+  const greeting = pastorName ? `Dear ${pastorName}` : `Dear ${churchName} Team`;
+  const subject = `How are your students enjoying the Luma Bracelets? - ${churchName}`;
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+      <h2 style="color:#333;">${greeting},</h2>
+      <p style="color:#555;line-height:1.6;">
+        It&rsquo;s been about a week since your Free Luma sample bracelets were delivered,
+        and we&rsquo;d love to hear how things are going!
+      </p>
+      <p style="color:#555;line-height:1.6;">
+        <strong>We&rsquo;d love your feedback:</strong>
+      </p>
+      <ul style="color:#555;line-height:1.8;">
+        <li>Have your students tried tapping their bracelets?</li>
+        <li>What has the response been like?</li>
+        <li>Is there anything we can improve?</li>
+      </ul>
+      <p style="color:#555;line-height:1.6;">
+        Simply reply to this email with your thoughts &mdash; we read every response.
+      </p>
+
+      <div style="margin:30px 0;padding:20px;background:#FFF7ED;border-radius:12px;border:1px solid #FDBA74;">
+        <h3 style="color:#C2410C;margin-top:0;">Ready to equip your whole youth group?</h3>
+        <p style="color:#555;line-height:1.6;margin-bottom:15px;">
+          We offer bulk orders at special church pricing. Whether you need 50 or 500 bracelets,
+          we&rsquo;ll work with you to find the right fit for your ministry.
+        </p>
+        <a href="mailto:outreach@freeluma.com?subject=Bulk%20Order%20Inquiry%20-%20${encodeURIComponent(churchName)}"
+           style="display:inline-block;background:#EA580C;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">
+          Inquire About Bulk Orders
+        </a>
+      </div>
+
+      <p style="color:#888;font-size:14px;margin-top:30px;">
+        &mdash; The Free Luma Bracelets Team
+      </p>
+      <div style="margin-top:40px;padding-top:20px;border-top:1px solid #e0e0e0;font-size:12px;color:#888;text-align:center;">
+        <p>${PHYSICAL_ADDRESS}</p>
+        <p>
+          <a href="${APP_URL}/api/church-outreach/unsubscribe?email=${encodeURIComponent(to)}" style="color:#888;text-decoration:underline;">Unsubscribe from future emails</a>
+        </p>
+      </div>
+    </div>
+  `;
+
+  // Dev fallback
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log('\n========== FOLLOW-UP EMAIL (SendGrid not configured) ==========');
+    console.log(`To: ${to}`);
+    console.log(`Subject: ${subject}`);
+    console.log(`Church: ${churchName}`);
+    console.log('================================================================\n');
+    return;
+  }
+
+  const unsubscribeUrl = `${APP_URL}/api/church-outreach/unsubscribe?email=${encodeURIComponent(to)}`;
+
+  try {
+    if (process.env.SENDGRID_API_KEY) {
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    }
+
+    await sgMail.send({
+      to,
+      from: OUTREACH_FROM,
+      replyTo: OUTREACH_REPLY_TO,
+      subject,
+      html,
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+      trackingSettings: {
+        clickTracking: { enable: false, enableText: false },
+        openTracking: { enable: false },
+      },
+    });
+  } catch (error: unknown) {
+    const sgError = error as { response?: { body?: unknown } };
+    if (sgError.response?.body) {
+      console.error('[Follow-up Email] SendGrid error details:', sgError.response.body);
     }
     throw error;
   }

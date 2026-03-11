@@ -1,7 +1,7 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../index';
 
-export const PIPELINE_STAGES = ['new_lead', 'contacted', 'engaged', 'sample_requested', 'sample_sent', 'converted', 'lost'] as const;
+export const PIPELINE_STAGES = ['new_lead', 'contacted', 'engaged', 'sample_requested', 'sample_sent', 'converted', 'lost', 'unsubscribed'] as const;
 export type PipelineStage = typeof PIPELINE_STAGES[number];
 
 export const CHURCH_SOURCES = ['google_places', 'manual', 'sample_request'] as const;
