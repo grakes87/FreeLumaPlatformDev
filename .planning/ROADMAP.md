@@ -581,7 +581,7 @@ Plans:
 
 Plans:
 - [x] 16-01-PLAN.md -- API + type changes: add devotional_reflection to 3 daily-posts API routes and DailyContentData TypeScript interface
-- [ ] 16-02-PLAN.md -- DevotionalSlide component + carousel integration: create DevotionalSlide with video bg + share button, conditionally insert into DailyPostCarousel with dynamic slide indexing
+- [x] 16-02-PLAN.md -- DevotionalSlide component + carousel integration: create DevotionalSlide with video bg + share button, conditionally insert into DailyPostCarousel with dynamic slide indexing
 
 ---
 *Roadmap created: 2026-02-11*
