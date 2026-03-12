@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
+import { resolveContentMode } from '@/lib/utils/constants';
 import { Op, literal } from 'sequelize';
 
 const createWorkshopSchema = z.object({
@@ -269,7 +270,7 @@ export const POST = withAuth(
         duration_minutes: data.duration_minutes ?? null,
         is_private: data.is_private ?? false,
         max_capacity: data.max_capacity ?? null,
-        mode: user.mode || 'bible',
+        mode: resolveContentMode(user.mode),
       });
 
       // Set agora_channel

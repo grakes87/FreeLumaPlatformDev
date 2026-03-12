@@ -10,6 +10,7 @@ import {
 } from '@/lib/db/models';
 import { checkAndFlag } from '@/lib/moderation/profanity';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
+import { resolveContentMode } from '@/lib/utils/constants';
 import { Op } from 'sequelize';
 
 const REPOST_BODY_MAX = 5000;
@@ -88,7 +89,7 @@ export const POST = withAuth(
         user_id: userId,
         body: censored,
         post_type: 'text',
-        mode: user.mode,
+        mode: resolveContentMode(user.mode),
         flagged,
       });
 

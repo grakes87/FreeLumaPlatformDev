@@ -12,7 +12,7 @@ const updateSettingsSchema = z.object({
   daily_reminder_time: z.string().regex(timeRegex, 'Invalid time format (HH:MM)').optional(),
   quiet_hours_start: z.string().regex(timeRegex, 'Invalid time format (HH:MM)').nullable().optional(),
   quiet_hours_end: z.string().regex(timeRegex, 'Invalid time format (HH:MM)').nullable().optional(),
-  mode: z.enum(['bible', 'positivity']).optional(),
+  mode: z.enum(['bible', 'positivity', 'both']).optional(),
   verse_mode: z.enum(['daily_verse', 'verse_by_category']).optional(),
   verse_category_id: z.union([z.number().int().positive(), z.null()]).optional(),
   language: z.enum(['en', 'es']).optional(),
@@ -151,7 +151,7 @@ export const PUT = withAuth(
       }> = {};
 
       const userFields: Partial<{
-        mode: 'bible' | 'positivity';
+        mode: 'bible' | 'positivity' | 'both';
         verse_mode: 'daily_verse' | 'verse_by_category';
         verse_category_id: number | null;
         language: 'en' | 'es';

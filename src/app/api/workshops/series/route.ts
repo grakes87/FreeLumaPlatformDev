@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth, type AuthContext } from '@/lib/auth/middleware';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
+import { resolveContentMode } from '@/lib/utils/constants';
 import { literal } from 'sequelize';
 
 // Validate HH:MM 24-hour format
@@ -190,7 +191,7 @@ export const POST = withAuth(
         until: until ? new Date(until) : undefined,
       });
 
-      const userMode = user.mode || 'bible';
+      const userMode = resolveContentMode(user.mode);
 
       // Create the series
       const series = await WorkshopSeries.create({

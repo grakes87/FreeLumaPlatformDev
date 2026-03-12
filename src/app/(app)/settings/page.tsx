@@ -27,6 +27,7 @@ import {
   Presentation,
   Play,
   Layers,
+  Combine,
   Smartphone,
   RotateCcw,
 } from 'lucide-react';
@@ -35,7 +36,7 @@ import { workshopLabel } from '@/lib/utils/workshopLabel';
 import { cn } from '@/lib/utils/cn';
 import { Card } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
-import { LANGUAGES, MODES, TIMEZONE_OPTIONS } from '@/lib/utils/constants';
+import { LANGUAGES, MODES, TIMEZONE_OPTIONS, type Mode } from '@/lib/utils/constants';
 import { StatsPage } from '@/components/settings/StatsPage';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { ConnectedAccountsSection } from '@/components/settings/ConnectedAccountsSection';
@@ -62,7 +63,7 @@ interface Settings {
   daily_reminder_time: string;
   quiet_hours_start: string | null;
   quiet_hours_end: string | null;
-  mode: 'bible' | 'positivity';
+  mode: 'bible' | 'positivity' | 'both';
   verse_mode: 'daily_verse' | 'verse_by_category';
   verse_category_id: number | null;
   language: 'en' | 'es';
@@ -110,10 +111,11 @@ const THEME_OPTIONS = [
 
 // ---- Mode Labels ----
 
-const MODE_CONFIG = {
+const MODE_CONFIG: Record<Mode, { label: string; description: string; icon: typeof BookOpen }> = {
   bible: { label: 'Bible', description: 'Daily verses and faith content', icon: BookOpen },
   positivity: { label: 'Positivity', description: 'Daily quotes and inspiration', icon: Sparkles },
-} as const;
+  both: { label: 'Both', description: 'Bible and Positivity content', icon: Combine },
+};
 
 const LANGUAGE_LABELS: Record<string, string> = {
   en: 'English',
@@ -133,7 +135,7 @@ export default function SettingsPage() {
   const [translations, setTranslations] = useState<TranslationOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [showModeConfirm, setShowModeConfirm] = useState<'bible' | 'positivity' | null>(null);
+  const [showModeConfirm, setShowModeConfirm] = useState<Mode | null>(null);
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -234,7 +236,7 @@ export default function SettingsPage() {
     await logout();
   };
 
-  const handleModeSwitch = (newMode: 'bible' | 'positivity') => {
+  const handleModeSwitch = (newMode: Mode) => {
     if (settings?.mode === newMode) return;
     setShowModeConfirm(newMode);
   };

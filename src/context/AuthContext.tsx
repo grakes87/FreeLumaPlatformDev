@@ -19,7 +19,7 @@ export interface UserData {
   avatar_url: string | null;
   avatar_color: string;
   bio: string | null;
-  mode: 'bible' | 'positivity';
+  mode: 'bible' | 'positivity' | 'both';
   status: 'active' | 'deactivated' | 'pending_deletion' | 'banned';
   email_verified: boolean;
   onboarding_complete: boolean;

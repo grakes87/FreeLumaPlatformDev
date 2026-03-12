@@ -9,6 +9,7 @@ import {
 } from '@/lib/db/models';
 import { checkAndFlag } from '@/lib/moderation/profanity';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
+import { resolveContentMode } from '@/lib/utils/constants';
 
 const POST_BODY_MAX = 5000;
 
@@ -64,7 +65,7 @@ export const POST = withAuth(
         body,
         post_type,
         visibility,
-        mode: user.mode,
+        mode: resolveContentMode(user.mode),
         is_anonymous,
         flagged: profanityResult.flagged,
       });

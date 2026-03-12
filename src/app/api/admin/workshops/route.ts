@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Op } from 'sequelize';
 import { withAdmin, type AuthContext } from '@/lib/auth/middleware';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
+import { resolveContentMode } from '@/lib/utils/constants';
 
 /**
  * GET /api/admin/workshops - List all workshops with filters (admin only)
@@ -250,7 +251,7 @@ export const PUT = withAdmin(async (req: NextRequest, context: AuthContext) => {
         await hostUser.update({ can_host: true });
       }
 
-      const workshopMode = mode || hostUser.mode || 'bible';
+      const workshopMode = resolveContentMode(mode || hostUser.mode);
 
       if (is_recurring) {
         // Create recurring workshop series

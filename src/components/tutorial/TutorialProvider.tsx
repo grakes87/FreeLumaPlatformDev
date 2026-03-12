@@ -23,7 +23,7 @@ export interface TutorialContextValue {
   phase: TutorialPhase;
   currentStep: number;
   totalSteps: number;
-  userMode: 'bible' | 'positivity';
+  userMode: 'bible' | 'positivity' | 'both';
   advance: () => void;
   skip: () => void;
   replay: () => void;

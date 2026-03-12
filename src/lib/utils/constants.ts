@@ -1,8 +1,16 @@
 export const TRANSLATIONS = ['KJV', 'NIV', 'NRSV', 'NAB'] as const;
 export type Translation = typeof TRANSLATIONS[number];
 
-export const MODES = ['bible', 'positivity'] as const;
+export const MODES = ['bible', 'positivity', 'both'] as const;
 export type Mode = typeof MODES[number];
+
+/** Concrete content mode -- used by Posts, Workshops, and other entities that belong to a single mode */
+export type ContentMode = 'bible' | 'positivity';
+
+/** Resolve a user mode to a concrete content mode (Both defaults to bible) */
+export function resolveContentMode(mode: Mode | string | undefined): ContentMode {
+  return mode === 'positivity' ? 'positivity' : 'bible';
+}
 
 export const LANGUAGES = ['en', 'es'] as const;
 export type Language = typeof LANGUAGES[number];
