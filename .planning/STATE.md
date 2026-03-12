@@ -38,7 +38,7 @@ Progress: [███████████████████████
 **Velocity:**
 - Total plans completed: 132
 - Average duration: 4 min
-- Total execution time: 591 min
+- Total execution time: 593 min
 
 **By Phase:**
 
@@ -59,10 +59,10 @@ Progress: [███████████████████████
 | 14-first-time-user-tutorial | 3/3 | 8 min | 3 min |
 | 15-admin-church-outreach | 11/12 | 85 min | 8 min |
 | 16-daily-content-devotional | 2/2 | 7 min | 4 min |
-| 17-both-mode | 3/6 | 7 min | 2 min |
+| 17-both-mode | 3/6 | 9 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 16-01 (2 min), 16-02 (5 min), 17-01 (6 min), 17-03 (1 min)
+- Last 5 plans: 16-02 (5 min), 17-01 (6 min), 17-02 (2 min), 17-03 (1 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -80,6 +80,7 @@ Recent decisions affecting current work:
 - **Old Code exclusion:** Added to tsconfig.json exclude and .gitignore
 - **Migration/seeder .cjs extension:** All Sequelize CLI migration and seeder files use .cjs extension for ESM package compatibility
 - **ContentMode type + resolveContentMode():** Use ContentMode ('bible'|'positivity') for entities that belong to a single mode; call resolveContentMode() when assigning user.mode to these entities (resolves 'both' to 'bible')
+- **ViewModeContext pattern:** useViewMode().effectiveMode replaces direct user?.mode reads for all rendering decisions; resolves 'both' to 'bible'|'positivity' via localStorage + URL; default context value safe for guests
 - **FK cascade strategy:** user_categories, user_settings, push_subscriptions CASCADE on user delete; activation_codes SET NULL on user delete
 - **Admin dev password:** "AdminDev123!" hashed with bcryptjs (12 rounds) for seeded admin user
 - **cn() utility pattern:** All UI components use `cn()` from `@/lib/utils/cn` for Tailwind class merging (clsx + tailwind-merge)
