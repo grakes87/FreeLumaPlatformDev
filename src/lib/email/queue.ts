@@ -447,7 +447,7 @@ export async function processDailyReminders(): Promise<void> {
 
   // Get all users with daily reminder enabled
   const users = await User.findAll({
-    attributes: ['id', 'email', 'display_name', 'mode', 'timezone'],
+    attributes: ['id', 'email', 'display_name', 'mode', 'timezone', 'language'],
     include: [{
       model: UserSetting,
       as: 'settings',
@@ -468,16 +468,18 @@ export async function processDailyReminders(): Promise<void> {
 
   // Get today's daily content for both modes
   const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
-  const [bibleContent, positivityContent] = await Promise.all([
-    DailyContent.findOne({
-      where: { post_date: today, mode: 'bible', published: true },
-      raw: true,
-    }),
-    DailyContent.findOne({
-      where: { post_date: today, mode: 'positivity', published: true },
-      raw: true,
-    }),
+  const [bibleEn, bibleEs, positivityEn, positivityEs] = await Promise.all([
+    DailyContent.findOne({ where: { post_date: today, mode: 'bible', language: 'en', published: true }, raw: true }),
+    DailyContent.findOne({ where: { post_date: today, mode: 'bible', language: 'es', published: true }, raw: true }),
+    DailyContent.findOne({ where: { post_date: today, mode: 'positivity', language: 'en', published: true }, raw: true }),
+    DailyContent.findOne({ where: { post_date: today, mode: 'positivity', language: 'es', published: true }, raw: true }),
   ]);
+
+  // Build lookup map: contentMap[mode][language] → DailyContent
+  const contentMap: Record<string, Record<string, typeof bibleEn>> = {
+    bible: { en: bibleEn, es: bibleEs },
+    positivity: { en: positivityEn, es: positivityEs },
+  };
 
   // Build set of user IDs who already received a daily_reminder today (dedup safety net)
   const startOfDay = new Date(now);
@@ -497,6 +499,7 @@ export async function processDailyReminders(): Promise<void> {
     email: string;
     display_name: string;
     mode: 'bible' | 'positivity';
+    language: 'en' | 'es';
     timezone: string | null;
     settings: {
       email_daily_reminder: boolean;
@@ -534,8 +537,9 @@ export async function processDailyReminders(): Promise<void> {
       // Dedup: skip if already sent today
       if (sentToday.has(user.id)) continue;
 
-      // Get the daily content matching the user's mode
-      const content = user.mode === 'bible' ? bibleContent : positivityContent;
+      // Match user's mode AND language, fall back to English if no localized content
+      const userLang = user.language || 'en';
+      const content = contentMap[user.mode]?.[userLang] || contentMap[user.mode]?.['en'];
       if (!content) continue;
 
       const trackingId = generateTrackingId();
