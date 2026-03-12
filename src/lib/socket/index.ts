@@ -1,4 +1,3 @@
-import cluster from 'node:cluster';
 import { Server as SocketIOServer } from 'socket.io';
 import type { Namespace } from 'socket.io';
 import { authMiddleware } from '@/lib/socket/auth';
@@ -15,48 +14,6 @@ declare global {
   var __ioNamespacesReady: boolean | undefined;
   // eslint-disable-next-line no-var
   var __cronSchedulersStarted: boolean | undefined;
-}
-
-/**
- * Initialize all cron schedulers via dynamic imports.
- * Guarded: only runs on cluster worker #1 (or non-clustered dev).
- * Each scheduler has its own idempotency guard as well.
- */
-async function initCronSchedulers(): Promise<void> {
-  if (globalThis.__cronSchedulersStarted) return;
-  globalThis.__cronSchedulersStarted = true;
-
-  try {
-    const { initEmailScheduler } = await import('@/lib/email/scheduler');
-    initEmailScheduler();
-  } catch (err) { console.error('[Cron] Email scheduler init failed:', err); }
-
-  try {
-    const { initAccountCleanup } = await import('@/lib/cron/accountCleanup');
-    initAccountCleanup();
-  } catch (err) { console.error('[Cron] Account cleanup init failed:', err); }
-
-  try {
-    const { initDripScheduler } = await import('@/lib/church-outreach/drip-scheduler');
-    initDripScheduler();
-  } catch (err) { console.error('[Cron] Drip scheduler init failed:', err); }
-
-  try {
-    const { initAutoDiscoveryScheduler } = await import('@/lib/church-outreach/auto-discovery-scheduler');
-    initAutoDiscoveryScheduler();
-  } catch (err) { console.error('[Cron] Auto-discovery init failed:', err); }
-
-  try {
-    const { initSampleFollowUpScheduler } = await import('@/lib/church-outreach/sample-followup-scheduler');
-    initSampleFollowUpScheduler();
-  } catch (err) { console.error('[Cron] Sample follow-up init failed:', err); }
-
-  try {
-    const { initWorkshopCrons } = await import('@/lib/workshop/reminders');
-    initWorkshopCrons();
-  } catch (err) { console.error('[Cron] Workshop crons init failed:', err); }
-
-  console.log('[Cron] All schedulers initialized on worker #1');
 }
 
 let namespacesReady = false;
@@ -120,13 +77,6 @@ function setupNamespaces(io: SocketIOServer): void {
     globalThis.__ioNamespacesReady = true;
   }
 
-  // Initialize cron schedulers ONLY on worker #1 (or non-clustered dev).
-  // setupNamespaces() runs on every worker, but the worker-1 guard +
-  // globalThis.__cronSchedulersStarted ensure schedulers start exactly once.
-  const isWorkerOne = !cluster.worker || cluster.worker.id === 1;
-  if (isWorkerOne) {
-    initCronSchedulers();
-  }
 }
 
 /**

@@ -73,9 +73,16 @@ if (cluster.isPrimary) {
     httpServer.listen(0, () => {
       console.log(`> Worker ${process.pid} ready`);
 
-      // Cron schedulers (email, cleanup, workshops, etc.) are initialized
-      // in src/lib/socket/index.ts setupNamespaces() with a worker-1 guard.
-      // They use dynamic imports that go through Next.js module resolution.
+      // Only worker #1 initializes cron schedulers (email, cleanup, etc.)
+      // via an internal API call that runs inside Next.js module resolution.
+      if (cluster.worker?.id === 1) {
+        setTimeout(() => {
+          fetch(`http://127.0.0.1:${port}/api/cron-init`)
+            .then(r => r.json())
+            .then(r => console.log(`> Worker ${process.pid}: cron init response:`, r))
+            .catch(err => console.error(`> Worker ${process.pid}: cron init failed:`, err));
+        }, 5000);
+      }
     });
   });
 }
