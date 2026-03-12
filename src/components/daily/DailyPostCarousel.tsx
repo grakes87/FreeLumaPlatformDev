@@ -250,6 +250,7 @@ function CarouselSwiper({
           isActive={isActive && activeSlide === 0}
           feedMode={feedMode}
           previewMode={previewMode}
+          showModeToggle
         />
       </SwiperSlide>
 

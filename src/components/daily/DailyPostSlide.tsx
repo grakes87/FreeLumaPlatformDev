@@ -14,6 +14,7 @@ import { ReactionPicker } from './ReactionPicker';
 import { QuickReactionPicker } from './QuickReactionPicker';
 import { CommentBottomSheet } from './CommentBottomSheet';
 import { CommentThread } from './CommentThread';
+import { ModePillToggle } from './ModePillToggle';
 
 interface DailyPostSlideProps {
   content: DailyContentData;
@@ -22,6 +23,8 @@ interface DailyPostSlideProps {
   feedMode?: boolean;
   /** When true, always show full date (skip "Today"/"Yesterday" labels) */
   previewMode?: boolean;
+  /** When true, render ModePillToggle at top of slide (Both-mode users only) */
+  showModeToggle?: boolean;
 }
 
 export function DailyPostSlide({
@@ -30,6 +33,7 @@ export function DailyPostSlide({
   isActive = true,
   feedMode = false,
   previewMode = false,
+  showModeToggle = false,
 }: DailyPostSlideProps) {
   const bgVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -178,8 +182,10 @@ export function DailyPostSlide({
           paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 2.5rem)',
         }}
       >
-        {/* Top spacer (keeps vertical centering balanced) */}
-        <div />
+        {/* Top: Mode toggle for Both users (first slide only) */}
+        <div className="flex justify-center">
+          {showModeToggle && <ModePillToggle />}
+        </div>
 
         {/* Center: Labels + Verse grouped together */}
         <div ref={verseCenterRef} className="flex max-w-lg flex-col items-center gap-4 text-center overflow-hidden">
