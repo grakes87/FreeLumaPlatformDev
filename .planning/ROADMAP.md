@@ -609,7 +609,7 @@ Plans:
 - [ ] 17-02-PLAN.md -- ViewModeContext + layout integration + update 5 consumer components (BottomNav, TopBar, CreatePicker, DailyFeed, TutorialProvider)
 - [ ] 17-03-PLAN.md -- Settings page Both option + onboarding mode mention
 - [ ] 17-04-PLAN.md -- ModePillToggle component + DailyPostSlide/Carousel integration
-- [ ] 17-05-PLAN.md -- Dual notification dispatch (email + SMS) for Both users
+- [x] 17-05-PLAN.md -- Dual notification dispatch (email + SMS) for Both users
 - [ ] 17-06-PLAN.md -- Build verification + human verification checkpoint
 
 ---
