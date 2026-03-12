@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 15: Admin Church Outreach & Research Management** - Church discovery via Google Places, AI research pipeline, outreach email system with templates, drip sequences, kanban pipeline, sample request fulfillment
 - [x] **Phase 16: Daily Content Devotional** - Daily content devotional improvements (completed 2026-03-11)
 - [x] **Phase 17: Both Mode** - URL-driven daily content without mode switching (completed 2026-03-12)
-- [ ] **Phase 18: Fix Both-mode API Routes** - Apply resolveContentMode() to daily-posts and feed routes broken for Both-mode users
+- [x] **Phase 18: Fix Both-mode API Routes** - Apply resolveContentMode() to daily-posts and feed routes broken for Both-mode users
 - [ ] **Phase 19: Daily Content Bookmarks** - Add bookmark button to DailyPostSlide, extend useBookmark hook for daily_content_id
 - [ ] **Phase 20: Migration Formal Closure** - Verify/close orphaned Phase 7 migration requirements via import script evidence
 
@@ -636,7 +636,7 @@ Plans:
 **Plans:** 2 plans in 1 wave
 
 Plans:
-- [ ] 18-01-PLAN.md — Fix daily-posts API routes (resolveContentMode + mode query param) + useDailyContent hook wiring
+- [x] 18-01-PLAN.md — Fix daily-posts API routes (resolveContentMode + mode query param) + useDailyContent hook wiring
 - [x] 18-02-PLAN.md — Fix social/feed mode isolation + workshops + announcements for Both-mode users
 
 ### Phase 19: Daily Content Bookmarks

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 18-02-PLAN.md (Both-mode API route fixes)
-last_updated: "2026-03-12T20:35:16Z"
-last_activity: 2026-03-12 — Completed 18-02-PLAN.md (Both-mode API route fixes)
+stopped_at: Completed 18-01-PLAN.md (Fix Both-mode daily-posts API routes) -- Phase 18 complete
+last_updated: "2026-03-12T20:36:00Z"
+last_activity: 2026-03-12 — Completed 18-01-PLAN.md (Fix Both-mode daily-posts API routes)
 progress:
   total_phases: 18
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 138
-  completed_plans: 135
-  percent: 98
+  completed_plans: 136
+  percent: 99
 ---
 
 # Project State
@@ -22,16 +22,16 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Daily inspirational content delivery and faith-based community connection — users come back every day for their daily post and stay to engage with their community.
 
-**Current focus:** Phase 18 — Fix Both-mode API Routes (social/feed mode isolation + workshops/announcements content filtering)
+**Current focus:** Phase 18 — Fix Both-mode API Routes -- COMPLETE
 
 ## Current Position
 
 Phase: 18 of 18 (Fix Both-mode API Routes)
-Plan: 2 of 3 complete
-Status: In progress
-Last activity: 2026-03-12 — Completed 18-02-PLAN.md (Both-mode API route fixes)
+Plan: 2 of 2 complete
+Status: Phase complete
+Last activity: 2026-03-12 — Completed 18-01-PLAN.md (Fix Both-mode daily-posts API routes)
 
-Progress: [████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████░░░░] 135/138 plans (98%)
+Progress: [██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████░░] 136/138 plans (99%)
 
 ## Performance Metrics
 
@@ -60,7 +60,7 @@ Progress: [███████████████████████
 | 15-admin-church-outreach | 11/12 | 85 min | 8 min |
 | 16-daily-content-devotional | 2/2 | 7 min | 4 min |
 | 17-both-mode | 6/6 | 16 min | 3 min |
-| 18-fix-both-mode-api-routes | 2/3 | 2 min | 1 min |
+| 18-fix-both-mode-api-routes | 2/2 | 4 min | 2 min |
 
 **Recent Trend:**
 - Last 5 plans: 17-02 (2 min), 17-03 (1 min), 17-04 (2 min), 17-05 (3 min), 17-06 (2 min)
@@ -414,6 +414,8 @@ Recent decisions affecting current work:
 - **Both-mode mode isolation bypass:** `currentUser.mode !== 'both'` guard before mode isolation filter in social routes — Both users bypass entirely (see all modes)
 - **Both-mode workshop expansion:** `Op.in(['bible','positivity'])` for WHERE mode clause when user.mode='both' (workshops never have mode='both')
 - **Both-mode announcement expansion:** `targetModes = userMode === 'both' ? ['all','bible','positivity'] : ['all',userMode]` for announcement target_mode filter
+- **resolveContentMode daily route pattern:** Both daily-posts API routes use resolveContentMode(user.mode) as fallback; accept optional ?mode= param (validated to 'bible'|'positivity' only) for Both-user frontend override
+- **useDailyContent mode param:** Optional mode parameter added to useDailyContent(date?, mode?); appended as &mode= to fetch URL; SingleDayCarousel passes effectiveMode from ViewModeContext
 
 ### Roadmap Evolution
 
@@ -494,6 +496,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T20:35:16Z
-Stopped at: Completed 18-02-PLAN.md (Both-mode API route fixes)
+Last session: 2026-03-12T20:36:00Z
+Stopped at: Completed 18-01-PLAN.md (Fix Both-mode daily-posts API routes) -- Phase 18 complete
 Resume file: None
