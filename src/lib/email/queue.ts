@@ -219,12 +219,12 @@ export async function processDMEmailBatch(): Promise<void> {
       // Skip if recipient is online
       if (presenceManager.isOnline(batch.recipient_id)) continue;
 
-      // Check if we already sent a DM email for this sender recently (last 30 min)
+      // Check if we already sent a DM email for this recipient recently (last 24h)
       const recentEmailSent = await EmailLog.count({
         where: {
           recipient_id: batch.recipient_id,
           email_type: 'dm_batch',
-          created_at: { [Op.gte]: new Date(Date.now() - 30 * 60 * 1000) },
+          created_at: { [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) },
         },
       });
       if (recentEmailSent > 0) continue;
@@ -327,12 +327,12 @@ export async function processReactionCommentBatch(): Promise<void> {
       // Skip if recipient is online
       if (presenceManager.isOnline(batch.recipient_id)) continue;
 
-      // Check if we already sent a reaction_comment_batch email recently (last 30 min)
+      // Check if we already sent a reaction_comment_batch email recently (last 24h)
       const recentEmailSent = await EmailLog.count({
         where: {
           recipient_id: batch.recipient_id,
           email_type: 'reaction_comment_batch',
-          created_at: { [Op.gte]: new Date(Date.now() - 30 * 60 * 1000) },
+          created_at: { [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) },
         },
       });
       if (recentEmailSent > 0) continue;
