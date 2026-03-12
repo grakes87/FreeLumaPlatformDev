@@ -22,7 +22,8 @@ export async function sendEmail(
   to: string,
   subject: string,
   html: string,
-  headers?: Record<string, string>
+  headers?: Record<string, string>,
+  bcc?: string | string[]
 ): Promise<void> {
   // Dev fallback: log email to console if SendGrid not configured
   if (!process.env.SENDGRID_API_KEY) {
@@ -67,12 +68,16 @@ export async function sendEmail(
   }
 
   try {
+    if (bcc) {
+      console.log(`[Email] Sending to ${to} with BCC: ${JSON.stringify(bcc)}`);
+    }
     await sgMail.send({
       to,
       from: { email: process.env.EMAIL_FROM || 'orders@freeluma.com', name: 'Free Luma' },
       subject,
       html,
       headers,
+      ...(bcc && { bcc }),
       trackingSettings: {
         clickTracking: { enable: false, enableText: false },
         openTracking: { enable: false },
@@ -89,11 +94,12 @@ export async function sendEmail(
 
 export async function sendPasswordResetEmail(
   to: string,
-  token: string
+  token: string,
+  bcc?: string | string[]
 ): Promise<void> {
   const resetUrl = `${APP_URL}/reset-password?token=${token}`;
   const html = passwordResetTemplate(resetUrl);
-  await sendEmail(to, 'Reset Your Password - Free Luma', html);
+  await sendEmail(to, 'Reset Your Password - Free Luma', html, undefined, bcc);
 }
 
 export async function sendVerificationEmail(
