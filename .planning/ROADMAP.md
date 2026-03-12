@@ -583,6 +583,35 @@ Plans:
 - [x] 16-01-PLAN.md -- API + type changes: add devotional_reflection to 3 daily-posts API routes and DailyContentData TypeScript interface
 - [x] 16-02-PLAN.md -- DevotionalSlide component + carousel integration: create DevotionalSlide with video bg + share button, conditionally insert into DailyPostCarousel with dynamic slide indexing
 
+### Phase 17: Both Mode - URL-driven daily content without mode switching
+
+**Goal:** Add a third "Both" mode option so users can access Bible and Positivity daily content via a pill toggle on the daily feed, with URL-driven initial mode, full UX switching (nav, tabs, content), localStorage persistence, and dual daily reminder notifications (email + SMS) for Both users.
+
+**Requirements**: None (feature enhancement phase)
+
+**Depends on:** Phase 16
+
+**Success Criteria** (what must be TRUE):
+  1. Users can select "Both" mode in Settings (not available during signup)
+  2. Both-mode users see a pill toggle (Bible / Positivity) on daily content first slide
+  3. Toggling modes reloads the entire daily feed in the new mode
+  4. Full UX switches: Prayer Wall tab, nav icons, verse-by-category all respect active view mode
+  5. Active view mode persists in localStorage across page refreshes
+  6. URL / loads Bible, /positivity loads Positivity for Both users
+  7. Both users receive two daily reminder notifications (email + SMS) per channel
+  8. Bible-only and Positivity-only users see zero behavioral changes
+  9. Onboarding mentions Both availability in Settings
+
+**Plans:** 6 plans in 4 waves
+
+Plans:
+- [ ] 17-01-PLAN.md -- Database migration (add 'both' to ENUM), TypeScript type updates, Settings API validation
+- [ ] 17-02-PLAN.md -- ViewModeContext + layout integration + update 5 consumer components (BottomNav, TopBar, CreatePicker, DailyFeed, TutorialProvider)
+- [ ] 17-03-PLAN.md -- Settings page Both option + onboarding mode mention
+- [ ] 17-04-PLAN.md -- ModePillToggle component + DailyPostSlide/Carousel integration
+- [ ] 17-05-PLAN.md -- Dual notification dispatch (email + SMS) for Both users
+- [ ] 17-06-PLAN.md -- Build verification + human verification checkpoint
+
 ---
 *Roadmap created: 2026-02-11*
 *Phase 1 planned: 2026-02-11 (12 plans in 5 waves)*
@@ -612,6 +641,7 @@ Plans:
 *Phase 14 executed: 2026-02-20 (3 plans in 3 waves, 8 min)*
 *Phase 15 added: 2026-03-09 (Admin Church Outreach & Research Management)*
 *Phase 15 planned: 2026-03-09 (12 plans in 6 waves)*
+*Phase 17 planned: 2026-03-12 (6 plans in 4 waves)*
 *Depth: Comprehensive (15 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category + content production + SMS notifications + user tutorial + church outreach CRM)*
 
 ### Phase 15.1: Church Outreach Sample Request & Fulfillment (INSERTED)
