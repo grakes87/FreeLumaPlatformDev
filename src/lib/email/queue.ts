@@ -438,7 +438,8 @@ export async function processReactionCommentBatch(): Promise<void> {
  * in their reminder_timezone.
  */
 export async function processDailyReminders(): Promise<void> {
-  const { User, UserSetting, DailyContent } = await import('@/lib/db/models');
+  const { User, UserSetting, DailyContent, EmailLog } = await import('@/lib/db/models');
+  const { Op } = await import('sequelize');
 
   // Get current hour in different timezones by querying users
   // whose reminder time matches now in their timezone
@@ -478,6 +479,19 @@ export async function processDailyReminders(): Promise<void> {
     }),
   ]);
 
+  // Build set of user IDs who already received a daily_reminder today (dedup safety net)
+  const startOfDay = new Date(now);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  const alreadySent = await EmailLog.findAll({
+    attributes: ['recipient_id'],
+    where: {
+      email_type: 'daily_reminder',
+      sent_at: { [Op.gte]: startOfDay },
+    },
+    raw: true,
+  });
+  const sentToday = new Set((alreadySent as Array<{ recipient_id: number }>).map(r => r.recipient_id));
+
   for (const user of (users as unknown) as Array<{
     id: number;
     email: string;
@@ -516,6 +530,9 @@ export async function processDailyReminders(): Promise<void> {
       }
 
       if (userHour !== reminderH) continue;
+
+      // Dedup: skip if already sent today
+      if (sentToday.has(user.id)) continue;
 
       // Get the daily content matching the user's mode
       const content = user.mode === 'bible' ? bibleContent : positivityContent;
