@@ -1,0 +1,49 @@
+# AI-Generated Seed Users for Daily Content Engagement
+# Created: 2026-02-21
+# Target: Production DB (freeluma_prod)
+# Purpose: Reactions + comments on bible mode daily content, Feb 21-28 2026
+#
+# To remove all engagement + users:
+#   node scripts/seed-ai-engagement.mjs --cleanup
+#
+# ---- Original 20 users ----
+fl_grace_t      (ID: 31643) Grace Thompson
+fl_marcus_w     (ID: 31644) Marcus Williams
+fl_sarah_m      (ID: 31645) Sarah Mitchell
+fl_david_c      (ID: 31646) David Chen
+fl_olivia_j     (ID: 31647) Olivia James
+fl_isaiah_b     (ID: 31648) Isaiah Brown
+fl_hannah_r     (ID: 31649) Hannah Rivera
+fl_caleb_f      (ID: 31650) Caleb Foster
+fl_naomi_s      (ID: 31651) Naomi Scott
+fl_elijah_m     (ID: 31652) Elijah Moore
+fl_abigail_c    (ID: 31653) Abigail Cruz
+fl_joshua_k     (ID: 31654) Joshua Kim
+fl_leah_p       (ID: 31655) Leah Patterson
+fl_micah_t      (ID: 31656) Micah Turner
+fl_ruth_g       (ID: 31657) Ruth Gonzalez
+fl_ethan_b      (ID: 31658) Ethan Brooks
+fl_lydia_h      (ID: 31659) Lydia Hayes
+fl_noah_c       (ID: 31660) Noah Carter
+fl_miriam_p     (ID: 31661) Miriam Patel
+fl_samuel_r     (ID: 31662) Samuel Reed
+
+# ---- Extra 12 users ----
+fl_rachel_a     (ID: 31663) Rachel Adams
+fl_daniel_w     (ID: 31664) Daniel Wright
+fl_faith_m      (ID: 31665) Faith Morgan
+fl_luke_h       (ID: 31666) Luke Harrison
+fl_joy_c        (ID: 31667) Joy Campbell
+fl_aaron_p      (ID: 31668) Aaron Phillips
+fl_hope_j       (ID: 31669) Hope Jenkins
+fl_nathan_d     (ID: 31670) Nathan Diaz
+fl_esther_l     (ID: 31671) Esther Lee
+fl_timothy_r    (ID: 31672) Timothy Ross
+fl_charity_e    (ID: 31673) Charity Evans
+fl_peter_g      (ID: 31674) Peter Grant
+
+# ---- Totals ----
+# 32 AI users (IDs 31643-31674)
+# 256 reactions (like, love, wow, pray — no sad)
+# 54 contextual comments
+# All emails: {username}@ai-seed.freeluma.internal
