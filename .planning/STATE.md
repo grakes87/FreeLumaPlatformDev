@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 17-06-PLAN.md (Build + Human Verification) -- Phase 17 complete
-last_updated: "2026-03-12T20:00:53.085Z"
-last_activity: 2026-03-12 — Completed 17-06-PLAN.md (Build + Human Verification)
+stopped_at: Completed 18-02-PLAN.md (Both-mode API route fixes)
+last_updated: "2026-03-12T20:35:16Z"
+last_activity: 2026-03-12 — Completed 18-02-PLAN.md (Both-mode API route fixes)
 progress:
   total_phases: 18
   completed_phases: 12
   total_plans: 138
-  completed_plans: 134
-  percent: 100
+  completed_plans: 135
+  percent: 98
 ---
 
 # Project State
@@ -22,16 +22,16 @@ See: .planning/PROJECT.md (updated 2026-02-11)
 
 **Core value:** Daily inspirational content delivery and faith-based community connection — users come back every day for their daily post and stay to engage with their community.
 
-**Current focus:** Phase 17 — Both Mode (URL-driven daily content without mode switching) -- COMPLETE
+**Current focus:** Phase 18 — Fix Both-mode API Routes (social/feed mode isolation + workshops/announcements content filtering)
 
 ## Current Position
 
-Phase: 17 of 17 (Both Mode)
-Plan: 6 of 6 complete
-Status: Phase complete
-Last activity: 2026-03-12 — Completed 17-06-PLAN.md (Build + Human Verification)
+Phase: 18 of 18 (Fix Both-mode API Routes)
+Plan: 2 of 3 complete
+Status: In progress
+Last activity: 2026-03-12 — Completed 18-02-PLAN.md (Both-mode API route fixes)
 
-Progress: [████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████] 136/136 plans (100%)
+Progress: [████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████░░░░] 135/138 plans (98%)
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [███████████████████████
 | 15-admin-church-outreach | 11/12 | 85 min | 8 min |
 | 16-daily-content-devotional | 2/2 | 7 min | 4 min |
 | 17-both-mode | 6/6 | 16 min | 3 min |
+| 18-fix-both-mode-api-routes | 2/3 | 2 min | 1 min |
 
 **Recent Trend:**
 - Last 5 plans: 17-02 (2 min), 17-03 (1 min), 17-04 (2 min), 17-05 (3 min), 17-06 (2 min)
@@ -410,6 +411,10 @@ Recent decisions affecting current work:
 - **OTP dev magic code:** checkOTP() accepts '000000' in dev mode when Twilio not configured; sendOTP() simulates success
 - **US/Canada SMS restriction:** isUSOrCanada() checks +1 prefix; SMS notifications restricted to US/Canada numbers only
 
+- **Both-mode mode isolation bypass:** `currentUser.mode !== 'both'` guard before mode isolation filter in social routes — Both users bypass entirely (see all modes)
+- **Both-mode workshop expansion:** `Op.in(['bible','positivity'])` for WHERE mode clause when user.mode='both' (workshops never have mode='both')
+- **Both-mode announcement expansion:** `targetModes = userMode === 'both' ? ['all','bible','positivity'] : ['all',userMode]` for announcement target_mode filter
+
 ### Roadmap Evolution
 
 - Phase 9 added: Platform Refinements & Admin Tools (remove laugh reactions, repost views, admin font family, activation codes, video thumbnail regen, admin workshop creation)
@@ -489,6 +494,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-12T19:52:54Z
-Stopped at: Completed 17-06-PLAN.md (Build + Human Verification) -- Phase 17 complete
+Last session: 2026-03-12T20:35:16Z
+Stopped at: Completed 18-02-PLAN.md (Both-mode API route fixes)
 Resume file: None
