@@ -238,6 +238,11 @@ export default function SettingsPage() {
 
   const handleModeSwitch = (newMode: Mode) => {
     if (settings?.mode === newMode) return;
+    // Switching TO Both is additive (non-destructive) — save immediately, no confirmation
+    if (newMode === 'both') {
+      saveSettings({ mode: 'both' });
+      return;
+    }
     setShowModeConfirm(newMode);
   };
 
@@ -420,8 +425,8 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Verse Display Mode (only for bible mode) */}
-        {settings?.mode === 'bible' && (
+        {/* Verse Display Mode (for bible and both modes) */}
+        {(settings?.mode === 'bible' || settings?.mode === 'both') && (
           <>
             <Divider />
             <div className="px-4 py-3.5">
