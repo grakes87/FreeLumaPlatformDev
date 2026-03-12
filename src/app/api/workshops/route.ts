@@ -77,9 +77,14 @@ export const GET = withAuth(
       }
 
       // Filter by user's mode so bible users don't see positivity workshops and vice versa
+      // Both-mode users see workshops from both modes
       const currentUser = await User.findByPk(userId, { attributes: ['mode'] });
       if (currentUser?.mode) {
-        where.mode = currentUser.mode;
+        if (currentUser.mode === 'both') {
+          where.mode = { [Op.in]: ['bible', 'positivity'] };
+        } else {
+          where.mode = currentUser.mode;
+        }
       }
 
       // Handle cursor pagination

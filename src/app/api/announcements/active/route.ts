@@ -22,6 +22,10 @@ export const GET = withAuth(async (_req: NextRequest, context: AuthContext) => {
     }
 
     const userMode = user.mode || 'bible';
+    // Both-mode users see announcements targeted at 'all', 'bible', and 'positivity'
+    const targetModes = userMode === 'both'
+      ? ['all', 'bible', 'positivity']
+      : ['all', userMode];
     const now = new Date();
 
     // Get IDs already dismissed by this user
@@ -36,7 +40,7 @@ export const GET = withAuth(async (_req: NextRequest, context: AuthContext) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {
       active: true,
-      target_mode: { [Op.in]: ['all', userMode] },
+      target_mode: { [Op.in]: targetModes },
       [Op.and]: [
         {
           [Op.or]: [
