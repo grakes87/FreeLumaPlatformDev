@@ -604,7 +604,7 @@ export async function processFollowRequestEmail(userId: number, actorId: number)
     recipientName: recipient.display_name,
     actorName: actor.display_name,
     actorAvatarUrl: actor.avatar_url,
-    profileUrl: `${APP_URL}/profile/${actor.username}`,
+    profileUrl: `${APP_URL}/notifications`,
     trackingId,
     unsubscribeUrl,
   });

@@ -4,6 +4,7 @@ import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import { Heart, MessageCircle } from 'lucide-react';
 import type { DailyContentData } from '@/hooks/useDailyContent';
 import { useReactions } from '@/hooks/useReactions';
+import { useAutoFitText } from '@/hooks/useAutoFitText';
 import { REACTION_EMOJI_MAP, DAILY_REACTION_TYPES } from '@/lib/utils/constants';
 import type { ReactionType } from '@/lib/utils/constants';
 import { DateNavigator } from './DateNavigator';
@@ -83,6 +84,11 @@ export function DailyPostSlide({
     );
     return translation?.text || content.content_text;
   }, [activeTranslation, content.translations, content.content_text]);
+
+  // Auto-fit verse text to available space
+  const verseTextRef = useRef<HTMLParagraphElement>(null);
+  const verseCenterRef = useRef<HTMLDivElement>(null);
+  useAutoFitText(verseTextRef, verseCenterRef, [displayText, activeTranslation], 14);
 
   // Reactions
   const { counts, total, userReaction, commentCount, toggleReaction, refetch } =
@@ -176,7 +182,7 @@ export function DailyPostSlide({
         <div />
 
         {/* Center: Labels + Verse grouped together */}
-        <div className="flex max-w-lg flex-col items-center gap-4 text-center">
+        <div ref={verseCenterRef} className="flex max-w-lg flex-col items-center gap-4 text-center overflow-hidden">
           {/* Date / type label directly above verse */}
           <div className="flex w-full flex-col items-center gap-3">
             {feedMode ? (
@@ -186,6 +192,7 @@ export function DailyPostSlide({
             )}
           </div>
           <p
+            ref={verseTextRef}
             className={
               'fl-font-daily-verse text-2xl leading-relaxed font-light tracking-wide text-white drop-shadow-lg sm:text-3xl md:text-4xl ' +
               (content.mode === 'bible' ? 'font-serif italic' : 'font-sans')

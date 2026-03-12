@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef } from 'react';
 import type { DailyContentData } from '@/hooks/useDailyContent';
+import { useAutoFitText } from '@/hooks/useAutoFitText';
 import { ShareButton } from './ShareButton';
 
 interface DevotionalSlideProps {
@@ -9,119 +10,61 @@ interface DevotionalSlideProps {
   isActive?: boolean;
 }
 
-export function DevotionalSlide({ content, isActive = true }: DevotionalSlideProps) {
-  const bgVideoRef = useRef<HTMLVideoElement>(null);
-
-  const hasVideo =
-    content.video_background_url &&
-    content.video_background_url !== '' &&
-    !content.video_background_url.includes('placeholder');
-
-  // Pause/resume background video based on isActive
-  useEffect(() => {
-    const video = bgVideoRef.current;
-    if (!video) return;
-    if (isActive) {
-      video.play().catch(() => {});
-    } else {
-      video.pause();
-    }
-  }, [isActive]);
-
-  // Track video readiness — reset when video URL changes
-  const [videoReady, setVideoReady] = useState(!hasVideo);
-  const prevVideoUrl = useRef(content.video_background_url);
-
-  useEffect(() => {
-    if (content.video_background_url !== prevVideoUrl.current) {
-      prevVideoUrl.current = content.video_background_url;
-      if (hasVideo) {
-        setVideoReady(false);
-      } else {
-        setVideoReady(true);
-      }
-    }
-  }, [content.video_background_url, hasVideo]);
-
-  const handleVideoCanPlay = useCallback(() => {
-    setVideoReady(true);
-  }, []);
-
-  // Dynamic font sizing based on text length
+export function DevotionalSlide({ content }: DevotionalSlideProps) {
   const reflectionText = content.devotional_reflection || '';
-  const textLength = reflectionText.length;
-  let textSizeClass = 'text-xl leading-relaxed sm:text-2xl';
-  if (textLength >= 500) {
-    textSizeClass = 'text-base leading-relaxed sm:text-lg';
-  } else if (textLength >= 200) {
-    textSizeClass = 'text-lg leading-relaxed sm:text-xl';
-  }
 
-  const isVeryLong = textLength >= 800;
+  // Auto-fit text to available space
+  const devotionalTextRef = useRef<HTMLParagraphElement>(null);
+  const devotionalCenterRef = useRef<HTMLDivElement>(null);
+  useAutoFitText(devotionalTextRef, devotionalCenterRef, [reflectionText], 12);
 
   return (
     <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
-      {/* Background layer -- dark base while video loads */}
-      <div className="absolute inset-0 bg-[#0a0a0f]" />
-      {hasVideo && (
-        <video
-          ref={bgVideoRef}
-          src={content.video_background_url}
-          crossOrigin="anonymous"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="none"
-          onCanPlay={handleVideoCanPlay}
-          className={
-            'absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ' +
-            (videoReady ? 'opacity-100' : 'opacity-0')
-          }
-        />
-      )}
-
-      {/* Loading spinner while video buffers */}
-      {hasVideo && !videoReady && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-        </div>
-      )}
-
-      {/* Dark overlay for text readability */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/40" />
-
-      {/* Content overlay -- fades in with the background video */}
+      {/* Gradient background */}
       <div
-        className={
-          'absolute inset-x-0 top-0 z-10 flex flex-col items-center justify-between px-6 transition-opacity duration-700 ' +
-          (videoReady ? 'opacity-100' : 'opacity-0')
-        }
+        className="absolute inset-0"
+        style={{
+          background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #0f3460 60%, #1a1a2e 100%)',
+        }}
+      />
+
+      {/* Subtle radial glow */}
+      <div
+        className="absolute inset-0 opacity-30"
+        style={{
+          background: 'radial-gradient(ellipse at 50% 40%, rgba(99, 102, 241, 0.25) 0%, transparent 70%)',
+        }}
+      />
+
+      {/* Content overlay */}
+      <div
+        className="absolute inset-x-0 top-0 z-10 flex flex-col items-center justify-between px-6"
         style={{
           height: '100svh',
           paddingTop: 'calc(3.5rem + env(safe-area-inset-top, 0px) + 0.5rem)',
           paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px) + 2.5rem)',
         }}
       >
-        {/* Top section: label */}
-        <div className="text-center">
-          <p className="text-xs font-medium uppercase tracking-widest text-white/60">
-            Devotional Reflection
-          </p>
-        </div>
+        {/* Top spacer */}
+        <div />
 
-        {/* Center section: devotional reflection text */}
+        {/* Center section: title + devotional reflection text */}
         <div
-          className={
-            'flex max-w-lg flex-col items-center text-center ' +
-            (isVeryLong ? 'overflow-y-auto max-h-[60vh]' : '')
-          }
+          ref={devotionalCenterRef}
+          className="flex max-w-lg flex-col items-center text-center overflow-hidden"
         >
+          <p className="mb-1 text-xs font-medium uppercase tracking-widest text-white/60">
+            Daily Devotional
+          </p>
+          {content.verse_reference && (
+            <p className="mb-4 text-lg font-semibold text-white drop-shadow-lg sm:text-xl">
+              {content.verse_reference}
+            </p>
+          )}
           <p
-            className={
-              'font-sans font-light text-white drop-shadow-lg ' + textSizeClass
-            }
-            style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}
+            ref={devotionalTextRef}
+            className="font-sans text-lg leading-relaxed font-light text-white/90 sm:text-xl"
+            style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}
           >
             {reflectionText}
           </p>
@@ -134,7 +77,6 @@ export function DevotionalSlide({ content, isActive = true }: DevotionalSlidePro
             reference={null}
             translationCode={null}
             mode={content.mode}
-            videoRef={bgVideoRef}
           />
         </div>
       </div>

@@ -166,8 +166,8 @@ export async function createNotification(
     }
   }
 
-  // Follow request/follow emails
-  if (type === NotificationType.FOLLOW_REQUEST || type === NotificationType.FOLLOW) {
+  // Follow request emails (only for pending requests, not auto-accepted public follows)
+  if (type === NotificationType.FOLLOW_REQUEST) {
     try {
       const { processFollowRequestEmail } = await import('@/lib/email/queue');
       await processFollowRequestEmail(recipient_id, actor_id);

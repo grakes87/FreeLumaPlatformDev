@@ -209,11 +209,11 @@ export function followRequestEmail(params: FollowRequestEmailParams): { html: st
       Hi ${recipientName},
     </p>
     <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
-      <strong>${actorName}</strong> wants to follow you. View their profile to accept or decline the request.
+      <strong>${actorName}</strong> wants to follow you. Open your notifications to accept or decline the request.
     </p>
-    ${actionButton(profileUrl, 'View Request')}
+    ${actionButton(profileUrl, 'View Follow Requests')}
     <p style="margin:0;font-size:13px;color:#71717a;line-height:1.5;text-align:center;">
-      You can manage follow requests in the app.
+      You can manage all follow requests from your notifications page.
     </p>
   `;
 
