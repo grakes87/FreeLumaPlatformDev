@@ -44,7 +44,7 @@ export const POST = withAdmin(async (_req: NextRequest, context: AuthContext) =>
       .setExpirationTime('1h')
       .sign(getResetSecret());
 
-    await sendPasswordResetEmail(user.email, resetToken);
+    await sendPasswordResetEmail(user.email, resetToken, 'gary.rakes@freeluma.com');
 
     await ModerationLog.create({
       admin_id: adminId,
