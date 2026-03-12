@@ -8,6 +8,7 @@ import 'swiper/css/pagination';
 
 import { useDailyContent, type DailyContentData } from '@/hooks/useDailyContent';
 import { useDailyTranslation } from '@/context/DailyTranslationContext';
+import { useViewMode } from '@/context/ViewModeContext';
 import { DailyPostSlide } from './DailyPostSlide';
 import { AudioPlayerSlide } from './AudioPlayerSlide';
 import { LumaShortSlide } from './LumaShortSlide';
@@ -51,13 +52,14 @@ export function DailyPostCarousel({
 
 /** Single-day carousel (e.g. /daily/[date]) — also uses global context */
 function SingleDayCarousel({ date }: { date?: string }) {
+  const { effectiveMode } = useViewMode();
   const {
     content,
     loading,
     error,
     resolvedAudioUrl,
     resolvedSrtUrl,
-  } = useDailyContent(date);
+  } = useDailyContent(date, effectiveMode);
 
   const dailyTranslation = useDailyTranslation();
 

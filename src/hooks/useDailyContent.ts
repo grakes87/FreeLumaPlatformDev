@@ -46,6 +46,8 @@ interface UseDailyContentReturn {
  * Client-side hook for fetching and managing daily content.
  *
  * @param date - Optional date (YYYY-MM-DD). If omitted, fetches today's content.
+ * @param mode - Optional effective view mode ('bible' | 'positivity'). Pass from ViewModeContext
+ *               for Both-mode users so the API returns content for the correct mode.
  * @returns Daily content data, loading state, error state, and translation switching.
  */
 function getLanguageCookie(): string {
@@ -59,7 +61,7 @@ function setLanguageCookie(lang: string) {
   document.cookie = `preferred_language=${lang}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
 }
 
-export function useDailyContent(date?: string): UseDailyContentReturn {
+export function useDailyContent(date?: string, mode?: string): UseDailyContentReturn {
   const [content, setContent] = useState<DailyContentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,9 +79,10 @@ export function useDailyContent(date?: string): UseDailyContentReturn {
 
     try {
       const tz = encodeURIComponent(detectTimezone());
+      const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
       const url = date
-        ? `/api/daily-posts/${date}?timezone=${tz}`
-        : `/api/daily-posts?timezone=${tz}`;
+        ? `/api/daily-posts/${date}?timezone=${tz}${modeParam}`
+        : `/api/daily-posts?timezone=${tz}${modeParam}`;
 
       const response = await fetch(url, { credentials: 'include' });
 
@@ -143,7 +146,7 @@ export function useDailyContent(date?: string): UseDailyContentReturn {
     } finally {
       setLoading(false);
     }
-  }, [date]);
+  }, [date, mode]);
 
   const switchTranslation = useCallback(async (translationCode: string) => {
     if (!content) return;
