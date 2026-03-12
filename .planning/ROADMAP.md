@@ -633,11 +633,11 @@ Plans:
   5. `/api/feed` mode-isolation logic handles mode='both' correctly
   6. `/api/feed/fyp` mode-isolation logic handles mode='both' correctly
 
-**Plans:** 2 plans in 1 wave
+**Plans:** 2/2 plans complete
 
 Plans:
-- [x] 18-01-PLAN.md — Fix daily-posts API routes (resolveContentMode + mode query param) + useDailyContent hook wiring
-- [x] 18-02-PLAN.md — Fix social/feed mode isolation + workshops + announcements for Both-mode users
+- [x] 18-01-PLAN.md ï¿½ Fix daily-posts API routes (resolveContentMode + mode query param) + useDailyContent hook wiring
+- [x] 18-02-PLAN.md ï¿½ Fix social/feed mode isolation + workshops + announcements for Both-mode users
 
 ### Phase 19: Daily Content Bookmarks
 **Goal:** Add the missing UI path for bookmarking daily content from the daily feed, extending the existing bookmark system to support `daily_content_id` alongside `post_id`.
