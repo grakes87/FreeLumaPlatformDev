@@ -14,6 +14,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { TopBar } from '@/components/layout/TopBar';
 import { FontLoader } from '@/components/layout/FontLoader';
 import { TutorialProvider } from '@/components/tutorial/TutorialProvider';
+import { ViewModeProvider } from '@/context/ViewModeContext';
 import { AnnouncementPopup } from '@/components/announcements/AnnouncementPopup';
 
 // Suppress React 19 pointer capture error on unmounting elements during navigation
@@ -129,14 +130,18 @@ function AuthenticatedLayout({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
+  const initialViewMode = pathname === '/positivity' ? 'positivity' as const : 'bible' as const;
+
   return (
     <SocketProvider>
       <NotificationProvider>
         <FontLoader />
-        <TutorialProvider>
-          <AnnouncementPopup />
-          <AppShell>{children}</AppShell>
-        </TutorialProvider>
+        <ViewModeProvider initialMode={initialViewMode}>
+          <TutorialProvider>
+            <AnnouncementPopup />
+            <AppShell>{children}</AppShell>
+          </TutorialProvider>
+        </ViewModeProvider>
       </NotificationProvider>
     </SocketProvider>
   );
