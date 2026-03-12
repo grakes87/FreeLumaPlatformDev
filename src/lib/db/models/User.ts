@@ -20,7 +20,7 @@ export interface UserAttributes {
   location: string | null;
   website: string | null;
   date_of_birth: string | null;
-  mode: 'bible' | 'positivity';
+  mode: 'bible' | 'positivity' | 'both';
   timezone: string;
   preferred_translation: string;
   verse_mode: 'daily_verse' | 'verse_by_category';
@@ -108,7 +108,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   declare location: string | null;
   declare website: string | null;
   declare date_of_birth: string | null;
-  declare mode: 'bible' | 'positivity';
+  declare mode: 'bible' | 'positivity' | 'both';
   declare timezone: string;
   declare preferred_translation: string;
   declare verse_mode: 'daily_verse' | 'verse_by_category';
@@ -216,7 +216,7 @@ User.init(
       allowNull: true,
     },
     mode: {
-      type: DataTypes.ENUM('bible', 'positivity'),
+      type: DataTypes.ENUM('bible', 'positivity', 'both'),
       defaultValue: 'bible',
       allowNull: false,
     },
