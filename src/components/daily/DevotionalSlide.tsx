@@ -1,9 +1,18 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState, useCallback } from 'react';
+import { Heart, MessageCircle } from 'lucide-react';
 import type { DailyContentData } from '@/hooks/useDailyContent';
+import { useReactions } from '@/hooks/useReactions';
 import { useAutoFitText } from '@/hooks/useAutoFitText';
+import { REACTION_EMOJI_MAP, DAILY_REACTION_TYPES } from '@/lib/utils/constants';
+import type { ReactionType } from '@/lib/utils/constants';
 import { ShareButton } from './ShareButton';
+import { ReactionBar } from './ReactionBar';
+import { ReactionPicker } from './ReactionPicker';
+import { QuickReactionPicker } from './QuickReactionPicker';
+import { CommentBottomSheet } from './CommentBottomSheet';
+import { CommentThread } from './CommentThread';
 
 interface DevotionalSlideProps {
   content: DailyContentData;
@@ -17,6 +26,47 @@ export function DevotionalSlide({ content }: DevotionalSlideProps) {
   const devotionalTextRef = useRef<HTMLParagraphElement>(null);
   const devotionalCenterRef = useRef<HTMLDivElement>(null);
   useAutoFitText(devotionalTextRef, devotionalCenterRef, [reflectionText], 12);
+
+  // Reactions
+  const { counts, total, userReaction, commentCount, toggleReaction, refetch } =
+    useReactions(content.id);
+
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [showQuickPicker, setShowQuickPicker] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const reactionBarRef = useRef<HTMLDivElement>(null);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+
+  const [commentCountDelta, setCommentCountDelta] = useState(0);
+  const displayCommentCount = commentCount + commentCountDelta;
+
+  const handleOpenPicker = useCallback(() => {
+    setShowReactionPicker(true);
+  }, []);
+
+  const handleReactionSelect = useCallback(
+    (type: ReactionType) => {
+      toggleReaction(type);
+    },
+    [toggleReaction]
+  );
+
+  const handleHeartClick = useCallback(() => {
+    if (reactionBarRef.current) {
+      setAnchorRect(reactionBarRef.current.getBoundingClientRect());
+    }
+    setShowQuickPicker(true);
+  }, []);
+
+  const handleCommentCountChange = useCallback((delta: number) => {
+    setCommentCountDelta((prev) => prev + delta);
+  }, []);
+
+  const handleCloseComments = useCallback(() => {
+    setShowComments(false);
+    refetch();
+    setCommentCountDelta(0);
+  }, [refetch]);
 
   return (
     <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
@@ -70,16 +120,85 @@ export function DevotionalSlide({ content }: DevotionalSlideProps) {
           </p>
         </div>
 
-        {/* Bottom section: share button only */}
-        <div className="flex items-center justify-center">
-          <ShareButton
-            verseText={content.devotional_reflection!}
-            reference={null}
-            translationCode={null}
-            mode={content.mode}
-          />
+        {/* Bottom section: Reaction, Comment, Share in one row */}
+        <div ref={reactionBarRef} className="flex items-start justify-center gap-12">
+          {/* Reaction column */}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              onClick={handleHeartClick}
+              className="flex items-center justify-center transition-all active:scale-90"
+            >
+              {userReaction ? (
+                <span className="text-2xl leading-none drop-shadow-md">
+                  {REACTION_EMOJI_MAP[userReaction]}
+                </span>
+              ) : (
+                <Heart className="h-6 w-6 text-white drop-shadow-md" />
+              )}
+            </button>
+            <ReactionBar
+              counts={counts}
+              total={total}
+              onOpenPicker={handleOpenPicker}
+            />
+          </div>
+
+          {/* Comment column */}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setShowComments(true)}
+              className="flex items-center justify-center text-white transition-all active:scale-95"
+            >
+              <MessageCircle className="h-6 w-6 drop-shadow-md" />
+            </button>
+            {displayCommentCount > 0 && (
+              <span className="text-xs font-semibold text-white drop-shadow-md">
+                {displayCommentCount}
+              </span>
+            )}
+          </div>
+
+          {/* Share column */}
+          <div className="flex flex-col items-center gap-1">
+            <ShareButton
+              verseText={content.devotional_reflection!}
+              reference={null}
+              translationCode={null}
+              mode={content.mode}
+            />
+          </div>
         </div>
       </div>
+
+      {/* Portals */}
+      <ReactionPicker
+        isOpen={showReactionPicker}
+        onClose={() => setShowReactionPicker(false)}
+        counts={counts}
+        userReaction={userReaction}
+        onSelect={handleReactionSelect}
+      />
+
+      <QuickReactionPicker
+        isOpen={showQuickPicker}
+        onClose={() => setShowQuickPicker(false)}
+        onSelect={handleReactionSelect}
+        anchorRect={anchorRect}
+        selectedReaction={userReaction}
+        reactionTypes={DAILY_REACTION_TYPES}
+      />
+
+      <CommentBottomSheet
+        isOpen={showComments}
+        onClose={handleCloseComments}
+      >
+        <CommentThread
+          dailyContentId={content.id}
+          onCommentCountChange={handleCommentCountChange}
+        />
+      </CommentBottomSheet>
     </div>
   );
 }
