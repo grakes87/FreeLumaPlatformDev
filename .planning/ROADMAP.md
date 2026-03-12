@@ -602,7 +602,7 @@ Plans:
   8. Bible-only and Positivity-only users see zero behavioral changes
   9. Onboarding mentions Both availability in Settings
 
-**Plans:** 6 plans in 4 waves
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 17-01-PLAN.md -- Database migration (add 'both' to ENUM), TypeScript type updates, Settings API validation
