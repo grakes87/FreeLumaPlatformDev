@@ -14,6 +14,7 @@ import { useNotificationBadge } from '@/components/notifications/useNotification
 import { useChatUnreadBadge } from '@/components/chat/useChatUnreadBadge';
 import { useDailyTranslation } from '@/context/DailyTranslationContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useViewMode } from '@/context/ViewModeContext';
 import { VerseModeToggle, type VerseMode } from '@/components/daily/VerseModeToggle';
 
 interface TopBarProps {
@@ -47,8 +48,9 @@ export function TopBar({ transparent = false }: TopBarProps) {
     && dailyTranslation.availableTranslations.length > 0;
 
   // Verse mode toggle -- bible-mode users on daily tab, or guests on bible routes
+  const { effectiveMode } = useViewMode();
   const guestOnBibleRoute = !isAuthenticated && (pathname === '/' || pathname.startsWith('/daily/') || pathname === '/bible');
-  const isBibleMode = user?.mode === 'bible' || guestOnBibleRoute;
+  const isBibleMode = effectiveMode === 'bible' || guestOnBibleRoute;
   const showVerseModeToggle = isDailyTab && isBibleMode;
   const [verseMode, setVerseMode] = useState<VerseMode>(() => {
     if (user?.verse_mode) return user.verse_mode as VerseMode;

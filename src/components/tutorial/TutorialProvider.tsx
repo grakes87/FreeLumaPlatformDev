@@ -12,6 +12,7 @@ import React, {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useViewMode } from '@/context/ViewModeContext';
 import { slideshowSteps, coachMarkSteps, type CoachMarkStep } from './tutorialSteps';
 import { TutorialSlideshow } from './TutorialSlideshow';
 import { TutorialCoachMarks } from './TutorialCoachMarks';
@@ -48,7 +49,8 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const completingRef = useRef(false);
 
-  const userMode = user?.mode ?? 'bible';
+  const { effectiveMode } = useViewMode();
+  const userMode = effectiveMode;
 
   // Filter coach mark steps based on user mode
   const filteredCoachSteps = useMemo<CoachMarkStep[]>(

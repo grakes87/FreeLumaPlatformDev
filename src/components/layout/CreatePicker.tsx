@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { MessageSquare, Heart, Presentation } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/hooks/useAuth';
+import { useViewMode } from '@/context/ViewModeContext';
 import { workshopLabel } from '@/lib/utils/workshopLabel';
 
 type CreateType = 'post' | 'prayer_request' | 'workshop';
@@ -19,7 +20,8 @@ interface CreatePickerProps {
 export function CreatePicker({ isOpen, onClose, onSelect }: CreatePickerProps) {
   const pathname = usePathname();
   const { user } = useAuth();
-  const wl = workshopLabel(user?.mode);
+  const { effectiveMode } = useViewMode();
+  const wl = workshopLabel(effectiveMode);
 
   const OPTIONS: { type: CreateType; icon: React.ElementType; label: string; description: string }[] = [
     {

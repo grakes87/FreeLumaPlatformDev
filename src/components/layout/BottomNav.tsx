@@ -12,6 +12,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useViewMode } from '@/context/ViewModeContext';
 import { cn } from '@/lib/utils/cn';
 import { workshopLabel } from '@/lib/utils/workshopLabel';
 import { CreatePicker } from './CreatePicker';
@@ -56,7 +57,8 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
   const { user } = useAuth();
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const mode = user?.mode ?? 'bible';
+  const { effectiveMode } = useViewMode();
+  const mode = effectiveMode;
   const wl = workshopLabel(mode);
 
   const RIGHT_TABS: NavTab[] = RIGHT_TABS_BASE.map((t) => ({

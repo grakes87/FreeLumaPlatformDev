@@ -4,7 +4,9 @@ import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react
 import { useDailyFeed } from '@/hooks/useDailyFeed';
 import { DailyPostCarousel } from './DailyPostCarousel';
 import { useDailyTranslation } from '@/context/DailyTranslationContext';
+import { useViewMode } from '@/context/ViewModeContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/components/ui/Toast';
 import type { VerseMode } from './VerseModeToggle';
 import { VerseByCategorySlide } from './VerseByCategorySlide';
 import { CategorySelector } from './CategorySelector';
@@ -25,14 +27,20 @@ function hasVideoBackground(day: { video_background_url?: string | null }): bool
 
 export function DailyFeed({ mode }: { mode?: string } = {}) {
   const dailyTranslation = useDailyTranslation();
+  const { effectiveMode: viewEffectiveMode, isBothMode, setViewMode } = useViewMode();
   const { user, refreshUser } = useAuth();
+  const toast = useToast();
+
+  // Use ViewModeContext for authenticated users, fallback to mode prop for guests
+  const resolvedMode = user ? viewEffectiveMode : (mode || 'bible');
+
   const { days, loading, refreshing, hasMore, fetchNextPage, refresh, frontTrimRef } = useDailyFeed(
-    user?.mode || mode,
+    resolvedMode,
     user?.language,
   );
 
   // Verse mode state -- bible-mode users and guests (default mode is bible)
-  const effectiveMode = user?.mode || mode || 'bible';
+  const effectiveMode = resolvedMode;
   const isBibleMode = effectiveMode === 'bible';
   const [verseMode, setVerseMode] = useState<VerseMode>(() => {
     if (isBibleMode && user?.verse_mode === 'verse_by_category') return 'verse_by_category';
@@ -100,6 +108,35 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
   useEffect(() => {
     getScrollContainer()?.scrollTo(0, 0);
   }, []);
+
+  // Scroll to top when view mode changes (Both-mode toggle)
+  const prevResolvedModeRef = useRef(resolvedMode);
+  useEffect(() => {
+    if (prevResolvedModeRef.current !== resolvedMode) {
+      prevResolvedModeRef.current = resolvedMode;
+      getScrollContainer()?.scrollTo(0, 0);
+    }
+  }, [resolvedMode]);
+
+  // Auto-switch Both users back to Bible if a mode returns zero content
+  const autoSwitchFiredRef = useRef(false);
+  useEffect(() => {
+    // Reset guard when mode changes so it can fire again for a different mode
+    autoSwitchFiredRef.current = false;
+  }, [resolvedMode]);
+  useEffect(() => {
+    if (
+      !loading &&
+      days.length === 0 &&
+      isBothMode &&
+      resolvedMode !== 'bible' &&
+      !autoSwitchFiredRef.current
+    ) {
+      autoSwitchFiredRef.current = true;
+      setViewMode('bible');
+      toast.info('No content available for this mode. Switching to Bible.');
+    }
+  }, [days, loading, isBothMode, resolvedMode, setViewMode, toast]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const preloadTriggeredRef = useRef(false);
