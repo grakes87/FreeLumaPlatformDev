@@ -498,7 +498,7 @@ export async function processDailyReminders(): Promise<void> {
     id: number;
     email: string;
     display_name: string;
-    mode: 'bible' | 'positivity';
+    mode: 'bible' | 'positivity' | 'both';
     language: 'en' | 'es';
     timezone: string | null;
     settings: {
@@ -539,50 +539,63 @@ export async function processDailyReminders(): Promise<void> {
 
       // Match user's mode AND language, fall back to English if no localized content
       const userLang = user.language || 'en';
-      const content = contentMap[user.mode]?.[userLang] || contentMap[user.mode]?.['en'];
-      if (!content) continue;
 
-      const trackingId = generateTrackingId();
-      const unsubscribeUrl = await generateUnsubscribeUrl(user.id, 'daily_reminder');
+      // Determine which modes to send for this user
+      // Both-mode users receive two notifications (one Bible, one Positivity)
+      // Bible-only and Positivity-only users receive exactly one
+      const modesToNotify: Array<'bible' | 'positivity'> =
+        user.mode === 'both' ? ['bible', 'positivity'] : [user.mode as 'bible' | 'positivity'];
 
-      const verseText = content.content_text.slice(0, 200) +
-        (content.content_text.length > 200 ? '...' : '');
-      const verseReference = content.verse_reference || content.title;
+      for (const notifyMode of modesToNotify) {
+        const content = contentMap[notifyMode]?.[userLang] || contentMap[notifyMode]?.['en'];
+        if (!content) continue;
 
-      const { html, subject, headers } = dailyReminderEmail({
-        recipientName: user.display_name,
-        verseText,
-        verseReference,
-        dailyUrl: `${APP_URL}/`,
-        trackingId,
-        unsubscribeUrl,
-      });
+        const dailyUrl = notifyMode === 'positivity'
+          ? `${APP_URL}/positivity`
+          : `${APP_URL}/`;
 
-      await sendNotificationEmail({
-        userId: user.id,
-        userEmail: user.email,
-        emailType: 'daily_reminder',
-        subject,
-        html,
-        headers,
-        trackingId,
-        quietStart: settings.quiet_hours_start,
-        quietEnd: settings.quiet_hours_end,
-        reminderTimezone: settings.reminder_timezone,
-      });
+        const trackingId = generateTrackingId();
+        const unsubscribeUrl = await generateUnsubscribeUrl(user.id, 'daily_reminder');
 
-      // ---- SMS daily reminder dispatch (fire-and-forget) ----
-      try {
-        const { dispatchSMSNotification } = await import('@/lib/sms/queue');
-        await dispatchSMSNotification(
-          user.id,
-          'daily_reminder',
-          'daily_content',
-          0, // no specific entity
-          null
-        );
-      } catch (smsErr) {
-        console.error(`[Email Queue] Daily SMS error for user ${user.id}:`, smsErr);
+        const verseText = content.content_text.slice(0, 200) +
+          (content.content_text.length > 200 ? '...' : '');
+        const verseReference = content.verse_reference || content.title;
+
+        const { html, subject, headers } = dailyReminderEmail({
+          recipientName: user.display_name,
+          verseText,
+          verseReference,
+          dailyUrl,
+          trackingId,
+          unsubscribeUrl,
+        });
+
+        await sendNotificationEmail({
+          userId: user.id,
+          userEmail: user.email,
+          emailType: 'daily_reminder',
+          subject,
+          html,
+          headers,
+          trackingId,
+          quietStart: settings.quiet_hours_start,
+          quietEnd: settings.quiet_hours_end,
+          reminderTimezone: settings.reminder_timezone,
+        });
+
+        // ---- SMS daily reminder dispatch (fire-and-forget) ----
+        try {
+          const { dispatchSMSNotification } = await import('@/lib/sms/queue');
+          await dispatchSMSNotification(
+            user.id,
+            'daily_reminder',
+            'daily_content',
+            0, // no specific entity
+            null
+          );
+        } catch (smsErr) {
+          console.error(`[Email Queue] Daily SMS error for user ${user.id} (${notifyMode}):`, smsErr);
+        }
       }
     } catch (err) {
       console.error(`[Email Queue] Daily reminder error for user ${user.id}:`, err);
