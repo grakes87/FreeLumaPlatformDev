@@ -135,6 +135,10 @@ export function ModeSelector() {
         })}
       </div>
 
+      <p className="text-xs text-center text-text-muted dark:text-text-muted-dark">
+        Want both? You can access Bible and Positivity content together in Settings.
+      </p>
+
       <Button
         onClick={handleContinue}
         disabled={!selected}
