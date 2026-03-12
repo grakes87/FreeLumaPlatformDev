@@ -3,7 +3,7 @@ import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middlewar
 import { BibleTranslation, DailyContent, DailyContentTranslation, LumaShortCreator, User } from '@/lib/db/models';
 import { getUserLocalDate, isValidDateString, isFutureDate } from '@/lib/utils/timezone';
 import { successResponse, errorResponse, serverError } from '@/lib/utils/api';
-import { LANGUAGES } from '@/lib/utils/constants';
+import { LANGUAGES, resolveContentMode } from '@/lib/utils/constants';
 
 /**
  * GET /api/daily-posts/[date]
@@ -28,6 +28,10 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
     let language = 'en';
     let timezone = 'UTC';
 
+    // Parse query params early so they're available in the user block
+    const url = new URL(req.url);
+    const modeParam = url.searchParams.get('mode');
+
     // If authenticated, load user preferences
     if (context.user) {
       const user = await User.findByPk(context.user.id, {
@@ -35,7 +39,13 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
       });
 
       if (user) {
-        mode = user.mode;
+        // If caller passes an explicit valid mode (e.g. from ViewModeContext for Both users), use it;
+        // otherwise resolve user.mode (maps 'both' -> 'bible' to prevent WHERE mode='both')
+        if (modeParam === 'bible' || modeParam === 'positivity') {
+          mode = modeParam;
+        } else {
+          mode = resolveContentMode(user.mode);
+        }
         language = user.language;
         timezone = user.timezone;
       }
@@ -50,7 +60,6 @@ export const GET = withOptionalAuth(async (req: NextRequest, context: OptionalAu
     }
 
     // Allow timezone override via query param
-    const url = new URL(req.url);
     const timezoneParam = url.searchParams.get('timezone');
     if (timezoneParam) {
       timezone = timezoneParam;

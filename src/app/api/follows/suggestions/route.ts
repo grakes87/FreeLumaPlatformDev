@@ -30,7 +30,7 @@ export const GET = withAuth(async (_req: NextRequest, context: AuthContext) => {
     }
 
     const modeIsolation = await PlatformSetting.get('mode_isolation_social');
-    const modeFilter = modeIsolation === 'true'
+    const modeFilter = (modeIsolation === 'true' && currentUser.mode !== 'both')
       ? 'AND u.mode = :userMode'
       : '';
 

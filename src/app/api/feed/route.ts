@@ -67,7 +67,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
 
   if (modeIsolation === 'true') {
     const currentUser = await User.findByPk(userId, { attributes: ['mode'] });
-    if (currentUser) {
+    if (currentUser && currentUser.mode !== 'both') {
       andConditions.push({ mode: currentUser.mode });
     }
   }

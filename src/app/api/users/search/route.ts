@@ -104,7 +104,7 @@ export const GET = withAuth(async (req: NextRequest, context: AuthContext) => {
     const modeIsolation = await PlatformSetting.get('mode_isolation_social');
     if (modeIsolation === 'true') {
       const currentUser = await User.findByPk(userId, { attributes: ['mode'] });
-      if (currentUser) {
+      if (currentUser && currentUser.mode !== 'both') {
         where.mode = currentUser.mode;
       }
     }

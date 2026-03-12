@@ -53,7 +53,7 @@ export const POST = withAuth(async (_req: NextRequest, context: AuthContext) => 
       const currentUser = await User.findByPk(userId, {
         attributes: ['mode'],
       });
-      if (currentUser && currentUser.mode !== targetUser.mode) {
+      if (currentUser && currentUser.mode !== 'both' && currentUser.mode !== targetUser.mode) {
         return errorResponse('Cannot follow users in a different mode', 403);
       }
     }
