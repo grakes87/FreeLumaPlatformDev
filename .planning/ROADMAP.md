@@ -28,6 +28,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 14: First-Time User Tutorial & Walkthrough** - Guided tutorial for first-time logged-in users covering daily feed, mode switching, verse-by-category, bottom navigation, and social features with coach marks and welcome slideshow
 - [ ] **Phase 15: Admin Church Outreach & Research Management** - Church discovery via Google Places, AI research pipeline, outreach email system with templates, drip sequences, kanban pipeline, sample request fulfillment
 - [x] **Phase 16: Daily Content Devotional** - Daily content devotional improvements (completed 2026-03-11)
+- [x] **Phase 17: Both Mode** - URL-driven daily content without mode switching (completed 2026-03-12)
+- [ ] **Phase 18: Fix Both-mode API Routes** - Apply resolveContentMode() to daily-posts and feed routes broken for Both-mode users
+- [ ] **Phase 19: Daily Content Bookmarks** - Add bookmark button to DailyPostSlide, extend useBookmark hook for daily_content_id
+- [ ] **Phase 20: Migration Formal Closure** - Verify/close orphaned Phase 7 migration requirements via import script evidence
 
 ## Phase Details
 
@@ -612,6 +616,61 @@ Plans:
 - [x] 17-05-PLAN.md -- Dual notification dispatch (email + SMS) for Both users
 - [x] 17-06-PLAN.md -- Build verification + human verification checkpoint
 
+### Phase 18: Fix Both-mode API Routes
+**Goal:** Apply `resolveContentMode()` to all API routes that pass `user.mode='both'` directly to database queries, fixing 404s on `/daily/[date]` and empty feeds when mode isolation is enabled for Both-mode users.
+
+**Requirements**: DAILY-01, DAILY-05, FEED-01 (integration fixes)
+
+**Depends on:** Phase 17
+
+**Gap Closure:** Closes INT-03, INT-04, Flow 1, Flow 2 from v1.0 audit
+
+**Success Criteria** (what must be TRUE):
+  1. Both-mode user can navigate to `/daily/[date]` and see content (no 404)
+  2. Both-mode user with mode_isolation_social enabled sees posts in feed (not empty)
+  3. `/api/daily-posts/[date]` resolves mode='both' to active view mode
+  4. `/api/daily-posts` resolves mode='both' to active view mode
+  5. `/api/feed` mode-isolation logic handles mode='both' correctly
+  6. `/api/feed/fyp` mode-isolation logic handles mode='both' correctly
+
+**Plans:** 0/0 plans (run /gsd:plan-phase 18)
+
+### Phase 19: Daily Content Bookmarks
+**Goal:** Add the missing UI path for bookmarking daily content from the daily feed, extending the existing bookmark system to support `daily_content_id` alongside `post_id`.
+
+**Requirements**: CONT-01, DAILY-07 (completion of partial implementation)
+
+**Depends on:** Phase 18
+
+**Gap Closure:** Closes INT-01, Flow 3 from v1.0 audit
+
+**Success Criteria** (what must be TRUE):
+  1. DailyPostSlide displays a bookmark button
+  2. useBookmark hook supports daily_content_id parameter
+  3. Bookmarking daily content from feed creates bookmark in database
+  4. Bookmarks page displays saved daily content items
+  5. User can remove daily content bookmarks
+
+**Plans:** 0/0 plans (run /gsd:plan-phase 19)
+
+### Phase 20: Migration Formal Closure
+**Goal:** Formally verify and close out the 11 orphaned migration requirements (AUTH-10, MIG-01–MIG-10) that were functionally satisfied by `scripts/import-old-data.mjs` but never assigned to an existing phase.
+
+**Requirements**: AUTH-10, MIG-01, MIG-02, MIG-03, MIG-04, MIG-05, MIG-06, MIG-07, MIG-08, MIG-09, MIG-10
+
+**Depends on:** Phase 18
+
+**Gap Closure:** Closes all 11 orphaned Phase 7 requirements from v1.0 audit
+
+**Success Criteria** (what must be TRUE):
+  1. Import script evidence documents satisfaction of AUTH-10, MIG-01, MIG-02, MIG-04–06, MIG-08–09
+  2. MIG-03 (plaintext password detection): Verified no plaintext passwords exist in old DB, or detection added
+  3. MIG-07 (bookmarks/notes migration): Documented as N/A — old platform had no bookmarks table
+  4. MIG-10 (rollback plan): Rollback procedure documented with backup locations
+  5. All 11 requirements formally verified with evidence
+
+**Plans:** 0/0 plans (run /gsd:plan-phase 20)
+
 ---
 *Roadmap created: 2026-02-11*
 *Phase 1 planned: 2026-02-11 (12 plans in 5 waves)*
@@ -643,7 +702,8 @@ Plans:
 *Phase 15 planned: 2026-03-09 (12 plans in 6 waves)*
 *Phase 17 planned: 2026-03-12 (6 plans in 4 waves)*
 *Phase 17 executed: 2026-03-12 (6 plans in 4 waves, 16 min)*
-*Depth: Comprehensive (15 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category + content production + SMS notifications + user tutorial + church outreach CRM)*
+*Gap closure phases 18-20 added: 2026-03-12 (audit gap closure)*
+*Depth: Comprehensive (20 phases covering 165 v1 requirements + v2 workshop requirements + migration mapping + refinements + email infrastructure + verse-by-category + content production + SMS notifications + user tutorial + church outreach CRM + gap closure)*
 
 ### Phase 15.1: Church Outreach Sample Request & Fulfillment (INSERTED)
 

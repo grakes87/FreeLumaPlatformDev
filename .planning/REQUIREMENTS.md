@@ -343,7 +343,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-07 | Phase 1 | Pending |
 | AUTH-08 | Phase 1 | Pending |
 | AUTH-09 | Phase 1 | Pending |
-| AUTH-10 | Phase 7 | Pending |
+| AUTH-10 | Phase 20 | Pending |
 | PROF-01 | Phase 1 | Pending |
 | PROF-02 | Phase 1 | Pending |
 | PROF-03 | Phase 2 | Pending |
@@ -476,16 +476,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MOD-03 | Phase 4 | Pending |
 | MOD-04 | Phase 4 | Pending |
 | MOD-05 | Phase 2 | Pending |
-| MIG-01 | Phase 7 | Pending |
-| MIG-02 | Phase 7 | Pending |
-| MIG-03 | Phase 7 | Pending |
-| MIG-04 | Phase 7 | Pending |
-| MIG-05 | Phase 7 | Pending |
-| MIG-06 | Phase 7 | Pending |
-| MIG-07 | Phase 7 | Pending |
-| MIG-08 | Phase 7 | Pending |
-| MIG-09 | Phase 7 | Pending |
-| MIG-10 | Phase 7 | Pending |
+| MIG-01 | Phase 20 | Pending |
+| MIG-02 | Phase 20 | Pending |
+| MIG-03 | Phase 20 | Pending |
+| MIG-04 | Phase 20 | Pending |
+| MIG-05 | Phase 20 | Pending |
+| MIG-06 | Phase 20 | Pending |
+| MIG-07 | Phase 20 | Pending |
+| MIG-08 | Phase 20 | Pending |
+| MIG-09 | Phase 20 | Pending |
+| MIG-10 | Phase 20 | Pending |
 | TECH-01 | Phase 1 | Pending |
 | TECH-02 | Phase 1 | Pending |
 | TECH-03 | Phase 1 | Pending |
@@ -511,7 +511,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Phase 4 (Enhanced Content): 22 requirements
 - Phase 5 (Workshops): 0 requirements (v2 deferred)
 - Phase 6 (Bug Fixes & Polish): 0 requirements (quality phase)
-- Phase 7 (Migration & Launch): 12 requirements
+- Phase 7 (Migration & Launch): 0 requirements (superseded by Phase 8 + Phase 20)
+- Phase 18 (Fix Both-mode API Routes): 0 requirements (integration fixes)
+- Phase 19 (Daily Content Bookmarks): 0 requirements (completion fixes)
+- Phase 20 (Migration Formal Closure): 12 requirements (reassigned from Phase 7)
 
 ---
 *Requirements defined: 2026-02-11*
