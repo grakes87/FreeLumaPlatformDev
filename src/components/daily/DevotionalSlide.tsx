@@ -101,7 +101,7 @@ export function DevotionalSlide({ content }: DevotionalSlideProps) {
         {/* Center section: title + devotional reflection text */}
         <div
           ref={devotionalCenterRef}
-          className="flex max-w-lg flex-col items-center text-center overflow-hidden"
+          className="flex min-h-0 max-w-lg flex-col items-center text-center overflow-y-auto"
         >
           <p className="mb-1 text-xs font-medium uppercase tracking-widest text-white/60">
             Daily Devotional
