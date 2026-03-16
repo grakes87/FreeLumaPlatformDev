@@ -517,14 +517,17 @@ export async function processDailyReminders(): Promise<void> {
   const startOfDay = new Date(now);
   startOfDay.setUTCHours(0, 0, 0, 0);
   const alreadySent = await EmailLog.findAll({
-    attributes: ['recipient_id'],
+    attributes: ['recipient_id', 'content_mode'],
     where: {
       email_type: 'daily_reminder',
       sent_at: { [Op.gte]: startOfDay },
     },
     raw: true,
   });
-  const sentToday = new Set((alreadySent as Array<{ recipient_id: number }>).map(r => r.recipient_id));
+  const sentToday = new Set(
+    (alreadySent as Array<{ recipient_id: number; content_mode: string | null }>)
+      .map(r => `${r.recipient_id}:${r.content_mode || 'default'}`)
+  );
 
   for (const user of (users as unknown) as Array<{
     id: number;
@@ -566,9 +569,6 @@ export async function processDailyReminders(): Promise<void> {
 
       if (userHour !== reminderH) continue;
 
-      // Dedup: skip if already sent today
-      if (sentToday.has(user.id)) continue;
-
       // Match user's mode AND language, fall back to English if no localized content
       const userLang = user.language || 'en';
 
@@ -579,6 +579,10 @@ export async function processDailyReminders(): Promise<void> {
         user.mode === 'both' ? ['bible', 'positivity'] : [user.mode as 'bible' | 'positivity'];
 
       for (const notifyMode of modesToNotify) {
+        // Dedup: skip if already sent this specific mode today
+        const dedupKey = `${user.id}:${notifyMode}`;
+        if (sentToday.has(dedupKey)) continue;
+
         const content = contentMap[notifyMode]?.[userLang] || contentMap[notifyMode]?.['en'];
         if (!content) continue;
 
@@ -613,6 +617,7 @@ export async function processDailyReminders(): Promise<void> {
           quietStart: settings.quiet_hours_start,
           quietEnd: settings.quiet_hours_end,
           reminderTimezone: settings.reminder_timezone,
+          contentMode: notifyMode,
         });
 
         // ---- SMS daily reminder dispatch (fire-and-forget) ----
@@ -643,7 +648,19 @@ export async function processDailyReminders(): Promise<void> {
  * Called directly from createNotification flow.
  */
 export async function processFollowRequestEmail(userId: number, actorId: number): Promise<void> {
-  const { User, UserSetting } = await import('@/lib/db/models');
+  const { User, UserSetting, EmailLog } = await import('@/lib/db/models');
+
+  // Dedup: check if we already sent a follow_request email for this recipient
+  // in the last 5 minutes (prevents double-click / API retry duplicates)
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const recentDup = await EmailLog.count({
+    where: {
+      recipient_id: userId,
+      email_type: 'follow_request',
+      created_at: { [Op.gte]: fiveMinAgo },
+    },
+  });
+  if (recentDup > 0) return;
 
   // Get recipient and settings
   const recipient = await User.findByPk(userId, {
@@ -701,7 +718,19 @@ export async function processPrayerResponseEmail(
   actorId: number,
   prayerRequestId: number
 ): Promise<void> {
-  const { User, UserSetting, Post, PrayerRequest } = await import('@/lib/db/models');
+  const { User, UserSetting, Post, PrayerRequest, EmailLog } = await import('@/lib/db/models');
+
+  // Dedup: check if we already sent a prayer_response email to this recipient
+  // in the last 5 minutes (prevents double-click / API retry duplicates)
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const recentDup = await EmailLog.count({
+    where: {
+      recipient_id: userId,
+      email_type: 'prayer_response',
+      created_at: { [Op.gte]: fiveMinAgo },
+    },
+  });
+  if (recentDup > 0) return;
 
   // Get recipient and settings
   const recipient = await User.findByPk(userId, {
