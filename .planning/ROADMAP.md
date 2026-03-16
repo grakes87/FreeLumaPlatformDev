@@ -32,6 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 18: Fix Both-mode API Routes** - Apply resolveContentMode() to daily-posts and feed routes broken for Both-mode users
 - [ ] **Phase 19: Daily Content Bookmarks** - Add bookmark button to DailyPostSlide, extend useBookmark hook for daily_content_id
 - [ ] **Phase 20: Migration Formal Closure** - Verify/close orphaned Phase 7 migration requirements via import script evidence
+- [ ] **Phase 21: Investigate & Fix Duplicate Email Notifications** - Fix both-mode daily reminder dedup, add immediate email dedup, add cron execution locking
 
 ## Phase Details
 
@@ -675,6 +676,23 @@ Plans:
 
 **Plans:** 0/0 plans (run /gsd:plan-phase 20)
 
+### Phase 21: Investigate & Fix Duplicate Email Notifications
+
+**Goal:** Eliminate all duplicate email notification vectors identified in research: fix both-mode daily reminder dedup, add immediate email dedup for follow/prayer, add module-level execution lock guards on batch processors, and add database-level cron locking via PlatformSetting for cross-process safety during PM2 restarts.
+**Requirements**: Bug fix phase (no formal requirements)
+**Depends on:** Phase 10 (Email System Setup with SendGrid)
+**Plans:** 2 plans
+
+**Success Criteria** (what must be TRUE):
+  1. Both-mode users receive exactly 2 daily reminder emails (Bible + Positivity), independently deduplicated
+  2. Follow and prayer immediate emails have dedup protection against double-sends
+  3. All batch email processors cannot run concurrently (module-level guards)
+  4. All cron jobs use database-level locks preventing overlap across PM2 restarts
+  5. EmailLog tracks content_mode for daily reminders enabling per-mode dedup
+
+Plans:
+- [ ] 21-01-PLAN.md — DB migration (content_mode column + dedup index) and module-level execution lock guards
+- [ ] 21-02-PLAN.md — Fix both-mode dedup, immediate email dedup, and DB-level cron locking
 ---
 *Roadmap created: 2026-02-11*
 *Phase 1 planned: 2026-02-11 (12 plans in 5 waves)*
@@ -718,3 +736,4 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 15.1 to break down)
+*Phase 21 planned: 2026-03-16 (2 plans in 2 waves)*
