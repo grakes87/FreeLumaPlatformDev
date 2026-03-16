@@ -124,6 +124,7 @@ async function sendNotificationEmail(params: {
   quietStart: string | null;
   quietEnd: string | null;
   reminderTimezone: string | null;
+  contentMode?: 'bible' | 'positivity' | null;
 }): Promise<boolean> {
   const { userId, userEmail, emailType, subject, html, headers, trackingId, quietStart, quietEnd, reminderTimezone } = params;
 
@@ -142,6 +143,7 @@ async function sendNotificationEmail(params: {
   const emailLog = await EmailLog.create({
     recipient_id: userId,
     email_type: emailType,
+    content_mode: params.contentMode ?? null,
     subject,
     status: 'queued',
     tracking_id: trackingId,
@@ -158,6 +160,12 @@ async function sendNotificationEmail(params: {
   }
 }
 
+// ---- Execution lock guards (prevent overlapping cron runs) ----
+let dmBatchRunning = false;
+let reactionBatchRunning = false;
+let dailyReminderRunning = false;
+let videoBroadcastRunning = false;
+
 // ---- Public API ----
 
 /**
@@ -169,6 +177,12 @@ async function sendNotificationEmail(params: {
  * Groups by sender: "You have X unread messages from Y"
  */
 export async function processDMEmailBatch(): Promise<void> {
+  if (dmBatchRunning) {
+    console.log('[Email Queue] DM batch already running, skipping');
+    return;
+  }
+  dmBatchRunning = true;
+  try {
   const { sequelize, User, UserSetting, Message, ConversationParticipant, EmailLog } = await import('@/lib/db/models');
   const { presenceManager } = await import('@/lib/socket/presence');
 
@@ -283,6 +297,9 @@ export async function processDMEmailBatch(): Promise<void> {
       console.error(`[Email Queue] DM batch error for conversation ${batch.conversation_id}:`, err);
     }
   }
+  } finally {
+    dmBatchRunning = false;
+  }
 }
 
 /**
@@ -294,6 +311,12 @@ export async function processDMEmailBatch(): Promise<void> {
  * Groups by recipient and sends a single digest email per user.
  */
 export async function processReactionCommentBatch(): Promise<void> {
+  if (reactionBatchRunning) {
+    console.log('[Email Queue] Reaction/comment batch already running, skipping');
+    return;
+  }
+  reactionBatchRunning = true;
+  try {
   const { sequelize, User, UserSetting, EmailLog } = await import('@/lib/db/models');
   const { presenceManager } = await import('@/lib/socket/presence');
 
@@ -428,6 +451,9 @@ export async function processReactionCommentBatch(): Promise<void> {
       console.error(`[Email Queue] Reaction/comment batch error for user ${batch.recipient_id}:`, err);
     }
   }
+  } finally {
+    reactionBatchRunning = false;
+  }
 }
 
 /**
@@ -438,6 +464,12 @@ export async function processReactionCommentBatch(): Promise<void> {
  * in their reminder_timezone.
  */
 export async function processDailyReminders(): Promise<void> {
+  if (dailyReminderRunning) {
+    console.log('[Email Queue] Daily reminder batch already running, skipping');
+    return;
+  }
+  dailyReminderRunning = true;
+  try {
   const { User, UserSetting, DailyContent, EmailLog } = await import('@/lib/db/models');
   const { Op } = await import('sequelize');
 
@@ -600,6 +632,9 @@ export async function processDailyReminders(): Promise<void> {
     } catch (err) {
       console.error(`[Email Queue] Daily reminder error for user ${user.id}:`, err);
     }
+  }
+  } finally {
+    dailyReminderRunning = false;
   }
 }
 
@@ -874,6 +909,12 @@ const VIDEO_BROADCAST_CHUNK_SIZE = 100;
  * Processes 100 users per tick.
  */
 export async function processVideoBroadcast(): Promise<void> {
+  if (videoBroadcastRunning) {
+    console.log('[Email Queue] Video broadcast already running, skipping');
+    return;
+  }
+  videoBroadcastRunning = true;
+  try {
   const { PlatformSetting, Video, EmailLog, sequelize } = await import('@/lib/db/models');
 
   // Check for pending broadcast
@@ -1001,6 +1042,9 @@ export async function processVideoBroadcast(): Promise<void> {
   }
 
   console.log(`[Email Queue] Video broadcast: processed ${processedCount} users for video ${videoId}`);
+  } finally {
+    videoBroadcastRunning = false;
+  }
 }
 
 /**

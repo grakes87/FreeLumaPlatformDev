@@ -5,6 +5,7 @@ export interface EmailLogAttributes {
   id: number;
   recipient_id: number;
   email_type: 'dm_batch' | 'follow_request' | 'prayer_response' | 'daily_reminder' | 'reaction_comment_batch' | 'workshop_reminder' | 'workshop_cancelled' | 'workshop_invite' | 'workshop_recording' | 'workshop_updated' | 'workshop_started' | 'new_video';
+  content_mode: 'bible' | 'positivity' | null;
   subject: string;
   status: 'queued' | 'sent' | 'bounced' | 'opened';
   sent_at: Date | null;
@@ -16,6 +17,7 @@ export interface EmailLogAttributes {
 
 export interface EmailLogCreationAttributes extends Optional<EmailLogAttributes,
   | 'id'
+  | 'content_mode'
   | 'status'
   | 'sent_at'
   | 'opened_at'
@@ -28,6 +30,7 @@ class EmailLog extends Model<EmailLogAttributes, EmailLogCreationAttributes> imp
   declare id: number;
   declare recipient_id: number;
   declare email_type: 'dm_batch' | 'follow_request' | 'prayer_response' | 'daily_reminder' | 'reaction_comment_batch' | 'workshop_reminder' | 'workshop_cancelled' | 'workshop_invite' | 'workshop_recording' | 'workshop_updated' | 'workshop_started' | 'new_video';
+  declare content_mode: 'bible' | 'positivity' | null;
   declare subject: string;
   declare status: 'queued' | 'sent' | 'bounced' | 'opened';
   declare sent_at: Date | null;
@@ -55,6 +58,11 @@ EmailLog.init(
     email_type: {
       type: DataTypes.ENUM('dm_batch', 'follow_request', 'prayer_response', 'daily_reminder', 'reaction_comment_batch', 'workshop_reminder', 'workshop_cancelled', 'workshop_invite', 'workshop_recording', 'workshop_updated', 'workshop_started', 'new_video'),
       allowNull: false,
+    },
+    content_mode: {
+      type: DataTypes.ENUM('bible', 'positivity'),
+      allowNull: true,
+      defaultValue: null,
     },
     subject: {
       type: DataTypes.STRING(255),
