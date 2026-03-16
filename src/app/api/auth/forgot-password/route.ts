@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     console.log(`[Forgot Password] Lookup for ${normalizedEmail}: ${user ? `found user ${user.id}` : 'not found'}`);
 
     if (user) {
-      // Generate a signed JWT with 1-hour expiry for password reset
+      // Generate a signed JWT for password reset (no expiry)
       const resetToken = await new SignJWT({
         id: user.id,
         email: user.email,
@@ -61,7 +61,6 @@ export async function POST(req: NextRequest) {
       })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
-        .setExpirationTime('1h')
         .sign(getResetSecret());
 
       try {
