@@ -692,7 +692,7 @@ Plans:
 
 Plans:
 - [x] 21-01-PLAN.md — DB migration (content_mode column + dedup index) and module-level execution lock guards
-- [ ] 21-02-PLAN.md — Fix both-mode dedup, immediate email dedup, and DB-level cron locking
+- [x] 21-02-PLAN.md — Fix both-mode dedup, immediate email dedup, and DB-level cron locking
 ---
 *Roadmap created: 2026-02-11*
 *Phase 1 planned: 2026-02-11 (12 plans in 5 waves)*
