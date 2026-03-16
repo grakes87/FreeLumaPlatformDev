@@ -691,7 +691,7 @@ Plans:
   5. EmailLog tracks content_mode for daily reminders enabling per-mode dedup
 
 Plans:
-- [ ] 21-01-PLAN.md — DB migration (content_mode column + dedup index) and module-level execution lock guards
+- [x] 21-01-PLAN.md — DB migration (content_mode column + dedup index) and module-level execution lock guards
 - [ ] 21-02-PLAN.md — Fix both-mode dedup, immediate email dedup, and DB-level cron locking
 ---
 *Roadmap created: 2026-02-11*
