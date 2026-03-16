@@ -23,7 +23,16 @@ export function initEmailScheduler(): void {
   // Every 5 minutes: process batched DM email notifications
   cron.schedule('*/5 * * * *', async () => {
     try {
-      await processDMEmailBatch();
+      const { acquireCronLock, releaseCronLock } = await import('./cronLock');
+      if (!await acquireCronLock('dm_batch', 4 * 60 * 1000)) {
+        console.log('[Email Scheduler] DM batch lock held, skipping');
+        return;
+      }
+      try {
+        await processDMEmailBatch();
+      } finally {
+        await releaseCronLock('dm_batch');
+      }
     } catch (err) {
       console.error('[Email Scheduler] DM batch error:', err);
     }
@@ -32,7 +41,16 @@ export function initEmailScheduler(): void {
   // Every 5 minutes: process pending video broadcast emails (chunked)
   cron.schedule('*/5 * * * *', async () => {
     try {
-      await processVideoBroadcast();
+      const { acquireCronLock, releaseCronLock } = await import('./cronLock');
+      if (!await acquireCronLock('video_broadcast', 4 * 60 * 1000)) {
+        console.log('[Email Scheduler] Video broadcast lock held, skipping');
+        return;
+      }
+      try {
+        await processVideoBroadcast();
+      } finally {
+        await releaseCronLock('video_broadcast');
+      }
     } catch (err) {
       console.error('[Email Scheduler] Video broadcast error:', err);
     }
@@ -41,7 +59,16 @@ export function initEmailScheduler(): void {
   // Every 15 minutes: process batched reaction/comment email notifications
   cron.schedule('*/15 * * * *', async () => {
     try {
-      await processReactionCommentBatch();
+      const { acquireCronLock, releaseCronLock } = await import('./cronLock');
+      if (!await acquireCronLock('reaction_comment_batch', 14 * 60 * 1000)) {
+        console.log('[Email Scheduler] Reaction/comment batch lock held, skipping');
+        return;
+      }
+      try {
+        await processReactionCommentBatch();
+      } finally {
+        await releaseCronLock('reaction_comment_batch');
+      }
     } catch (err) {
       console.error('[Email Scheduler] Reaction/comment batch error:', err);
     }
@@ -50,7 +77,16 @@ export function initEmailScheduler(): void {
   // Top of each hour: send daily content reminder emails
   cron.schedule('0 * * * *', async () => {
     try {
-      await processDailyReminders();
+      const { acquireCronLock, releaseCronLock } = await import('./cronLock');
+      if (!await acquireCronLock('daily_reminders', 55 * 60 * 1000)) {
+        console.log('[Email Scheduler] Daily reminder lock held, skipping');
+        return;
+      }
+      try {
+        await processDailyReminders();
+      } finally {
+        await releaseCronLock('daily_reminders');
+      }
     } catch (err) {
       console.error('[Email Scheduler] Daily reminder error:', err);
     }
@@ -59,7 +95,16 @@ export function initEmailScheduler(): void {
   // Daily at 3 AM: clean up old notifications and email logs
   cron.schedule('0 3 * * *', async () => {
     try {
-      await cleanupOldNotifications();
+      const { acquireCronLock, releaseCronLock } = await import('./cronLock');
+      if (!await acquireCronLock('cleanup', 60 * 60 * 1000)) {
+        console.log('[Email Scheduler] Cleanup lock held, skipping');
+        return;
+      }
+      try {
+        await cleanupOldNotifications();
+      } finally {
+        await releaseCronLock('cleanup');
+      }
     } catch (err) {
       console.error('[Email Scheduler] Cleanup error:', err);
     }

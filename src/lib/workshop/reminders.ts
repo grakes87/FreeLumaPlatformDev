@@ -31,7 +31,16 @@ export function initWorkshopCrons(): void {
   // -----------------------------------------------------------------------
   cron.schedule('*/5 * * * *', async () => {
     try {
-      await sendWorkshopReminders();
+      const { acquireCronLock, releaseCronLock } = await import('@/lib/email/cronLock');
+      if (!await acquireCronLock('workshop_reminders', 4 * 60 * 1000)) {
+        console.log('[Workshop Crons] Reminder lock held, skipping');
+        return;
+      }
+      try {
+        await sendWorkshopReminders();
+      } finally {
+        await releaseCronLock('workshop_reminders');
+      }
     } catch (err) {
       console.error('[Workshop Crons] Reminder error:', err);
     }
@@ -42,7 +51,16 @@ export function initWorkshopCrons(): void {
   // -----------------------------------------------------------------------
   cron.schedule('* * * * *', async () => {
     try {
-      await handleNoShowCancellations();
+      const { acquireCronLock, releaseCronLock } = await import('@/lib/email/cronLock');
+      if (!await acquireCronLock('workshop_noshow', 55 * 1000)) {
+        console.log('[Workshop Crons] No-show lock held, skipping');
+        return;
+      }
+      try {
+        await handleNoShowCancellations();
+      } finally {
+        await releaseCronLock('workshop_noshow');
+      }
     } catch (err) {
       console.error('[Workshop Crons] No-show cancel error:', err);
     }
@@ -53,7 +71,16 @@ export function initWorkshopCrons(): void {
   // -----------------------------------------------------------------------
   cron.schedule('0 4 * * *', async () => {
     try {
-      await generateSeriesInstances();
+      const { acquireCronLock, releaseCronLock } = await import('@/lib/email/cronLock');
+      if (!await acquireCronLock('workshop_series_gen', 60 * 60 * 1000)) {
+        console.log('[Workshop Crons] Series generation lock held, skipping');
+        return;
+      }
+      try {
+        await generateSeriesInstances();
+      } finally {
+        await releaseCronLock('workshop_series_gen');
+      }
     } catch (err) {
       console.error('[Workshop Crons] Series generation error:', err);
     }
