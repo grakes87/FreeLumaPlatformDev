@@ -124,8 +124,10 @@ export default function RecordPage() {
 
   /**
    * Submit recorded video:
-   * Upload raw video to server → server uploads to B2 → responds immediately.
-   * Compression happens in the background on the server.
+   * 1. Get presigned URL from our API
+   * 2. Upload raw video directly to B2 (bypasses Cloudflare/Nginx)
+   * 3. Call /api/creator/upload with the B2 key to update DB
+   * 4. Server compresses in background — raw video is immediately playable
    */
   const handleSubmit = useCallback(async () => {
     if (!recordedBlob || !content) return;
@@ -135,53 +137,65 @@ export default function RecordPage() {
     setSubmitError(null);
 
     try {
-      // Build FormData with video file + content ID
-      const formData = new FormData();
-      const ext = (recordedBlob.type || mimeType || '').includes('mp4') ? 'mp4' : 'webm';
-      formData.append('video', recordedBlob, `recording.${ext}`);
-      formData.append('daily_content_id', String(content.id));
+      const contentType = recordedBlob.type || mimeType || 'video/webm';
 
-      // Upload to server with progress tracking via XHR.
-      // Server uploads raw video to B2 and responds — compression is async.
-      await new Promise<{ content: Record<string, unknown> }>((resolve, reject) => {
+      // Step 1: Get presigned URL for direct-to-B2 upload
+      const presignRes = await fetch(
+        `/api/upload/presigned?type=creator-video&contentType=${encodeURIComponent(contentType)}`
+      );
+      if (!presignRes.ok) {
+        const data = await presignRes.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to prepare upload');
+      }
+      const { uploadUrl, key } = await presignRes.json();
+
+      // Step 2: Upload directly to B2 with progress tracking via XHR
+      await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/creator/upload', true);
+        xhr.open('PUT', uploadUrl, true);
+        xhr.setRequestHeader('Content-Type', contentType);
+        xhr.setRequestHeader('Cache-Control', 'public, max-age=31536000, immutable');
 
-        // Upload progress (0–95%)
+        // Upload progress (0–90%)
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
-            const pct = Math.round((e.loaded / e.total) * 95);
+            const pct = Math.round((e.loaded / e.total) * 90);
             setUploadProgress(pct);
           }
         };
 
         xhr.upload.onload = () => {
-          setUploadProgress(98);
+          setUploadProgress(92);
         };
 
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              resolve(JSON.parse(xhr.responseText));
-            } catch {
-              reject(new Error('Invalid server response'));
-            }
+            resolve();
           } else {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              reject(new Error(data.error || `Upload failed (${xhr.status})`));
-            } catch {
-              reject(new Error(`Upload failed with status ${xhr.status}`));
-            }
+            reject(new Error(`Upload to storage failed (${xhr.status})`));
           }
         };
 
         xhr.onerror = () => reject(new Error('Upload network error'));
         xhr.ontimeout = () => reject(new Error('Upload timed out'));
-        xhr.timeout = 60000; // 60s — raw upload only, no compression wait
+        xhr.timeout = 120000; // 2 min for direct B2 upload
 
-        xhr.send(formData);
+        xhr.send(recordedBlob);
       });
+
+      setUploadProgress(95);
+
+      // Step 3: Notify server to update DB + kick off background compression
+      const submitRes = await fetch('/api/creator/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ daily_content_id: content.id, key }),
+      });
+
+      if (!submitRes.ok) {
+        const data = await submitRes.json().catch(() => ({}));
+        throw new Error(data.error || `Submission failed (${submitRes.status})`);
+      }
 
       setUploadProgress(100);
 

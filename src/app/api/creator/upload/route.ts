@@ -5,17 +5,15 @@ import { b2Client, B2_BUCKET, isB2Configured } from '@/lib/storage/b2';
 import { getPublicUrl } from '@/lib/storage/presign';
 import { compressVideo } from '@/lib/video/compress';
 
-// Allow large video uploads (up to 200 MB)
-export const maxDuration = 120; // 2 min — raw upload only, no compression wait
-
 /**
  * POST /api/creator/upload
- * Accept a recorded video file, upload the RAW video to B2 immediately,
- * respond to the client, then compress in the background.
+ * Called AFTER the client has uploaded the raw video directly to B2
+ * via a presigned URL. This route just updates the DB record and
+ * kicks off background compression.
  *
- * Body: FormData with fields:
- *   - video: File (the recorded video blob)
- *   - daily_content_id: string (the content ID to attach the video to)
+ * Body (JSON):
+ *   - daily_content_id: number
+ *   - key: string (the B2 object key from the presigned upload)
  */
 export const POST = withCreator(async (req: NextRequest, context: CreatorContext) => {
   if (!isB2Configured || !b2Client) {
@@ -24,25 +22,32 @@ export const POST = withCreator(async (req: NextRequest, context: CreatorContext
 
   const { DailyContent } = await import('@/lib/db/models');
 
-  // Parse multipart form data
-  let formData: FormData;
+  let body: { daily_content_id?: number; key?: string };
   try {
-    formData = await req.formData();
+    body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid form data' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const videoFile = formData.get('video');
-  const dailyContentId = formData.get('daily_content_id');
+  const { daily_content_id, key } = body;
 
-  if (!(videoFile instanceof File) || !dailyContentId) {
+  if (!daily_content_id || !key) {
     return NextResponse.json(
-      { error: 'video file and daily_content_id are required' },
+      { error: 'daily_content_id and key are required' },
       { status: 400 }
     );
   }
 
-  const contentId = parseInt(String(dailyContentId), 10);
+  // Validate the key belongs to creator-videos and this user
+  // (presigned URL uses user.id, not creator.id)
+  if (!key.startsWith(`creator-videos/${context.user.id}/`)) {
+    return NextResponse.json(
+      { error: 'Invalid upload key' },
+      { status: 403 }
+    );
+  }
+
+  const contentId = Number(daily_content_id);
   if (isNaN(contentId)) {
     return NextResponse.json({ error: 'Invalid daily_content_id' }, { status: 400 });
   }
@@ -74,54 +79,7 @@ export const POST = withCreator(async (req: NextRequest, context: CreatorContext
     );
   }
 
-  // Read file into buffer
-  let inputBuffer: Buffer;
-  try {
-    const arrayBuffer = await videoFile.arrayBuffer();
-    inputBuffer = Buffer.from(arrayBuffer);
-  } catch (err) {
-    console.error('[creator/upload] Failed to read uploaded file:', err);
-    return NextResponse.json(
-      { error: 'Failed to read uploaded video file.' },
-      { status: 400 }
-    );
-  }
-
-  if (inputBuffer.byteLength === 0) {
-    return NextResponse.json(
-      { error: 'Uploaded video file is empty.' },
-      { status: 400 }
-    );
-  }
-
-  const sizeMB = (inputBuffer.byteLength / 1024 / 1024).toFixed(1);
-  console.log(`[creator/upload] Received ${sizeMB} MB video, type: ${videoFile.type}`);
-
-  // Upload RAW video to B2 immediately
-  const ext = (videoFile.type || '').includes('mp4') ? 'mp4' : 'webm';
-  const random = Math.random().toString(36).slice(2, 8);
-  const rawKey = `creator-videos/${context.creator.id}/raw-${Date.now()}-${random}.${ext}`;
-
-  try {
-    await b2Client.send(
-      new PutObjectCommand({
-        Bucket: B2_BUCKET,
-        Key: rawKey,
-        Body: inputBuffer,
-        ContentType: videoFile.type || 'video/webm',
-        CacheControl: 'public, max-age=31536000, immutable',
-      })
-    );
-  } catch (err) {
-    console.error('[creator/upload] B2 raw upload failed:', err);
-    return NextResponse.json(
-      { error: 'Failed to upload video. Please try again.' },
-      { status: 500 }
-    );
-  }
-
-  const rawUrl = getPublicUrl(rawKey);
-  console.log(`[creator/upload] Raw video uploaded: ${rawKey}`);
+  const rawUrl = getPublicUrl(key);
 
   // Update content: set raw URL as both playable and fallback, mark submitted
   await content.update({
@@ -132,7 +90,9 @@ export const POST = withCreator(async (req: NextRequest, context: CreatorContext
     rejection_note: null,
   });
 
-  // Respond immediately — upload is done
+  console.log(`[creator/upload] Content ${contentId} submitted with raw video: ${key}`);
+
+  // Respond immediately — DB is updated
   const response = NextResponse.json({
     content: {
       id: content.id,
@@ -143,7 +103,7 @@ export const POST = withCreator(async (req: NextRequest, context: CreatorContext
   });
 
   // Fire-and-forget: compress in background, then replace URL
-  compressAndReplace(contentId, rawKey, inputBuffer).catch(() => {
+  compressAndReplace(contentId, key).catch(() => {
     // Errors already logged inside compressAndReplace
   });
 
@@ -151,50 +111,62 @@ export const POST = withCreator(async (req: NextRequest, context: CreatorContext
 });
 
 /**
- * Background compression: compress the raw video and replace the URL.
- * If anything fails, the raw video remains as a working fallback.
+ * Background compression: download raw from B2, compress, re-upload compressed,
+ * update DB. If anything fails, the raw video remains as a working fallback.
  */
 async function compressAndReplace(
   contentId: number,
-  rawKey: string,
-  inputBuffer: Buffer
+  rawKey: string
 ): Promise<void> {
   const { DailyContent } = await import('@/lib/db/models');
+  const { GetObjectCommand } = await import('@aws-sdk/client-s3');
 
   try {
     console.log(`[creator/upload] Starting background compression for content ${contentId}`);
+
+    // Download raw video from B2
+    const getResult = await b2Client!.send(
+      new GetObjectCommand({ Bucket: B2_BUCKET, Key: rawKey })
+    );
+    const chunks: Buffer[] = [];
+    const stream = getResult.Body as NodeJS.ReadableStream;
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk));
+    }
+    const inputBuffer = Buffer.concat(chunks);
+
+    const rawSizeMB = (inputBuffer.byteLength / 1024 / 1024).toFixed(1);
+    console.log(`[creator/upload] Downloaded raw video: ${rawSizeMB} MB`);
 
     // Compress with FFmpeg (720p portrait H.264 MP4)
     const compressedBuffer = await compressVideo(inputBuffer);
 
     const compressedSizeMB = (compressedBuffer.byteLength / 1024 / 1024).toFixed(1);
-    const rawSizeMB = (inputBuffer.byteLength / 1024 / 1024).toFixed(1);
     console.log(`[creator/upload] Compressed ${rawSizeMB} MB → ${compressedSizeMB} MB`);
 
     // Upload compressed MP4 to B2
     const random = Math.random().toString(36).slice(2, 8);
     const compressedKey = rawKey
-      .replace(/^(creator-videos\/\d+\/)raw-/, `$1`)
-      .replace(/\.\w+$/, `.mp4`);
-    const finalKey = compressedKey.replace(/\.mp4$/, `-${random}.mp4`);
+      .replace(/\/raw-/, '/')
+      .replace(/\.\w+$/, `-${random}.mp4`);
 
     await b2Client!.send(
       new PutObjectCommand({
         Bucket: B2_BUCKET,
-        Key: finalKey,
+        Key: compressedKey,
         Body: compressedBuffer,
         ContentType: 'video/mp4',
         CacheControl: 'public, max-age=31536000, immutable',
       })
     );
 
-    const compressedUrl = getPublicUrl(finalKey);
+    const compressedUrl = getPublicUrl(compressedKey);
 
     // Update lumashort_video_url to compressed version; keep creator_video_url as raw fallback
     const content = await DailyContent.findByPk(contentId);
     if (content) {
       await content.update({ lumashort_video_url: compressedUrl });
-      console.log(`[creator/upload] Compression complete for content ${contentId}: ${finalKey}`);
+      console.log(`[creator/upload] Compression complete for content ${contentId}: ${compressedKey}`);
     }
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
