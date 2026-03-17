@@ -106,9 +106,7 @@ export function RecordingControls({
               />
             </div>
             <p className="mt-1 text-center text-xs text-white/70">
-              {(uploadProgress ?? 0) >= 70 && (uploadProgress ?? 0) < 100
-                ? 'Compressing & saving...'
-                : `Uploading... ${uploadProgress ?? 0}%`}
+              Uploading... {uploadProgress ?? 0}%
             </p>
           </div>
         )}

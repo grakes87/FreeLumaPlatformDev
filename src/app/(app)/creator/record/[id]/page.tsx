@@ -124,7 +124,8 @@ export default function RecordPage() {
 
   /**
    * Submit recorded video:
-   * Upload to server → server compresses with FFmpeg → uploads to B2.
+   * Upload raw video to server → server uploads to B2 → responds immediately.
+   * Compression happens in the background on the server.
    */
   const handleSubmit = useCallback(async () => {
     if (!recordedBlob || !content) return;
@@ -141,22 +142,21 @@ export default function RecordPage() {
       formData.append('daily_content_id', String(content.id));
 
       // Upload to server with progress tracking via XHR.
-      // Server handles compression + B2 upload before responding.
-      const result = await new Promise<{ content: Record<string, unknown> }>((resolve, reject) => {
+      // Server uploads raw video to B2 and responds — compression is async.
+      await new Promise<{ content: Record<string, unknown> }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/api/creator/upload', true);
 
-        // Upload progress (0–70%)
+        // Upload progress (0–95%)
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
-            const pct = Math.round((e.loaded / e.total) * 70);
+            const pct = Math.round((e.loaded / e.total) * 95);
             setUploadProgress(pct);
           }
         };
 
-        // Once upload completes, server is compressing + uploading to B2
         xhr.upload.onload = () => {
-          setUploadProgress(75);
+          setUploadProgress(98);
         };
 
         xhr.onload = () => {
@@ -178,7 +178,7 @@ export default function RecordPage() {
 
         xhr.onerror = () => reject(new Error('Upload network error'));
         xhr.ontimeout = () => reject(new Error('Upload timed out'));
-        xhr.timeout = 300000; // 5 min timeout (includes server-side compression)
+        xhr.timeout = 60000; // 60s — raw upload only, no compression wait
 
         xhr.send(formData);
       });
