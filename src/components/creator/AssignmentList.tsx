@@ -75,7 +75,7 @@ export function AssignmentList({ assignments, loading, onSelectAssignment, onUpl
     fileInputRef.current?.click();
   }, []);
 
-  const handleFileSelected = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const assignmentId = pendingAssignmentRef.current;
     if (!file || !assignmentId) return;
@@ -88,51 +88,72 @@ export function AssignmentList({ assignments, loading, onSelectAssignment, onUpl
     setUploadError(null);
     setUploadSuccess(null);
 
-    const formData = new FormData();
-    formData.append('video', file);
-    formData.append('daily_content_id', String(assignmentId));
+    try {
+      const contentType = file.type || 'video/mp4';
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/creator/upload');
-
-    xhr.upload.onprogress = (evt) => {
-      if (evt.lengthComputable) {
-        setUploadProgress(Math.round((evt.loaded / evt.total) * 70));
+      // Step 1: Get presigned URL for direct-to-B2 upload
+      const presignRes = await fetch(
+        `/api/upload/presigned?type=creator-video&contentType=${encodeURIComponent(contentType)}`
+      );
+      if (!presignRes.ok) {
+        const data = await presignRes.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to prepare upload');
       }
-    };
+      const { uploadUrl, key } = await presignRes.json();
 
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        setUploadProgress(100);
-        setUploadingId(null);
-        setUploadSuccess(assignmentId);
-        setTimeout(() => {
-          setUploadSuccess(null);
-          onUploadComplete?.();
-        }, 1500);
-      } else {
-        let msg = 'Upload failed';
-        try { msg = JSON.parse(xhr.responseText).error || msg; } catch { /* ignore */ }
-        setUploadError(msg);
-        setUploadingId(null);
+      // Step 2: Upload directly to B2 with progress tracking
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', uploadUrl, true);
+        xhr.setRequestHeader('Content-Type', contentType);
+        xhr.setRequestHeader('Cache-Control', 'public, max-age=31536000, immutable');
+
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) {
+            setUploadProgress(Math.round((evt.loaded / evt.total) * 90));
+          }
+        };
+
+        xhr.upload.onload = () => setUploadProgress(92);
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`Upload to storage failed (${xhr.status})`));
+        };
+
+        xhr.onerror = () => reject(new Error('Network error — please try again'));
+        xhr.ontimeout = () => reject(new Error('Upload timed out'));
+        xhr.timeout = 120000;
+
+        xhr.send(file);
+      });
+
+      setUploadProgress(95);
+
+      // Step 3: Notify server to update DB + kick off background compression
+      const submitRes = await fetch('/api/creator/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ daily_content_id: assignmentId, key }),
+      });
+
+      if (!submitRes.ok) {
+        const data = await submitRes.json().catch(() => ({}));
+        throw new Error(data.error || 'Submission failed');
       }
-    };
 
-    xhr.onerror = () => {
-      setUploadError('Network error — please try again');
+      setUploadProgress(100);
       setUploadingId(null);
-    };
-
-    // After upload completes, server compresses — show progress at 70%+
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState === XMLHttpRequest.DONE && uploadProgress < 70) return;
-      if (xhr.readyState === XMLHttpRequest.LOADING) {
-        setUploadProgress(85);
-      }
-    };
-
-    xhr.send(formData);
-  }, [onUploadComplete, uploadProgress]);
+      setUploadSuccess(assignmentId);
+      setTimeout(() => {
+        setUploadSuccess(null);
+        onUploadComplete?.();
+      }, 1500);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+      setUploadingId(null);
+    }
+  }, [onUploadComplete]);
 
   if (loading) {
     return (
@@ -305,9 +326,7 @@ export function AssignmentList({ assignments, loading, onSelectAssignment, onUpl
                   />
                 </div>
                 <p className="mt-1 text-xs text-text-muted dark:text-text-muted-dark">
-                  {uploadProgress >= 70
-                    ? 'Compressing & saving...'
-                    : `Uploading... ${uploadProgress}%`}
+                  Uploading... {uploadProgress}%
                 </p>
               </div>
             )}
