@@ -1,7 +1,10 @@
 /**
- * Upload a file via XHR with real upload progress tracking.
- * Uses XMLHttpRequest instead of fetch() because fetch doesn't support
- * upload progress events.
+ * Upload a file via presigned URL directly to B2, bypassing Cloudflare/Nginx.
+ * Uses XMLHttpRequest for upload progress events.
+ *
+ * Flow:
+ * 1. GET /api/upload/post-media?contentType=... → presigned PUT URL + key + public_url
+ * 2. PUT directly to B2 with the file
  */
 
 interface UploadResult {
@@ -9,39 +12,40 @@ interface UploadResult {
   public_url: string;
 }
 
-export function uploadWithProgress(
+export async function uploadWithProgress(
   file: File,
   onProgress: (percent: number) => void
 ): Promise<UploadResult> {
+  const contentType = file.type || 'application/octet-stream';
+
+  // Step 1: Get presigned URL
+  const presignRes = await fetch(
+    `/api/upload/post-media?contentType=${encodeURIComponent(contentType)}`,
+    { credentials: 'include' }
+  );
+  if (!presignRes.ok) {
+    const data = await presignRes.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to prepare upload');
+  }
+  const { upload_url, key, public_url } = await presignRes.json();
+
+  // Step 2: Upload directly to B2 with progress
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    const formData = new FormData();
-    formData.append('file', file);
 
-    // Cap at 90% during upload — the remaining 10% represents server-to-storage transfer
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable) {
-        const percent = Math.round((e.loaded / e.total) * 90);
+        const percent = Math.round((e.loaded / e.total) * 95);
         onProgress(percent);
       }
     });
 
     xhr.addEventListener('load', () => {
-      onProgress(100);
       if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          resolve(data);
-        } catch {
-          reject(new Error('Invalid response from server'));
-        }
+        onProgress(100);
+        resolve({ key, public_url });
       } else {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          reject(new Error(data.error || `Upload failed (${xhr.status})`));
-        } catch {
-          reject(new Error(`Upload failed (${xhr.status})`));
-        }
+        reject(new Error(`Upload to storage failed (${xhr.status})`));
       }
     });
 
@@ -53,8 +57,10 @@ export function uploadWithProgress(
       reject(new Error('Upload cancelled'));
     });
 
-    xhr.open('POST', '/api/upload/post-media');
-    xhr.withCredentials = true;
-    xhr.send(formData);
+    xhr.open('PUT', upload_url);
+    xhr.setRequestHeader('Content-Type', contentType);
+    xhr.setRequestHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    xhr.timeout = 120000; // 2 min
+    xhr.send(file);
   });
 }
