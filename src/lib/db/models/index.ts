@@ -74,6 +74,7 @@ import { DripStep } from './DripStep';
 import { DripEnrollment } from './DripEnrollment';
 import { SampleShipment } from './SampleShipment';
 import { ChurchConversion } from './ChurchConversion';
+import { DailyContentBackground } from './DailyContentBackground';
 
 // ---- Associations ----
 
@@ -1422,4 +1423,5 @@ export {
   DripEnrollment,
   SampleShipment,
   ChurchConversion,
+  DailyContentBackground,
 };

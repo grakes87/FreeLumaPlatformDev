@@ -15,9 +15,11 @@ import {
   Upload,
   Video,
   AudioLines,
+  Film,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/Button';
+import { BackgroundLibraryModal } from './BackgroundLibraryModal';
 
 export interface DayTranslation {
   translation_code: string;
@@ -117,6 +119,9 @@ export function DayCard({ day, mode, expectedTranslations, onRegenerate, onVideo
     created_at: string;
   }>>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [bgLibraryOpen, setBgLibraryOpen] = useState(false);
+  const [applyingBgLibrary, setApplyingBgLibrary] = useState(false);
+  const [bgVideoApplied, setBgVideoApplied] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     setLogsLoading(true);
@@ -285,7 +290,7 @@ export function DayCard({ day, mode, expectedTranslations, onRegenerate, onVideo
                     </>
                   )}
                   <FieldBadge has={day.has_background_prompt} label="BG Prompt" />
-                  <FieldBadge has={day.has_background_video} label="BG Video" />
+                  <FieldBadge has={day.has_background_video || bgVideoApplied} label="BG Video" />
                   <FieldBadge has={day.has_lumashort_video} label="Video" />
                 </div>
               </div>
@@ -388,37 +393,82 @@ export function DayCard({ day, mode, expectedTranslations, onRegenerate, onVideo
                   <p className="mb-2 text-xs font-medium uppercase text-text-muted dark:text-text-muted-dark">
                     Background Video
                   </p>
-                  <label
-                    className={cn(
-                      'flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-xs transition-colors',
-                      'hover:border-primary hover:bg-primary/5',
-                      'dark:border-border-dark dark:hover:border-primary dark:hover:bg-primary/5',
-                      uploadingVideo && 'pointer-events-none opacity-60'
-                    )}
-                  >
-                    {uploadingVideo
-                      ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                      : <Upload className="h-3.5 w-3.5 text-text-muted dark:text-text-muted-dark" />}
-                    <span className="text-text-muted dark:text-text-muted-dark">
-                      {uploadingVideo ? 'Uploading...' : day.has_background_video ? 'Replace background video (.mp4)' : 'Upload .mp4 background video'}
-                    </span>
-                    <input
-                      type="file"
-                      accept=".mp4,video/mp4"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file || !onVideoUpload) return;
-                        e.target.value = '';
-                        setUploadingVideo(true);
-                        try {
-                          await onVideoUpload(day.id, day.post_date, file);
-                        } finally {
-                          setUploadingVideo(false);
-                        }
+                  <div className="flex flex-wrap gap-2">
+                    <label
+                      className={cn(
+                        'flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-xs transition-colors',
+                        'hover:border-primary hover:bg-primary/5',
+                        'dark:border-border-dark dark:hover:border-primary dark:hover:bg-primary/5',
+                        uploadingVideo && 'pointer-events-none opacity-60'
+                      )}
+                    >
+                      {uploadingVideo
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                        : <Upload className="h-3.5 w-3.5 text-text-muted dark:text-text-muted-dark" />}
+                      <span className="text-text-muted dark:text-text-muted-dark">
+                        {uploadingVideo ? 'Uploading...' : (day.has_background_video || bgVideoApplied) ? 'Replace background video (.mp4)' : 'Upload .mp4 background video'}
+                      </span>
+                      <input
+                        type="file"
+                        accept=".mp4,video/mp4"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file || !onVideoUpload) return;
+                          e.target.value = '';
+                          setUploadingVideo(true);
+                          try {
+                            await onVideoUpload(day.id, day.post_date, file);
+                          } finally {
+                            setUploadingVideo(false);
+                          }
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setBgLibraryOpen(true);
                       }}
-                    />
-                  </label>
+                      disabled={applyingBgLibrary}
+                      className={cn(
+                        'flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs transition-colors',
+                        'hover:border-primary hover:bg-primary/5',
+                        'dark:border-border-dark dark:hover:border-primary dark:hover:bg-primary/5',
+                        applyingBgLibrary && 'pointer-events-none opacity-60'
+                      )}
+                    >
+                      {applyingBgLibrary
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                        : <Film className="h-3.5 w-3.5 text-text-muted dark:text-text-muted-dark" />}
+                      <span className="text-text-muted dark:text-text-muted-dark">
+                        Background Library
+                      </span>
+                    </button>
+                  </div>
+                  <BackgroundLibraryModal
+                    open={bgLibraryOpen}
+                    onClose={() => setBgLibraryOpen(false)}
+                    onSelect={async (url) => {
+                      setApplyingBgLibrary(true);
+                      try {
+                        const res = await fetch('/api/admin/content-production/background-video', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          credentials: 'include',
+                          body: JSON.stringify({
+                            uploads: [{ date: day.post_date, video_url: url }],
+                          }),
+                        });
+                        if (res.ok) {
+                          setBgVideoApplied(true);
+                        }
+                      } finally {
+                        setApplyingBgLibrary(false);
+                      }
+                    }}
+                  />
                 </div>
               )}
 
