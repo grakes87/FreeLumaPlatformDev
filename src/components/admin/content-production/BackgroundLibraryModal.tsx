@@ -28,7 +28,7 @@ export function BackgroundLibraryModal({ open, onClose, onSelect }: BackgroundLi
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const fetchPage = useCallback(async (p: number, q: string) => {
     setLoading(true);
