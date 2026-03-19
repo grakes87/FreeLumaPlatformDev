@@ -36,8 +36,7 @@ export function BackgroundLibraryModal({ open, onClose, onSelect }: BackgroundLi
       const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) });
       if (q) params.set('search', q);
       const res = await fetch(`/api/admin/content-production/background-library?${params}`, { credentials: 'include' });
-      const json = await res.json();
-      const data = json.data ?? {};
+      const data = await res.json();
       setItems(data.items ?? []);
       setTotal(data.total ?? 0);
       setTotalPages(data.totalPages ?? 1);
