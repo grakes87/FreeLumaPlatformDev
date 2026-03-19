@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Loader2, Check, Film } from 'lucide-react';
+import { X, Loader2, Check, Film, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/Button';
 
@@ -16,24 +16,59 @@ interface BackgroundLibraryModalProps {
   onSelect: (url: string) => void;
 }
 
+const PAGE_SIZE = 60;
+
 export function BackgroundLibraryModal({ open, onClose, onSelect }: BackgroundLibraryModalProps) {
   const [items, setItems] = useState<BackgroundItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+  const fetchPage = useCallback(async (p: number, q: string) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(p), limit: String(PAGE_SIZE) });
+      if (q) params.set('search', q);
+      const res = await fetch(`/api/admin/content-production/background-library?${params}`, { credentials: 'include' });
+      const json = await res.json();
+      const data = json.data ?? {};
+      setItems(data.items ?? []);
+      setTotal(data.total ?? 0);
+      setTotalPages(data.totalPages ?? 1);
+      setPage(p);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!open) {
       setSelectedUrl(null);
+      setSearch('');
+      setSearchInput('');
+      setPage(1);
       return;
     }
-    setLoading(true);
-    fetch('/api/admin/content-production/background-library', { credentials: 'include' })
-      .then((res) => res.json())
-      .then((json) => setItems(json.data ?? []))
-      .catch(() => setItems([]))
-      .finally(() => setLoading(false));
-  }, [open]);
+    fetchPage(1, '');
+  }, [open, fetchPage]);
+
+  // Debounced search
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      setSearch(value);
+      fetchPage(1, value);
+    }, 400);
+  };
 
   const handleSave = useCallback(async () => {
     if (!selectedUrl) return;
@@ -59,7 +94,7 @@ export function BackgroundLibraryModal({ open, onClose, onSelect }: BackgroundLi
               Background Library
             </h2>
             <span className="text-sm text-text-muted dark:text-text-muted-dark">
-              ({items.length})
+              ({total})
             </span>
           </div>
           <button
@@ -71,6 +106,24 @@ export function BackgroundLibraryModal({ open, onClose, onSelect }: BackgroundLi
           </button>
         </div>
 
+        {/* Search */}
+        <div className="border-b border-border px-5 py-3 dark:border-border-dark">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted dark:text-text-muted-dark" />
+            <input
+              type="text"
+              placeholder="Search by filename..."
+              value={searchInput}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className={cn(
+                'w-full rounded-lg border border-border bg-surface py-2 pl-9 pr-3 text-sm text-text',
+                'placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/50',
+                'dark:border-border-dark dark:bg-surface-dark dark:text-text-dark dark:placeholder:text-text-muted-dark'
+              )}
+            />
+          </div>
+        </div>
+
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5">
           {loading ? (
@@ -79,7 +132,7 @@ export function BackgroundLibraryModal({ open, onClose, onSelect }: BackgroundLi
             </div>
           ) : items.length === 0 ? (
             <p className="py-12 text-center text-sm text-text-muted dark:text-text-muted-dark">
-              No background videos in the library yet.
+              {search ? 'No videos match your search.' : 'No background videos in the library yet.'}
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -95,9 +148,34 @@ export function BackgroundLibraryModal({ open, onClose, onSelect }: BackgroundLi
           )}
         </div>
 
-        {/* Footer */}
-        {items.length > 0 && (
-          <div className="flex items-center justify-end gap-3 border-t border-border px-5 py-3 dark:border-border-dark">
+        {/* Pagination + Footer */}
+        <div className="flex items-center justify-between border-t border-border px-5 py-3 dark:border-border-dark">
+          <div className="flex items-center gap-2">
+            {totalPages > 1 && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1 || loading}
+                  onClick={() => fetchPage(page - 1, search)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-text-muted dark:text-text-muted-dark">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages || loading}
+                  onClick={() => fetchPage(page + 1, search)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
             <Button variant="outline" size="sm" onClick={onClose}>
               Cancel
             </Button>
@@ -111,7 +189,7 @@ export function BackgroundLibraryModal({ open, onClose, onSelect }: BackgroundLi
               Use Selected
             </Button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

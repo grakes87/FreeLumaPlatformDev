@@ -1,4 +1,4 @@
-const APP_SHORT_URL = 'freeluma.app';
+const APP_SHORT_URL = 'https://freeluma.app';
 
 /**
  * SMS message templates per notification category.

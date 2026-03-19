@@ -65,7 +65,8 @@ export const GET = withAuth(
 
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type');
-    const contentType = searchParams.get('contentType');
+    // Strip codec parameters (e.g. "video/mp4;codecs=avc1,mp4a.40.2" → "video/mp4")
+    const contentType = searchParams.get('contentType')?.split(';')[0].trim() || null;
 
     // Validate required params
     if (!type || !contentType) {

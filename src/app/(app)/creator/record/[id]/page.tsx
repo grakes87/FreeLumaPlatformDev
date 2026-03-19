@@ -137,7 +137,9 @@ export default function RecordPage() {
     setSubmitError(null);
 
     try {
-      const contentType = recordedBlob.type || mimeType || 'video/webm';
+      // Strip codec params (e.g. "video/mp4;codecs=avc1,mp4a.40.2" → "video/mp4")
+      const rawType = recordedBlob.type || mimeType || 'video/webm';
+      const contentType = rawType.split(';')[0].trim();
 
       // Step 1: Get presigned URL for direct-to-B2 upload
       const presignRes = await fetch(
