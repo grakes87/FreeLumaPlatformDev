@@ -243,9 +243,9 @@ export async function processDMEmailBatch(): Promise<void> {
       });
       if (recentEmailSent > 0) continue;
 
-      // Get recipient info and settings
+      // Get recipient info and settings (only verified users)
       const recipient = await User.findByPk(batch.recipient_id, {
-        attributes: ['id', 'email', 'display_name'],
+        attributes: ['id', 'email', 'display_name', 'is_verified'],
         include: [{
           model: UserSetting,
           as: 'settings',
@@ -254,6 +254,7 @@ export async function processDMEmailBatch(): Promise<void> {
       });
 
       if (!recipient) continue;
+      if (!(recipient as unknown as { is_verified: boolean }).is_verified) continue;
       const settings = (recipient as unknown as { settings: { email_dm_notifications: boolean; quiet_hours_start: string | null; quiet_hours_end: string | null; reminder_timezone: string | null } | null }).settings;
       if (!settings?.email_dm_notifications) continue;
 
@@ -360,9 +361,9 @@ export async function processReactionCommentBatch(): Promise<void> {
       });
       if (recentEmailSent > 0) continue;
 
-      // Get recipient info and settings
+      // Get recipient info and settings (only verified users)
       const recipient = await User.findByPk(batch.recipient_id, {
-        attributes: ['id', 'email', 'display_name'],
+        attributes: ['id', 'email', 'display_name', 'is_verified'],
         include: [{
           model: UserSetting,
           as: 'settings',
@@ -371,6 +372,7 @@ export async function processReactionCommentBatch(): Promise<void> {
       });
 
       if (!recipient) continue;
+      if (!(recipient as unknown as { is_verified: boolean }).is_verified) continue;
       const settings = (recipient as unknown as { settings: { email_reaction_comment_notifications: boolean; quiet_hours_start: string | null; quiet_hours_end: string | null; reminder_timezone: string | null } | null }).settings;
       if (!settings?.email_reaction_comment_notifications) continue;
 
@@ -477,9 +479,10 @@ export async function processDailyReminders(): Promise<void> {
   // whose reminder time matches now in their timezone
   const now = new Date();
 
-  // Get all users with daily reminder enabled
+  // Get all verified users with daily reminder enabled
   const users = await User.findAll({
     attributes: ['id', 'email', 'display_name', 'mode', 'timezone', 'language'],
+    where: { is_verified: true },
     include: [{
       model: UserSetting,
       as: 'settings',
@@ -662,9 +665,9 @@ export async function processFollowRequestEmail(userId: number, actorId: number)
   });
   if (recentDup > 0) return;
 
-  // Get recipient and settings
+  // Get recipient and settings (only verified users)
   const recipient = await User.findByPk(userId, {
-    attributes: ['id', 'email', 'display_name'],
+    attributes: ['id', 'email', 'display_name', 'is_verified'],
     include: [{
       model: UserSetting,
       as: 'settings',
@@ -673,6 +676,7 @@ export async function processFollowRequestEmail(userId: number, actorId: number)
   });
 
   if (!recipient) return;
+  if (!(recipient as unknown as { is_verified: boolean }).is_verified) return;
   const settings = (recipient as unknown as { settings: { email_follow_notifications: boolean; quiet_hours_start: string | null; quiet_hours_end: string | null; reminder_timezone: string | null } | null }).settings;
   if (!settings?.email_follow_notifications) return;
 
@@ -732,9 +736,9 @@ export async function processPrayerResponseEmail(
   });
   if (recentDup > 0) return;
 
-  // Get recipient and settings
+  // Get recipient and settings (only verified users)
   const recipient = await User.findByPk(userId, {
-    attributes: ['id', 'email', 'display_name'],
+    attributes: ['id', 'email', 'display_name', 'is_verified'],
     include: [{
       model: UserSetting,
       as: 'settings',
@@ -743,6 +747,7 @@ export async function processPrayerResponseEmail(
   });
 
   if (!recipient) return;
+  if (!(recipient as unknown as { is_verified: boolean }).is_verified) return;
   const settings = (recipient as unknown as { settings: { email_prayer_notifications: boolean; quiet_hours_start: string | null; quiet_hours_end: string | null; reminder_timezone: string | null } | null }).settings;
   if (!settings?.email_prayer_notifications) return;
 
@@ -856,9 +861,9 @@ export async function processWorkshopEmail(
 
   for (const recipientId of recipientIds) {
     try {
-      // Load recipient with settings
+      // Load recipient with settings (only verified users)
       const recipient = await User.findByPk(recipientId, {
-        attributes: ['id', 'email', 'display_name'],
+        attributes: ['id', 'email', 'display_name', 'is_verified'],
         include: [{
           model: UserSetting,
           as: 'settings',
@@ -867,6 +872,7 @@ export async function processWorkshopEmail(
       });
 
       if (!recipient) continue;
+      if (!(recipient as unknown as { is_verified: boolean }).is_verified) continue;
       const settings = (recipient as unknown as { settings: { email_workshop_notifications: boolean; quiet_hours_start: string | null; quiet_hours_end: string | null; reminder_timezone: string | null } | null }).settings;
       if (!settings?.email_workshop_notifications) continue;
 
@@ -1000,6 +1006,7 @@ export async function processVideoBroadcast(): Promise<void> {
     JOIN user_settings us ON us.user_id = u.id
     WHERE u.id > :lastProcessedUserId
       AND u.status = 'active'
+      AND u.is_verified = TRUE
       AND us.email_new_video_notifications = TRUE
     ORDER BY u.id ASC
     LIMIT :chunkSize
