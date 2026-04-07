@@ -9,6 +9,8 @@ import {
   Calendar,
   User as UserIcon,
   MessageSquare,
+  Video,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/Button';
@@ -21,6 +23,7 @@ interface CompletedTabProps {
   mode: 'bible' | 'positivity';
   expectedTranslations: string[];
   onRefresh: () => void;
+  onLumashortUpload?: (dayId: number, file: File) => void | Promise<void>;
 }
 
 /**
@@ -50,7 +53,7 @@ function isDayComplete(
   return true;
 }
 
-export function CompletedTab({ days, mode, expectedTranslations, onRefresh }: CompletedTabProps) {
+export function CompletedTab({ days, mode, expectedTranslations, onRefresh, onLumashortUpload }: CompletedTabProps) {
   const toast = useToast();
   const [actionId, setActionId] = useState<number | null>(null);
   const [rejectingId, setRejectingId] = useState<number | null>(null);
@@ -292,7 +295,7 @@ export function CompletedTab({ days, mode, expectedTranslations, onRefresh }: Co
         title={previewDay ? `Preview - ${formatDate(previewDay.post_date)}` : undefined}
         size="lg"
       >
-        {previewDay && <ContentPreview day={previewDay} />}
+        {previewDay && <ContentPreview day={previewDay} onLumashortUpload={onLumashortUpload} onRefresh={onRefresh} />}
       </Modal>
     </div>
   );
@@ -300,7 +303,10 @@ export function CompletedTab({ days, mode, expectedTranslations, onRefresh }: Co
 
 /* ─── Simple Content Preview ─── */
 
-function ContentPreview({ day }: { day: DayData }) {
+function ContentPreview({ day, onLumashortUpload, onRefresh }: { day: DayData; onLumashortUpload?: (dayId: number, file: File) => void | Promise<void>; onRefresh?: () => void }) {
+  const [uploadingLumashort, setUploadingLumashort] = useState(false);
+  const toast = useToast();
+
   return (
     <div className="space-y-4">
       {/* Verse / Quote Slide */}
@@ -350,7 +356,7 @@ function ContentPreview({ day }: { day: DayData }) {
       {/* Video Slide */}
       <div className="rounded-xl border border-border bg-gradient-to-b from-slate-50/50 to-transparent p-4 dark:border-border-dark dark:from-slate-800/30">
         <p className="text-xs font-medium uppercase text-text-muted dark:text-text-muted-dark">
-          Slide 3 - Video
+          Slide 3 - LumaShort Video
         </p>
         <div className="mt-2">
           {day.lumashort_video_url ? (
@@ -369,6 +375,43 @@ function ContentPreview({ day }: { day: DayData }) {
             </span>
           )}
         </div>
+        {onLumashortUpload && (
+          <label
+            className={cn(
+              'mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-xs transition-colors',
+              'hover:border-primary hover:bg-primary/5',
+              'dark:border-border-dark dark:hover:border-primary dark:hover:bg-primary/5',
+              uploadingLumashort && 'pointer-events-none opacity-60'
+            )}
+          >
+            {uploadingLumashort
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              : <Video className="h-3.5 w-3.5 text-text-muted dark:text-text-muted-dark" />}
+            <span className="text-text-muted dark:text-text-muted-dark">
+              {uploadingLumashort ? 'Uploading...' : day.lumashort_video_url ? 'Replace LumaShort video' : 'Upload LumaShort video'}
+            </span>
+            <input
+              type="file"
+              accept=".mp4,video/mp4,.mov,video/quicktime"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file || !onLumashortUpload) return;
+                e.target.value = '';
+                setUploadingLumashort(true);
+                try {
+                  await onLumashortUpload(day.id, file);
+                  toast.success('LumaShort video replaced');
+                  onRefresh?.();
+                } catch {
+                  toast.error('Upload failed');
+                } finally {
+                  setUploadingLumashort(false);
+                }
+              }}
+            />
+          </label>
+        )}
         {day.has_background_prompt && (
           <span className="mt-2 inline-block rounded-lg bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
             Background prompt ready

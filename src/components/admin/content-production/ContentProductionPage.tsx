@@ -888,6 +888,7 @@ export default function ContentProductionPage() {
               mode={selectedMode}
               expectedTranslations={data?.expectedTranslations ?? []}
               onRefresh={fetchData}
+              onLumashortUpload={handleLumashortUpload}
             />
           )}
           {activeTab === 'review' && (
