@@ -422,6 +422,57 @@ export default function ContentProductionPage() {
     [toast]
   );
 
+  // Handle lumashort video upload for a specific day
+  const handleLumashortUpload = useCallback(
+    async (dayId: number, file: File) => {
+      try {
+        // Get presigned URL
+        const presignRes = await fetch(
+          `/api/upload/presigned?type=daily-content&contentType=${encodeURIComponent(file.type)}`,
+          { credentials: 'include' }
+        );
+        if (!presignRes.ok) throw new Error('Failed to get upload URL');
+        const { uploadUrl, publicUrl } = await presignRes.json();
+
+        // Upload to B2
+        const uploadRes = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type },
+        });
+        if (!uploadRes.ok) throw new Error('Upload to storage failed');
+
+        // Link lumashort video to daily content
+        const linkRes = await fetch('/api/admin/content-production/lumashort-video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ daily_content_id: dayId, video_url: publicUrl }),
+        });
+        if (!linkRes.ok) {
+          const err = await linkRes.json();
+          throw new Error(err.error || 'Failed to link video');
+        }
+
+        // Update the day in-place
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            days: prev.days.map((d) =>
+              d.id === dayId ? { ...d, has_lumashort_video: true, lumashort_video_url: publicUrl } : d
+            ),
+          };
+        });
+
+        toast.success('LumaShort video uploaded');
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Upload failed');
+      }
+    },
+    [toast]
+  );
+
   // Handle HeyGen AI video generation for a single day
   const handleGenerateHeygenVideo = useCallback(
     async (dayId: number, postDate: string) => {
@@ -826,6 +877,7 @@ export default function ContentProductionPage() {
               onBulkGenerate={handleBulkRegenerate}
               onRefresh={fetchData}
               onVideoUpload={handleVideoUpload}
+              onLumashortUpload={handleLumashortUpload}
               onGenerateHeygenVideo={handleGenerateHeygenVideo}
               onContentTextSave={handleContentTextSave}
             />

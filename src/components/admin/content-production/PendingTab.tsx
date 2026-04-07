@@ -27,6 +27,7 @@ interface PendingTabProps {
   onBulkGenerate: () => void;
   onRefresh: () => void;
   onVideoUpload?: (dayId: number, postDate: string, file: File) => void | Promise<void>;
+  onLumashortUpload?: (dayId: number, file: File) => void | Promise<void>;
   onGenerateHeygenVideo?: (dayId: number, postDate: string) => void | Promise<void>;
   onContentTextSave?: (dayId: number, text: string) => void | Promise<void>;
 }
@@ -75,7 +76,7 @@ function getMissingFields(
   return missing;
 }
 
-export function PendingTab({ days, mode, language, expectedTranslations, creators, onRegenerate, onBulkGenerate, onRefresh, onVideoUpload, onGenerateHeygenVideo, onContentTextSave }: PendingTabProps) {
+export function PendingTab({ days, mode, language, expectedTranslations, creators, onRegenerate, onBulkGenerate, onRefresh, onVideoUpload, onLumashortUpload, onGenerateHeygenVideo, onContentTextSave }: PendingTabProps) {
   const toast = useToast();
   const [reassigningId, setReassigningId] = useState<number | null>(null);
 
@@ -199,7 +200,7 @@ export function PendingTab({ days, mode, language, expectedTranslations, creator
               </div>
               {/* Expandable DayCard with regenerate */}
               <div className="[&>div]:rounded-t-none">
-                <DayCard day={day} mode={mode} expectedTranslations={expectedTranslations} onRegenerate={onRegenerate} onVideoUpload={onVideoUpload} onGenerateHeygenVideo={onGenerateHeygenVideo} onContentTextSave={onContentTextSave} />
+                <DayCard day={day} mode={mode} expectedTranslations={expectedTranslations} onRegenerate={onRegenerate} onVideoUpload={onVideoUpload} onLumashortUpload={onLumashortUpload} onGenerateHeygenVideo={onGenerateHeygenVideo} onContentTextSave={onContentTextSave} />
               </div>
             </div>
           );

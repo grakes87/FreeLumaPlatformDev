@@ -14,6 +14,7 @@ const ALLOWED_CONTENT_TYPES: Record<string, string[]> = {
     'image/webp',
     'image/gif',
     'video/mp4',
+    'video/quicktime',
     'audio/mpeg',
     'audio/wav',
     'audio/ogg',

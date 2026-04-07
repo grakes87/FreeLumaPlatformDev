@@ -69,6 +69,7 @@ interface DayCardProps {
   expectedTranslations?: string[];
   onRegenerate?: (dayId: number, field: string, translationCode?: string) => void | Promise<void>;
   onVideoUpload?: (dayId: number, postDate: string, file: File) => void | Promise<void>;
+  onLumashortUpload?: (dayId: number, file: File) => void | Promise<void>;
   onGenerateHeygenVideo?: (dayId: number, postDate: string) => void | Promise<void>;
   onContentTextSave?: (dayId: number, text: string) => void | Promise<void>;
 }
@@ -98,7 +99,7 @@ function FieldBadge({ has, label }: { has: boolean; label: string }) {
   );
 }
 
-export function DayCard({ day, mode, expectedTranslations, onRegenerate, onVideoUpload, onGenerateHeygenVideo, onContentTextSave }: DayCardProps) {
+export function DayCard({ day, mode, expectedTranslations, onRegenerate, onVideoUpload, onLumashortUpload, onGenerateHeygenVideo, onContentTextSave }: DayCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [regenerating, setRegenerating] = useState<Set<string>>(new Set());
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -122,6 +123,7 @@ export function DayCard({ day, mode, expectedTranslations, onRegenerate, onVideo
   const [bgLibraryOpen, setBgLibraryOpen] = useState(false);
   const [applyingBgLibrary, setApplyingBgLibrary] = useState(false);
   const [bgVideoApplied, setBgVideoApplied] = useState(false);
+  const [uploadingLumashort, setUploadingLumashort] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     setLogsLoading(true);
@@ -469,6 +471,59 @@ export function DayCard({ day, mode, expectedTranslations, onRegenerate, onVideo
                       }
                     }}
                   />
+                </div>
+              )}
+
+              {/* Upload LumaShort video */}
+              {onLumashortUpload && (
+                <div>
+                  <p className="mb-2 text-xs font-medium uppercase text-text-muted dark:text-text-muted-dark">
+                    LumaShort Video
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label
+                      className={cn(
+                        'flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-xs transition-colors',
+                        'hover:border-primary hover:bg-primary/5',
+                        'dark:border-border-dark dark:hover:border-primary dark:hover:bg-primary/5',
+                        uploadingLumashort && 'pointer-events-none opacity-60'
+                      )}
+                    >
+                      {uploadingLumashort
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                        : <Video className="h-3.5 w-3.5 text-text-muted dark:text-text-muted-dark" />}
+                      <span className="text-text-muted dark:text-text-muted-dark">
+                        {uploadingLumashort ? 'Uploading...' : day.has_lumashort_video ? 'Replace LumaShort video (.mp4)' : 'Upload LumaShort video (.mp4)'}
+                      </span>
+                      <input
+                        type="file"
+                        accept=".mp4,video/mp4,.mov,video/quicktime"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file || !onLumashortUpload) return;
+                          e.target.value = '';
+                          setUploadingLumashort(true);
+                          try {
+                            await onLumashortUpload(day.id, file);
+                          } finally {
+                            setUploadingLumashort(false);
+                          }
+                        }}
+                      />
+                    </label>
+                    {day.has_lumashort_video && day.lumashort_video_url && (
+                      <a
+                        href={day.lumashort_video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        View current video
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
 
