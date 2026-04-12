@@ -962,11 +962,15 @@ export default function SettingsPage() {
         </button>
       </Card>
 
-      {/* ---- Danger Zone ---- */}
-      <SectionHeader title="Account Management" />
-      <div className="mb-6">
-        <DangerZone />
-      </div>
+      {/* ---- Danger Zone (hidden for official account) ---- */}
+      {user?.username !== 'freeluma' && (
+        <>
+          <SectionHeader title="Account Management" />
+          <div className="mb-6">
+            <DangerZone />
+          </div>
+        </>
+      )}
 
       {/* ---- About Section ---- */}
       <SectionHeader title="About" />
