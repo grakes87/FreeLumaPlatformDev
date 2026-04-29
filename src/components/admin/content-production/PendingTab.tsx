@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, X, Zap, ChevronDown, Loader2 } from 'lucide-react';
+import { AlertTriangle, X, Zap, ChevronDown, Loader2, Film } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
@@ -79,6 +79,7 @@ function getMissingFields(
 export function PendingTab({ days, mode, language, expectedTranslations, creators, onRegenerate, onBulkGenerate, onRefresh, onVideoUpload, onLumashortUpload, onGenerateHeygenVideo, onContentTextSave }: PendingTabProps) {
   const toast = useToast();
   const [reassigningId, setReassigningId] = useState<number | null>(null);
+  const [assigningBgVideos, setAssigningBgVideos] = useState(false);
 
   const eligibleCreators = useMemo(
     () => creators.filter((c) => {
@@ -111,6 +112,67 @@ export function PendingTab({ days, mode, language, expectedTranslations, creator
       toast.error(err instanceof Error ? err.message : 'Reassign failed');
     } finally {
       setReassigningId(null);
+    }
+  };
+
+  const handleAssignBgVideos = async () => {
+    // Find pending days missing background video
+    const daysMissingBg = days.filter(
+      (d) => d.status !== 'empty' && !d.has_background_video
+    );
+    if (daysMissingBg.length === 0) {
+      toast.info('All days already have background videos');
+      return;
+    }
+
+    setAssigningBgVideos(true);
+    try {
+      // Fetch all background library URLs for this mode
+      const libRes = await fetch(
+        `/api/admin/content-production/background-library?mode=${mode}&limit=120&page=1`,
+        { credentials: 'include' }
+      );
+      if (!libRes.ok) throw new Error('Failed to fetch background library');
+      const libData = await libRes.json();
+
+      // Gather all pages if there are more
+      let allItems = libData.data?.items || libData.items || [];
+      const totalPages = libData.data?.totalPages || libData.totalPages || 1;
+      for (let p = 2; p <= totalPages; p++) {
+        const pageRes = await fetch(
+          `/api/admin/content-production/background-library?mode=${mode}&limit=120&page=${p}`,
+          { credentials: 'include' }
+        );
+        if (pageRes.ok) {
+          const pageData = await pageRes.json();
+          allItems = allItems.concat(pageData.data?.items || pageData.items || []);
+        }
+      }
+
+      if (allItems.length === 0) {
+        throw new Error(`No ${mode} background videos in library`);
+      }
+
+      // Randomly assign one to each day missing a background video
+      const uploads = daysMissingBg.map((d) => ({
+        date: d.post_date,
+        video_url: allItems[Math.floor(Math.random() * allItems.length)].url,
+      }));
+
+      const assignRes = await fetch('/api/admin/content-production/background-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ uploads }),
+      });
+      if (!assignRes.ok) throw new Error('Failed to assign background videos');
+
+      toast.success(`Assigned background videos to ${uploads.length} day${uploads.length !== 1 ? 's' : ''}`);
+      onRefresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to assign background videos');
+    } finally {
+      setAssigningBgVideos(false);
     }
   };
 
@@ -148,10 +210,20 @@ export function PendingTab({ days, mode, language, expectedTranslations, creator
           {pendingDays.length} day{pendingDays.length !== 1 ? 's' : ''} with missing fields
           <span className="ml-1 text-text-muted/70">({totalMissing} total items)</span>
         </p>
-        <Button onClick={onBulkGenerate}>
-          <Zap className="h-4 w-4" />
-          Regenerate All Missing
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleAssignBgVideos}
+            loading={assigningBgVideos}
+          >
+            <Film className="h-4 w-4" />
+            Assign Background Videos
+          </Button>
+          <Button onClick={onBulkGenerate}>
+            <Zap className="h-4 w-4" />
+            Regenerate All Missing
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2">

@@ -19,9 +19,15 @@ export const GET = withAdmin(async (req: NextRequest, _context: AuthContext) => 
     const search = searchParams.get('search')?.trim();
     const offset = (page - 1) * limit;
 
+    const mode = searchParams.get('mode');
     const where: Record<string, unknown> = {};
+    if (mode === 'bible' || mode === 'positivity') {
+      where.url = { [Op.like]: `%/${mode}/%` };
+    }
     if (search) {
-      where.url = { [Op.like]: `%${search}%` };
+      where.url = where.url
+        ? { [Op.and]: [where.url, { [Op.like]: `%${search}%` }] }
+        : { [Op.like]: `%${search}%` };
     }
 
     const { count, rows } = await DailyContentBackground.findAndCountAll({
