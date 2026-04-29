@@ -222,9 +222,11 @@ function CarouselSwiper({
   const hasDevotional = content.mode === 'bible' &&
     !!content.devotional_reflection?.trim();
 
-  // Dynamic slide indices based on whether devotional slide is present
+  const hasLumaShort = !!content.lumashort_video_url;
+
+  // Dynamic slide indices based on which optional slides are present
   const audioIndex = hasDevotional ? 2 : 1;
-  const lumaShortIndex = hasDevotional ? 3 : 2;
+  const lumaShortIndex = audioIndex + 1;
 
   return (
     <Swiper
@@ -278,10 +280,12 @@ function CarouselSwiper({
         />
       </SwiperSlide>
 
-      {/* Slide 3/4: LumaShort video */}
-      <SwiperSlide>
-        <LumaShortSlide content={content} isActive={isActive && activeSlide === lumaShortIndex} />
-      </SwiperSlide>
+      {/* Slide 3/4: LumaShort video (hidden if no video available) */}
+      {hasLumaShort && (
+        <SwiperSlide>
+          <LumaShortSlide content={content} isActive={isActive && activeSlide === lumaShortIndex} />
+        </SwiperSlide>
+      )}
     </Swiper>
   );
 }
