@@ -42,7 +42,7 @@ const LEFT_TABS: NavTab[] = [
 ];
 
 const RIGHT_TABS_BASE: Omit<NavTab, 'label'>[] = [
-  { href: '/workshops', icon: Presentation, iconKey: 'tab-4' },
+  // { href: '/workshops', icon: Presentation, iconKey: 'tab-4' }, // Hidden — uncomment to restore
   { href: '/watch', icon: Play },
   { href: '/profile', icon: Sparkles },  // icon unused for profile tab
 ];

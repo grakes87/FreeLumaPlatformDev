@@ -36,12 +36,13 @@ export function CreatePicker({ isOpen, onClose, onSelect }: CreatePickerProps) {
       label: 'Prayer Request',
       description: 'Ask for prayer support',
     },
-    {
-      type: 'workshop',
-      icon: Presentation,
-      label: `Create ${wl.singular}`,
-      description: `Host a live ${wl.singular.toLowerCase()}`,
-    },
+    // Hidden — uncomment to restore workshop creation
+    // {
+    //   type: 'workshop',
+    //   icon: Presentation,
+    //   label: `Create ${wl.singular}`,
+    //   description: `Host a live ${wl.singular.toLowerCase()}`,
+    // },
   ];
   const containerRef = useRef<HTMLDivElement>(null);
 
