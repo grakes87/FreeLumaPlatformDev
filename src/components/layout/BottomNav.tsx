@@ -38,12 +38,12 @@ interface NavTab {
 const LEFT_TABS: NavTab[] = [
   { href: '/', icon: Sparkles, label: 'Daily Post', iconKey: 'tab-1' },
   { href: '/prayer-wall', icon: Heart, label: 'Prayer Wall', bibleOnly: true, iconKey: 'tab-2' },
-  { href: '/feed', icon: MessageSquare, label: 'Feed', iconKey: 'tab-3', iconSize: 'h-12 w-12' },
 ];
 
 const RIGHT_TABS_BASE: Omit<NavTab, 'label'>[] = [
+  { href: '/feed', icon: MessageSquare, iconKey: 'tab-3', iconSize: 'h-12 w-12' },
   // { href: '/workshops', icon: Presentation, iconKey: 'tab-4' }, // Hidden — uncomment to restore
-  { href: '/watch', icon: Play },
+  // { href: '/watch', icon: Play }, // Hidden — uncomment to restore
   { href: '/profile', icon: Sparkles },  // icon unused for profile tab
 ];
 
@@ -63,7 +63,7 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
 
   const RIGHT_TABS: NavTab[] = RIGHT_TABS_BASE.map((t) => ({
     ...t,
-    label: t.href === '/workshops' ? wl.plural : t.href === '/watch' ? 'Watch' : 'Profile',
+    label: t.href === '/feed' ? 'Feed' : t.href === '/workshops' ? wl.plural : t.href === '/watch' ? 'Watch' : 'Profile',
   }));
 
   const filterTabs = (tabs: NavTab[]) =>
