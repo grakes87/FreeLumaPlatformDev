@@ -187,8 +187,16 @@ export function DailyPostSlide({
           {showModeToggle && <ModePillToggle />}
         </div>
 
-        {/* Center: Labels + Verse grouped together */}
-        <div ref={verseCenterRef} className="flex max-w-lg flex-col items-center gap-4 text-center overflow-hidden">
+        {/* Center: Labels + Verse grouped together.
+            Container scrolls vertically when content exceeds visible height —
+            auto-fit shrinks first, scroll kicks in as a fallback for very long quotes.
+            flex-1 min-h-0 constrains height so overflow-y-auto can engage; my-auto
+            keeps content visually centered when it fits without scrolling. */}
+        <div
+          ref={verseCenterRef}
+          className="scrollbar-hide flex w-full max-w-lg flex-1 flex-col items-center justify-center gap-4 overflow-y-auto text-center min-h-0"
+          style={{ scrollbarWidth: 'none' }}
+        >
           {/* Date / type label directly above verse */}
           <div className="flex w-full flex-col items-center gap-3">
             {feedMode ? (

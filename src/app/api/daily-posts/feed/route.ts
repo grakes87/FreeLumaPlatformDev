@@ -25,13 +25,19 @@ export const GET = withOptionalAuth(async (req: NextRequest, { user }: OptionalA
     const language = url.searchParams.get('language') || 'en';
     const today = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
     const cursor = url.searchParams.get('cursor');
-    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '5', 10), 1), 20);
+    const baseLimit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '5', 10), 1), 20);
 
     let isPreviewUser = false;
     if (user) {
       const dbUser = await User.findByPk(user.id, { attributes: ['username'] });
       isPreviewUser = dbUser?.username === PREVIEW_USERNAME;
     }
+
+    // Preview-user initial page: the upper date bound is dropped and rows are
+    // DESC, so all future days land before today. The default limit of 5 would
+    // never reach today. Bump the initial window so today + a buffer of past
+    // are also included; subsequent cursor pages stay at the requested limit.
+    const limit = isPreviewUser && !cursor ? Math.max(baseLimit, 90) : baseLimit;
 
     // Build date filter:
     //   - With cursor: paginate strictly older than cursor.
