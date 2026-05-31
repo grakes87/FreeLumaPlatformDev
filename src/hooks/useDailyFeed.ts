@@ -20,6 +20,7 @@ interface DailyFeedResponse {
   days: DailyContentData[];
   next_cursor: string | null;
   has_more: boolean;
+  preview?: boolean;
 }
 
 /** Max days to keep in memory. Older entries are trimmed from front when exceeded. */
@@ -31,6 +32,7 @@ export function useDailyFeed(mode?: string, language?: string) {
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [cursor, setCursor] = useState<string | null>(null);
+  const [isPreview, setIsPreview] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const retryCountRef = useRef(0);
@@ -77,6 +79,7 @@ export function useDailyFeed(mode?: string, language?: string) {
         if (isRefresh || !pageCursor) {
           frontTrimRef.current = 0;
           setDays(data.days);
+          setIsPreview(!!data.preview);
         } else {
           setDays((prev) => {
             const existingIds = new Set(prev.map((d) => d.id));
@@ -133,5 +136,5 @@ export function useDailyFeed(mode?: string, language?: string) {
     fetchPage(null, true);
   }, [fetchPage]);
 
-  return { days, loading, refreshing, hasMore, fetchNextPage, refresh, frontTrimRef };
+  return { days, loading, refreshing, hasMore, fetchNextPage, refresh, frontTrimRef, isPreview };
 }

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Op } from 'sequelize';
 import { BibleTranslation, DailyContent, DailyContentTranslation, LumaShortCreator, User } from '@/lib/db/models';
+import { withOptionalAuth, type OptionalAuthContext } from '@/lib/auth/middleware';
+
+const PREVIEW_USERNAME = 'freeluma';
 
 /**
  * GET /api/daily-posts/feed?mode=bible&language=en&date=2026-02-17&cursor=YYYY-MM-DD&limit=5
@@ -10,8 +13,12 @@ import { BibleTranslation, DailyContent, DailyContentTranslation, LumaShortCreat
  *
  * Edge-cacheable: response varies only by query params (mode, language, date, cursor, limit).
  * Cloudflare caches at the edge for 14 days — one DB query per unique param combo.
+ *
+ * Preview mode: when the @freeluma user is authenticated, the post_date upper
+ * bound is dropped so future days are also returned. Response is marked
+ * `private, no-store` in that case so it does not poison the shared edge cache.
  */
-export async function GET(req: NextRequest) {
+export const GET = withOptionalAuth(async (req: NextRequest, { user }: OptionalAuthContext) => {
   try {
     const url = new URL(req.url);
     const mode = url.searchParams.get('mode') || 'bible';
@@ -20,18 +27,29 @@ export async function GET(req: NextRequest) {
     const cursor = url.searchParams.get('cursor');
     const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '5', 10), 1), 20);
 
-    // Build date filter: post_date <= today (or < cursor for pagination)
-    const dateFilter = cursor
-      ? { [Op.lt]: cursor }
-      : { [Op.lte]: today };
+    let isPreviewUser = false;
+    if (user) {
+      const dbUser = await User.findByPk(user.id, { attributes: ['username'] });
+      isPreviewUser = dbUser?.username === PREVIEW_USERNAME;
+    }
+
+    // Build date filter:
+    //   - With cursor: paginate strictly older than cursor.
+    //   - Preview user (no cursor): no upper bound — include future days.
+    //   - Default: post_date <= today.
+    const where: Record<string, unknown> = {
+      mode,
+      language,
+      published: true,
+    };
+    if (cursor) {
+      where.post_date = { [Op.lt]: cursor };
+    } else if (!isPreviewUser) {
+      where.post_date = { [Op.lte]: today };
+    }
 
     const rows = await DailyContent.findAll({
-      where: {
-        post_date: dateFilter,
-        mode,
-        language,
-        published: true,
-      },
+      where,
       include: [
         {
           model: DailyContentTranslation,
@@ -132,12 +150,16 @@ export async function GET(req: NextRequest) {
 
     // Only edge-cache responses that contain data; empty results should not be
     // cached so that newly-published content is picked up immediately.
-    const cacheHeader = days.length > 0
-      ? 'public, s-maxage=1209600, stale-while-revalidate=86400'
-      : 'no-store';
+    // Preview-user responses include unpublished-future content and are
+    // user-specific, so they must NOT be shared at the edge.
+    const cacheHeader = isPreviewUser
+      ? 'private, no-store'
+      : days.length > 0
+        ? 'public, s-maxage=1209600, stale-while-revalidate=86400'
+        : 'no-store';
 
     return NextResponse.json(
-      { days, next_cursor: nextCursor, has_more: hasMore },
+      { days, next_cursor: nextCursor, has_more: hasMore, preview: isPreviewUser },
       {
         headers: { 'Cache-Control': cacheHeader },
       }
@@ -149,4 +171,4 @@ export async function GET(req: NextRequest) {
       { status: 500, headers: { 'Cache-Control': 'no-store' } }
     );
   }
-}
+});

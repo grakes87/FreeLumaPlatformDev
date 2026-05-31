@@ -34,7 +34,7 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
   // Use ViewModeContext for authenticated users, fallback to mode prop for guests
   const resolvedMode = user ? viewEffectiveMode : (mode || 'bible');
 
-  const { days, loading, refreshing, hasMore, fetchNextPage, refresh, frontTrimRef } = useDailyFeed(
+  const { days, loading, refreshing, hasMore, fetchNextPage, refresh, frontTrimRef, isPreview } = useDailyFeed(
     resolvedMode,
     user?.language,
   );
@@ -109,12 +109,16 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
     getScrollContainer()?.scrollTo(0, 0);
   }, []);
 
+  // Preview-mode scroll lands at today; declared below after activeIndex state.
+  const previewScrollAppliedRef = useRef(false);
+
   // Scroll to top when view mode changes (Both-mode toggle)
   const prevResolvedModeRef = useRef(resolvedMode);
   useEffect(() => {
     if (prevResolvedModeRef.current !== resolvedMode) {
       prevResolvedModeRef.current = resolvedMode;
       getScrollContainer()?.scrollTo(0, 0);
+      previewScrollAppliedRef.current = false;
     }
   }, [resolvedMode]);
 
@@ -140,6 +144,23 @@ export function DailyFeed({ mode }: { mode?: string } = {}) {
 
   const [activeIndex, setActiveIndex] = useState(0);
   const preloadTriggeredRef = useRef(false);
+
+  // Preview mode (@freeluma): API returns future days too, ordered DESC.
+  // Land at today on first load (future sits above, past below).
+  useEffect(() => {
+    if (!isPreview || days.length === 0 || previewScrollAppliedRef.current) return;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todayIdx = days.findIndex((d) => d.post_date === todayStr);
+    if (todayIdx <= 0) return;
+    const container = getScrollContainer();
+    if (!container) return;
+    previewScrollAppliedRef.current = true;
+    requestAnimationFrame(() => {
+      container.scrollTo({ top: container.clientHeight * todayIdx, behavior: 'instant' });
+      setActiveIndex(todayIdx);
+    });
+  }, [isPreview, days]);
 
   // Pull-to-refresh state
   const [pullDistance, setPullDistance] = useState(0);
