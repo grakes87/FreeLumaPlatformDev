@@ -222,11 +222,18 @@ function CarouselSwiper({
   const hasDevotional = content.mode === 'bible' &&
     !!content.devotional_reflection?.trim();
 
+  // Audio slide is only shown when the active translation has an audio file —
+  // mirrors the LumaShort hide pattern so users don't see "Audio Not Available".
+  const hasAudio = !!resolvedAudioUrl;
+
   const hasLumaShort = !!content.lumashort_video_url;
 
-  // Dynamic slide indices based on which optional slides are present
-  const audioIndex = hasDevotional ? 2 : 1;
-  const lumaShortIndex = audioIndex + 1;
+  // Dynamic slide indices: compute sequentially based on which optional slides
+  // are present. Slide 0 (DailyPostSlide) is always shown.
+  let nextSlideIndex = 1;
+  const devotionalIndex = hasDevotional ? nextSlideIndex++ : -1;
+  const audioIndex = hasAudio ? nextSlideIndex++ : -1;
+  const lumaShortIndex = hasLumaShort ? nextSlideIndex++ : -1;
 
   return (
     <Swiper
@@ -258,27 +265,29 @@ function CarouselSwiper({
         />
       </SwiperSlide>
 
-      {/* Slide 2: Devotional reflection (bible mode only, conditional) */}
+      {/* Devotional reflection (bible mode only, conditional) */}
       {hasDevotional && (
         <SwiperSlide>
           <DevotionalSlide
             content={slideContent}
-            isActive={isActive && activeSlide === 1}
+            isActive={isActive && activeSlide === devotionalIndex}
           />
         </SwiperSlide>
       )}
 
-      {/* Slide 2/3: Audio player with SRT subtitle sync */}
-      <SwiperSlide>
-        <AudioPlayerSlide
-          content={content}
-          activeTranslation={activeTranslation}
-          resolvedAudioUrl={resolvedAudioUrl}
-          resolvedSrtUrl={resolvedSrtUrl}
-          resolvedChapterText={resolvedChapterText}
-          isActive={isActive && activeSlide === audioIndex}
-        />
-      </SwiperSlide>
+      {/* Audio player with SRT subtitle sync (hidden if no audio available) */}
+      {hasAudio && (
+        <SwiperSlide>
+          <AudioPlayerSlide
+            content={content}
+            activeTranslation={activeTranslation}
+            resolvedAudioUrl={resolvedAudioUrl}
+            resolvedSrtUrl={resolvedSrtUrl}
+            resolvedChapterText={resolvedChapterText}
+            isActive={isActive && activeSlide === audioIndex}
+          />
+        </SwiperSlide>
+      )}
 
       {/* Slide 3/4: LumaShort video (hidden if no video available) */}
       {hasLumaShort && (
